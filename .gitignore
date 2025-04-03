@@ -1,5 +1,5 @@
 # Node.js standard .gitignore
-
+target/
 # Logs
 logs
 *.log
