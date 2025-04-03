@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "start": "ts-node src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -12,5 +13,9 @@
   "devDependencies": {
     "@types/node": "^22.13.14",
     "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "@types/npm": "^7.19.3",
+    "ts-node": "^10.9.2"
   }
 }
