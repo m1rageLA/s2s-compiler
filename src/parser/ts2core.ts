@@ -78,3 +78,29 @@ type IRNode =
         calle: IRNode;
         args: IRNode[];
     };
+
+
+/**
+ * Главная точка входа.
+ * - Создает программу TypeScript
+ * - Берёт AST sourceFile
+ * - Переводит все top-level statement'ы в IR
+ * - Возвращает IR с kind: "Program"
+ */
+
+export function transpileFileToIR(filePath: string): IRNode {
+    const program = ts.createProgram([filePath], {
+        target: ts.ScriptTarget.ESNext,
+        module: ts.ModuleKind.CommonJS,
+    });
+    const sourceFile = program.getSourceFile(filePath);
+    if (!sourceFile) {
+        throw new Error(`Source file not found: ${filePath}`);
+    }
+    const body: IRNode[] = [];
+
+    for (const stmt of sourceFile.statements) {
+        // body.push(convertStatement(stmt));
+    }
+    return { kind: "Program", body };
+}
