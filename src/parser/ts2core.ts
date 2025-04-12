@@ -182,3 +182,23 @@ function convertExpression(expr: ts.Expression): IRNode {
             throw new Error("Unsupported expression kind: " + ts.SyntaxKind[expr.kind]);
     }
 }
+<<<<<<< HEAD
+=======
+
+// =======================
+// 🔍 SPECIFIC CONVERTERS
+// =======================
+function convertFunctionDeclaration(node: ts.FunctionDeclaration): IRNode {
+    const name = node.name?.text || "anonymous";
+    const params = node.parameters.map(param => param.name.getText());
+    const body = node.body?.statements.map(convertStatement) || [];
+
+    return {
+        kind: "Function",
+        name,
+        params,
+        body,
+    }
+}
+
+>>>>>>> 5e64c52 ([feat] add function declaration converter)
