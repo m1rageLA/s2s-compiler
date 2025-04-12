@@ -218,3 +218,14 @@ function singleVarDeclToIR(decl: ts.VariableDeclaration): IRNode {
         value: decl.initializer ? convertExpression(decl.initializer) : undefined,
     }
 }
+
+function covertReturnStatement(node: ts.ReturnStatement): IRNode {
+    if (!node.expression) {
+        throw new Error("Return without expression is unsupported.");
+    }
+
+    return {
+        kind: "Return",
+        value: convertExpression(node.expression),
+    }
+}
