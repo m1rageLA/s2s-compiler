@@ -1,3 +1,4 @@
+import { bin } from "npm";
 import * as ts from "typescript";
 
 type IRNode =
@@ -17,7 +18,7 @@ type IRNode =
     {
         kind: "VariableDeclaration";
         name: string;
-        value?: IRNode; //there are variable declaration without initialization
+        value?: IRNode;
     }
     |
     {
@@ -37,7 +38,7 @@ type IRNode =
     |
     {
         kind: "Binary";
-        operator: string; // + - * / % ** == === != !== < > <= >=
+        operator: string;
         left: IRNode;
         right: IRNode;
     }
@@ -74,20 +75,14 @@ type IRNode =
     }
     |
     {
-        kind: "Call";
+        kind: "CallExrpression";
         calle: IRNode;
         args: IRNode[];
     };
 
-
 /**
  * Главная точка входа.
- * - Создает программу TypeScript
- * - Берёт AST sourceFile
- * - Переводит все top-level statement'ы в IR
- * - Возвращает IR с kind: "Program"
  */
-
 export function transpileFileToIR(filePath: string): IRNode {
     const program = ts.createProgram([filePath], {
         target: ts.ScriptTarget.ESNext,
@@ -105,23 +100,32 @@ export function transpileFileToIR(filePath: string): IRNode {
     return { kind: "Program", body };
 }
 
-//Statement Converters (ts.Node -> IRNode)
+// =======================
+// 🔁 STATEMENT CONVERTERS
+// =======================
 function convertStatement(node: ts.Node): IRNode {
     switch (node.kind) {
         case ts.SyntaxKind.FunctionDeclaration:
             return convertFunctionDeclaration(node as ts.FunctionDeclaration);
+
         case ts.SyntaxKind.VariableDeclaration:
             return convertVariableDeclaration(node as ts.VariableDeclaration);
+
         case ts.SyntaxKind.ReturnStatement:
             return convertReturnStatement(node as ts.ReturnStatement);
+
         case ts.SyntaxKind.IfStatement:
             return convertIfstatement(node as ts.IfStatement);
+
         case ts.SyntaxKind.WhileKeyword:
             return convertWhileKeyword(node as ts.WhileStatement);
+
         case ts.SyntaxKind.ForStatement:
             return convertForStatement(node as ts.ForStatement);
+
         case ts.SyntaxKind.Block:
             return convertBlock(node as ts.Block);
+
         case ts.SyntaxKind.ExpressionStatement:
             return {
                 kind: "ExpressionStatement",
