@@ -189,3 +189,20 @@ function convertExpression(expr: ts.Expression): IRNode {
 
     }
 }
+
+// =======================
+// 🔍 SPECIFIC CONVERTERS
+// =======================
+function convertFunctionDeclaration(node: ts.FunctionDeclaration): IRNode {
+    const name = node.name?.text || "anonymous";
+    const params = node.parameters.map(param => param.name.getText());
+    const body = node.body?.statements.map(convertStatement) || [];
+
+    return {
+        kind: "Function",
+        name,
+        params,
+        body,
+    }
+}
+
