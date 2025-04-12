@@ -101,7 +101,7 @@ export function transpileFileToIR(filePath: string): IRNode {
     const body: IRNode[] = [];
 
     for (const stmt of sourceFile.statements) {
-        // body.push(convertStatement(stmt));
+        body.push(convertStatement(stmt));
     }
     return { kind: "Program", body };
 }
@@ -149,7 +149,7 @@ function convertStatement(node: ts.Node): IRNode {
 function convertExpression(expr: ts.Expression): IRNode {
     switch (expr.kind) {
         case ts.SyntaxKind.NumericLiteral:
-            return { kind: "Literal", value: (expr as ts.NumericLiteral).text };
+            return { kind: "Literal", value: parseFloat((expr as ts.NumericLiteral).text) };
 
         case ts.SyntaxKind.StringLiteral:
             return { kind: "Literal", value: (expr as ts.StringLiteral).text }
@@ -195,9 +195,16 @@ function convertExpression(expr: ts.Expression): IRNode {
 // =======================
 function convertFunctionDeclaration(node: ts.FunctionDeclaration): IRNode {
     const name = node.name?.text || "anonymous";
-    const params = node.parameters.map(param => param.name.getText());
+    const params = node.parameters.map((p) => {
+        if (ts.isIdentifier(p.name)) {
+          return p.name.text;
+        } else {
+          throw new Error(`Unsupported parameter pattern: ${p.name.getText?.() || "unknown"}`);
+        }
+      });
     const body = node.body?.statements.map(convertStatement) || [];
 
+    
     return {
         kind: "Function",
         name,
@@ -219,12 +226,22 @@ function convertVariableStatement(node: ts.VariableStatement): IRNode {
 }
 
 function singleVarDeclToIR(decl: ts.VariableDeclaration): IRNode {
-    return {
-        kind: "VariableDeclaration",
-        name: decl.name.getText(),
-        value: decl.initializer ? convertExpression(decl.initializer) : undefined,
+    // Safely handle only identifiers for now
+    if (!ts.isIdentifier(decl.name)) {
+      throw new Error(`Unsupported variable declaration pattern: ${decl.name.getText?.() || "unknown"}`);
     }
-}
+  
+    const name = decl.name.text;
+    const initializer = decl.initializer
+      ? convertExpression(decl.initializer)
+      : undefined;
+  
+    return {
+      kind: "VariableDeclaration",
+      name,
+      value: initializer,
+    };
+  }
 
 function convertReturnStatement(node: ts.ReturnStatement): IRNode {
     if (!node.expression) {

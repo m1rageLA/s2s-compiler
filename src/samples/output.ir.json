@@ -1,0 +1,81 @@
+{
+  "kind": "Program",
+  "body": [
+    {
+      "kind": "Function",
+      "name": "add",
+      "params": [
+        "a",
+        "b"
+      ],
+      "body": [
+        {
+          "kind": "Return",
+          "value": {
+            "kind": "Binary",
+            "operator": "+",
+            "left": {
+              "kind": "Identifier",
+              "name": "a"
+            },
+            "right": {
+              "kind": "Identifier",
+              "name": "b"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "kind": "VariableDeclaration",
+      "name": "x",
+      "value": {
+        "kind": "Literal",
+        "value": 10
+      }
+    },
+    {
+      "kind": "If",
+      "condition": {
+        "kind": "Binary",
+        "operator": ">",
+        "left": {
+          "kind": "Identifier",
+          "name": "x"
+        },
+        "right": {
+          "kind": "Literal",
+          "value": 5
+        }
+      },
+      "thenBlock": {
+        "kind": "Block",
+        "statements": [
+          {
+            "kind": "ExpressionStatement",
+            "expression": {
+              "kind": "Binary",
+              "operator": "=",
+              "left": {
+                "kind": "Identifier",
+                "name": "x"
+              },
+              "right": {
+                "kind": "Binary",
+                "operator": "+",
+                "left": {
+                  "kind": "Identifier",
+                  "name": "x"
+                },
+                "right": {
+                  "kind": "Literal",
+                  "value": 1
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
