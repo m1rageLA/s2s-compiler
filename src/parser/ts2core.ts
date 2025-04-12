@@ -206,3 +206,22 @@ function convertFunctionDeclaration(node: ts.FunctionDeclaration): IRNode {
     }
 }
 
+function convertVariableStatement(node: ts.VariableStatement): IRNode {
+    const decls = node.declarationList.declarations;
+
+    if (decls.length === 1) {
+        return singleVarDeclToIR(decls[0]);
+    }
+    return {
+        kind: "Block",
+        statements: decls.map(singleVarDeclToIR),
+    }
+}
+
+function singleVarDeclToIR(decl: ts.VariableDeclaration): IRNode {
+    return {
+        kind: "VariableDeclaration",
+        name: decl.name.getText(),
+        value: decl.initializer ? convertExpression(decl.initializer) : undefined,
+    }
+}
