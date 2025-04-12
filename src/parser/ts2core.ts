@@ -1,3 +1,4 @@
+import { bin } from "npm";
 import * as ts from "typescript";
 
 type IRNode =
@@ -45,8 +46,8 @@ type IRNode =
     {
         kind: "If";
         condition: IRNode;
-        theBlock: IRNode[];
-        elseBlock?: IRNode[];
+        thenBlock: IRNode;
+        elseBlock?: IRNode;
     }
     |
     {
@@ -74,7 +75,7 @@ type IRNode =
     }
     |
     {
-        kind: "Call";
+        kind: "CallExrpression";
         calle: IRNode;
         args: IRNode[];
     };
@@ -100,28 +101,38 @@ export function transpileFileToIR(filePath: string): IRNode {
     const body: IRNode[] = [];
 
     for (const stmt of sourceFile.statements) {
-        // body.push(convertStatement(stmt));
+        body.push(convertStatement(stmt));
     }
     return { kind: "Program", body };
 }
 
-//Statement Converters (ts.Node -> IRNode)
+// =======================
+// 🔁 STATEMENT CONVERTERS
+// =======================
+
 function convertStatement(node: ts.Node): IRNode {
     switch (node.kind) {
         case ts.SyntaxKind.FunctionDeclaration:
             return convertFunctionDeclaration(node as ts.FunctionDeclaration);
-        case ts.SyntaxKind.VariableDeclaration:
-            return convertVariableDeclaration(node as ts.VariableDeclaration);
+
+        case ts.SyntaxKind.VariableStatement:
+            return convertVariableStatement(node as ts.VariableStatement);
+
         case ts.SyntaxKind.ReturnStatement:
             return convertReturnStatement(node as ts.ReturnStatement);
+
         case ts.SyntaxKind.IfStatement:
-            return convertIfstatement(node as ts.IfStatement);
+            return convertIfStatement(node as ts.IfStatement);
+
         case ts.SyntaxKind.WhileKeyword:
             return convertWhileKeyword(node as ts.WhileStatement);
+
         case ts.SyntaxKind.ForStatement:
             return convertForStatement(node as ts.ForStatement);
+
         case ts.SyntaxKind.Block:
             return convertBlock(node as ts.Block);
+
         case ts.SyntaxKind.ExpressionStatement:
             return {
                 kind: "ExpressionStatement",
@@ -131,4 +142,161 @@ function convertStatement(node: ts.Node): IRNode {
         default:
             throw new Error("Unsupported node kind: " + ts.SyntaxKind[node.kind]);
     }
+}
+
+// =======================
+// 🧠 EXPRESSION CONVERTER
+// =======================
+function convertExpression(expr: ts.Expression): IRNode {
+    switch (expr.kind) {
+        case ts.SyntaxKind.NumericLiteral:
+            return { kind: "Literal", value: parseFloat((expr as ts.NumericLiteral).text) };
+
+        case ts.SyntaxKind.StringLiteral:
+            return { kind: "Literal", value: (expr as ts.StringLiteral).text }
+
+        case ts.SyntaxKind.TrueKeyword:
+            return { kind: "Literal", value: true };
+
+        case ts.SyntaxKind.FalseKeyword:
+            return { kind: "Literal", value: false };
+
+        case ts.SyntaxKind.NullKeyword:
+            return { kind: "Literal", value: null };
+
+        case ts.SyntaxKind.Identifier:
+            return { kind: "Identifier", name: (expr as ts.Identifier).text };
+
+        case ts.SyntaxKind.BinaryExpression:
+            const binExpr = expr as ts.BinaryExpression;
+            const operator = ts.tokenToString(binExpr.operatorToken.kind) || "unknown_operator";
+            return {
+                kind: "Binary",
+                operator,
+                left: convertExpression(binExpr.left),
+                right: convertExpression(binExpr.right),
+            }
+
+        case ts.SyntaxKind.CallExpression:
+            const call = expr as ts.CallExpression;
+            return {
+                kind: "CallExrpression",
+                calle: convertExpression((expr as ts.CallExpression).expression),
+                args: call.arguments.map(arg => convertExpression(arg)),
+            }
+
+        default:
+            throw new Error("Unsupported expression kind: " + ts.SyntaxKind[expr.kind]);
+
+    }
+}
+
+// =======================
+// 🔍 SPECIFIC CONVERTERS
+// =======================
+function convertFunctionDeclaration(node: ts.FunctionDeclaration): IRNode {
+    const name = node.name?.text || "anonymous";
+    const params = node.parameters.map((p) => {
+        if (ts.isIdentifier(p.name)) {
+          return p.name.text;
+        } else {
+          throw new Error(`Unsupported parameter pattern: ${p.name.getText?.() || "unknown"}`);
+        }
+      });
+    const body = node.body?.statements.map(convertStatement) || [];
+
+    
+    return {
+        kind: "Function",
+        name,
+        params,
+        body,
+    }
+}
+
+function convertVariableStatement(node: ts.VariableStatement): IRNode {
+    const decls = node.declarationList.declarations;
+
+    if (decls.length === 1) {
+        return singleVarDeclToIR(decls[0]);
+    }
+    return {
+        kind: "Block",
+        statements: decls.map(singleVarDeclToIR),
+    }
+}
+
+function singleVarDeclToIR(decl: ts.VariableDeclaration): IRNode {
+    // Safely handle only identifiers for now
+    if (!ts.isIdentifier(decl.name)) {
+      throw new Error(`Unsupported variable declaration pattern: ${decl.name.getText?.() || "unknown"}`);
+    }
+  
+    const name = decl.name.text;
+    const initializer = decl.initializer
+      ? convertExpression(decl.initializer)
+      : undefined;
+  
+    return {
+      kind: "VariableDeclaration",
+      name,
+      value: initializer,
+    };
+  }
+
+function convertReturnStatement(node: ts.ReturnStatement): IRNode {
+    if (!node.expression) {
+        throw new Error("Return without expression is unsupported.");
+    }
+
+    return {
+        kind: "Return",
+        value: convertExpression(node.expression),
+    }
+}
+function convertIfStatement(node: ts.IfStatement): IRNode {
+    return {
+        kind: "If",
+        condition: convertExpression(node.expression),
+        thenBlock: convertBlockLike(node.thenStatement),
+        elseBlock: node.elseStatement ? convertBlockLike(node.elseStatement) : undefined,
+    };
+}
+
+function convertWhileKeyword(node: ts.WhileStatement): IRNode {
+    return {
+        kind: "While",
+        condition: convertExpression(node.expression),
+        body: node.statement ? [convertStatement(node.statement)] : [],
+    }
+}
+
+function convertForStatement(node: ts.ForStatement): IRNode {
+    let init: IRNode | undefined = undefined;
+
+    if (node.initializer) {
+        if (ts.isVariableDeclarationList(node.initializer)) {
+            init = convertVariableStatement(node.initializer.parent as ts.VariableStatement);
+        } else if (ts.isExpression(node.initializer)) {
+            init = convertExpression(node.initializer);
+        }
+    }
+
+    const condition = node.condition ? convertExpression(node.condition) : undefined;
+    const increment = node.incrementor ? convertExpression(node.incrementor) : undefined;
+    const body = convertBlockLike(node.statement);
+
+    return { kind: "For", init, condition, increment, body };
+}
+
+function convertBlock(node: ts.Block): IRNode {
+    return {
+        kind: "Block",
+        statements: node.statements.map(convertStatement),
+    };
+}
+
+function convertBlockLike(stmt: ts.Statement): IRNode {
+    if (ts.isBlock(stmt)) return convertBlock(stmt);
+    return { kind: "Block", statements: [convertStatement(stmt)] };
 }
