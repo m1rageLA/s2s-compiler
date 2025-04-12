@@ -109,6 +109,7 @@ export function transpileFileToIR(filePath: string): IRNode {
 // =======================
 // 🔁 STATEMENT CONVERTERS
 // =======================
+
 function convertStatement(node: ts.Node): IRNode {
     switch (node.kind) {
         case ts.SyntaxKind.FunctionDeclaration:
