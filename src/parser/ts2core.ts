@@ -46,8 +46,8 @@ type IRNode =
     {
         kind: "If";
         condition: IRNode;
-        theBlock: IRNode[];
-        elseBlock?: IRNode[];
+        thenBlock: IRNode;
+        elseBlock?: IRNode;
     }
     |
     {
@@ -115,7 +115,7 @@ function convertStatement(node: ts.Node): IRNode {
             return convertReturnStatement(node as ts.ReturnStatement);
 
         case ts.SyntaxKind.IfStatement:
-            return convertIfstatement(node as ts.IfStatement);
+            return convertIfStatement(node as ts.IfStatement);
 
         case ts.SyntaxKind.WhileKeyword:
             return convertWhileKeyword(node as ts.WhileStatement);
@@ -228,4 +228,24 @@ function covertReturnStatement(node: ts.ReturnStatement): IRNode {
         kind: "Return",
         value: convertExpression(node.expression),
     }
+}
+function convertIfStatement(node: ts.IfStatement): IRNode {
+    return {
+        kind: "If",
+        condition: convertExpression(node.expression),
+        thenBlock: convertBlockLike(node.thenStatement),
+        elseBlock: node.elseStatement ? convertBlockLike(node.elseStatement) : undefined,
+    };
+}
+
+function convertBlock(node: ts.Block): IRNode {
+    return {
+        kind: "Block",
+        statements: node.statements.map(convertStatement),
+    };
+}
+
+function convertBlockLike(stmt: ts.Statement): IRNode {
+    if (ts.isBlock(stmt)) return convertBlock(stmt);
+    return { kind: "Block", statements: [convertStatement(stmt)] };
 }
