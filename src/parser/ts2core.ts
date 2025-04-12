@@ -238,6 +238,32 @@ function convertIfStatement(node: ts.IfStatement): IRNode {
     };
 }
 
+function convertWhileKeyword(node: ts.WhileStatement): IRNode {
+    return {
+        kind: "While",
+        condition: convertExpression(node.expression),
+        body: node.statement ? [convertStatement(node.statement)] : [],
+    }
+}
+
+function convertForStatement(node: ts.ForStatement): IRNode {
+    let init: IRNode | undefined = undefined;
+
+    if (node.initializer) {
+        if (ts.isVariableDeclarationList(node.initializer)) {
+            init = convertVariableStatement(node.initializer.parent as ts.VariableStatement);
+        } else if (ts.isExpression(node.initializer)) {
+            init = convertExpression(node.initializer);
+        }
+    }
+
+    const condition = node.condition ? convertExpression(node.condition) : undefined;
+    const increment = node.incrementor ? convertExpression(node.incrementor) : undefined;
+    const body = convertBlockLike(node.statement);
+
+    return { kind: "For", init, condition, increment, body };
+}
+
 function convertBlock(node: ts.Block): IRNode {
     return {
         kind: "Block",
