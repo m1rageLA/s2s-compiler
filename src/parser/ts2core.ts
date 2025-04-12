@@ -108,8 +108,8 @@ function convertStatement(node: ts.Node): IRNode {
         case ts.SyntaxKind.FunctionDeclaration:
             return convertFunctionDeclaration(node as ts.FunctionDeclaration);
 
-        case ts.SyntaxKind.VariableDeclaration:
-            return convertVariableDeclaration(node as ts.VariableDeclaration);
+        case ts.SyntaxKind.VariableStatement:
+            return convertVariableStatement(node as ts.VariableStatement);
 
         case ts.SyntaxKind.ReturnStatement:
             return convertReturnStatement(node as ts.ReturnStatement);
@@ -219,7 +219,7 @@ function singleVarDeclToIR(decl: ts.VariableDeclaration): IRNode {
     }
 }
 
-function covertReturnStatement(node: ts.ReturnStatement): IRNode {
+function convertReturnStatement(node: ts.ReturnStatement): IRNode {
     if (!node.expression) {
         throw new Error("Return without expression is unsupported.");
     }
