@@ -182,8 +182,6 @@ function convertExpression(expr: ts.Expression): IRNode {
             throw new Error("Unsupported expression kind: " + ts.SyntaxKind[expr.kind]);
     }
 }
-<<<<<<< HEAD
-=======
 
 // =======================
 // 🔍 SPECIFIC CONVERTERS
@@ -198,7 +196,25 @@ function convertFunctionDeclaration(node: ts.FunctionDeclaration): IRNode {
         name,
         params,
         body,
+    };
+}
+
+function convertVariableStatement(node: ts.VariableStatement): IRNode {
+    const decls = node.declarationList.declarations;
+
+    if (decls.length === 1) {
+        return singleVarDeclToIR(decls[0]);
+    }
+    return {
+        kind: "Block",
+        statements: decls.map(singleVarDeclToIR),
     }
 }
 
->>>>>>> 5e64c52 ([feat] add function declaration converter)
+function singleVarDeclToIR(decl: ts.VariableDeclaration): IRNode {
+    return {
+        kind: "VariableDeclaration",
+        name: decl.name.getText(),
+        value: decl.initializer ? convertExpression(decl.initializer) : undefined,
+    }
+}
