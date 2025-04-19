@@ -1,78 +1,94 @@
+// irSchema.ts
+// Discriminated-union definitions for all IR nodes
+
+export interface ProgramNode {
+  kind: "Program";
+  body: IRNode[];
+}
+
+export interface FunctionNode {
+  kind: "Function";
+  name: string;
+  params: string[];
+  body: IRNode[];
+}
+
+export interface VariableDeclarationNode {
+  kind: "VariableDeclaration";
+  name: string;
+  value?: IRNode;
+}
+
+export interface ReturnNode {
+  kind: "Return";
+  value: IRNode;
+}
+
+export interface LiteralNode {
+  kind: "Literal";
+  value: string | number | boolean | null;
+}
+
+export interface IdentifierNode {
+  kind: "Identifier";
+  name: string;
+}
+
+export interface BinaryNode {
+  kind: "Binary";
+  operator: string; // + - * / % ** == === != !== < > <= >=
+  left: IRNode;
+  right: IRNode;
+}
+
+export interface IfNode {
+  kind: "If";
+  condition: IRNode;
+  thenBlock: IRNode;
+  elseBlock?: IRNode;
+}
+
+export interface WhileNode {
+  kind: "While";
+  condition: IRNode;
+  body: IRNode[];
+}
+
+export interface ForNode {
+  kind: "For";
+  init?: IRNode;
+  condition?: IRNode;
+  increment?: IRNode;
+  body: IRNode;
+}
+
+export interface BlockNode {
+  kind: "Block";
+  statements: IRNode[];
+}
+
+export interface ExpressionStatementNode {
+  kind: "ExpressionStatement";
+  expression: IRNode;
+}
+
+export interface CallExpressionNode {
+  kind: "CallExpression";
+  callee: IRNode;
+  args: IRNode[];
+}
+
 export type IRNode =
-    |
-    {
-        kind: "Program";
-        body: IRNode[];
-    }
-    |
-    {
-        kind: "Function";
-        name: string;
-        params: string[];
-        body: IRNode[];
-    }
-    |
-    {
-        kind: "VariableDeclaration";
-        name: string;
-        value?: IRNode; //there are variable declaration without initialization
-    }
-    |
-    {
-        kind: "Return";
-        value: IRNode;
-    }
-    |
-    {
-        kind: "Literal";
-        value: string | number | boolean | null;
-    }
-    |
-    {
-        kind: "Identifier";
-        name: string;
-    }
-    |
-    {
-        kind: "Binary";
-        operator: string; // + - * / % ** == === != !== < > <= >=
-        left: IRNode;
-        right: IRNode;
-    }
-    |
-    {
-        kind: "If";
-        condition: IRNode;
-        thenBlock: IRNode;
-        elseBlock?: IRNode;
-    }
-    |
-    {
-        kind: "While";
-        condition: IRNode;
-        body: IRNode[];
-    }
-    |
-    {
-        kind: "For";
-        init?: IRNode;
-        condition?: IRNode;
-        increment?: IRNode;
-        body: IRNode;
-    }
-    |
-    {
-        kind: "Block";
-        statements: IRNode[];
-    }
-    |
-    {
-        kind: "ExpressionStatement";
-        expression: IRNode;
-    }
-    |
-    {
-        kind: "CallExrpression";
-        calle: IRNode;
-        args: IRNode[];
-    };
+  | ProgramNode
+  | FunctionNode
+  | VariableDeclarationNode
+  | ReturnNode
+  | LiteralNode
+  | IdentifierNode
+  | BinaryNode
+  | IfNode
+  | WhileNode
+  | ForNode
+  | BlockNode
+  | ExpressionStatementNode
+  | CallExpressionNode;

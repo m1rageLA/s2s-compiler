@@ -1,5 +1,5 @@
-import parseCodeToAST from "./parser/parser";
+import { transpileFileToIR } from "./parser/ts2core";
 
 
-const ast = parseCodeToAST('src/samples/fibonacci.ts');
+const ast = transpileFileToIR('src/samples/fibonacci.ts');
 console.dir(ast, { depth: null });
