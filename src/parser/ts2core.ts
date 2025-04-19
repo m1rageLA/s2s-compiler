@@ -1,4 +1,4 @@
-import { bin } from "npm";
+
 import * as ts from "typescript";
 import { IRNode } from "./coreSchema";
 
@@ -96,8 +96,8 @@ function convertExpression(expr: ts.Expression): IRNode {
         case ts.SyntaxKind.CallExpression: {
             const call = expr as ts.CallExpression;
             return {
-                kind: "CallExrpression",
-                calle: convertExpression(call.expression),
+                kind: "CallExpression",
+                callee: convertExpression((expr as ts.CallExpression).expression),
                 args: call.arguments.map(arg => convertExpression(arg)),
             };
         }
