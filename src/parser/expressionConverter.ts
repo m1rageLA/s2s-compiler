@@ -1,0 +1,48 @@
+import * as ts from "typescript";
+import { IRNode } from "./coreSchema";
+
+export function convertExpression(expr: ts.Expression): IRNode {
+    switch (expr.kind) {
+        case ts.SyntaxKind.NumericLiteral:
+            return { kind: "Literal", value: parseFloat((expr as ts.NumericLiteral).text) };
+        case ts.SyntaxKind.StringLiteral:
+            return { kind: "Literal", value: (expr as ts.StringLiteral).text };
+        case ts.SyntaxKind.TrueKeyword:
+            return { kind: "Literal", value: true };
+        case ts.SyntaxKind.FalseKeyword:
+            return { kind: "Literal", value: false };
+        case ts.SyntaxKind.NullKeyword:
+            return { kind: "Literal", value: null };
+        case ts.SyntaxKind.Identifier:
+            return { kind: "Identifier", name: (expr as ts.Identifier).text };
+        case ts.SyntaxKind.BinaryExpression: {
+            const binExpr = expr as ts.BinaryExpression;
+            const operatorToken = binExpr.operatorToken.kind;
+            const operator = ts.tokenToString(operatorToken) || "unknown_operator";
+
+            if (operatorToken === ts.SyntaxKind.EqualsToken) {
+                return {
+                    kind: "Assignment",
+                    left: convertExpression(binExpr.left),
+                    right: convertExpression(binExpr.right),
+                };
+            }
+            return {
+                kind: "Binary",
+                operator,
+                left: convertExpression(binExpr.left),
+                right: convertExpression(binExpr.right),
+            };
+        }
+        case ts.SyntaxKind.CallExpression: {
+            const call = expr as ts.CallExpression;
+            return {
+                kind: "CallExpression",
+                callee: convertExpression(call.expression),
+                args: call.arguments.map(convertExpression),
+            };
+        }
+        default:
+            throw new Error("Unsupported expression kind: " + ts.SyntaxKind[expr.kind]);
+    }
+}
