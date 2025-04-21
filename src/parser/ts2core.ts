@@ -1,4 +1,3 @@
-
 import * as ts from "typescript";
 import { IRNode } from "./coreSchema";
 
@@ -84,7 +83,17 @@ function convertExpression(expr: ts.Expression): IRNode {
 
         case ts.SyntaxKind.BinaryExpression: {
             const binExpr = expr as ts.BinaryExpression;
-            const operator = ts.tokenToString(binExpr.operatorToken.kind) || "unknown_operator";
+            const operatorToken = binExpr.operatorToken.kind;
+            const operator = ts.tokenToString(operatorToken) || "unknown_operator";
+
+            if (operatorToken === ts.SyntaxKind.EqualsToken) {
+                return {
+                    kind: "Assignment",
+                    left: convertExpression(binExpr.left),
+                    right: convertExpression(binExpr.right),
+                };
+            }
+
             return {
                 kind: "Binary",
                 operator,
@@ -97,7 +106,7 @@ function convertExpression(expr: ts.Expression): IRNode {
             const call = expr as ts.CallExpression;
             return {
                 kind: "CallExpression",
-                callee: convertExpression((expr as ts.CallExpression).expression),
+                callee: convertExpression(call.expression),
                 args: call.arguments.map(arg => convertExpression(arg)),
             };
         }
@@ -144,8 +153,12 @@ function singleVarDeclToIR(decl: ts.VariableDeclaration): IRNode {
     if (!ts.isIdentifier(decl.name)) {
         throw new Error(`Unsupported variable declaration pattern: ${decl.name.getText?.() || "unknown"}`);
     }
+
     const name = decl.name.text;
-    const initializer = decl.initializer ? convertExpression(decl.initializer) : undefined;
+    const initializer = decl.initializer
+        ? convertExpression(decl.initializer)
+        : undefined;
+
     return {
         kind: "VariableDeclaration",
         name,

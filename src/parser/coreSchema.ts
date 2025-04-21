@@ -78,6 +78,12 @@ export interface CallExpressionNode {
   args: IRNode[];
 }
 
+export interface AssignmentNode {
+    kind: "Assignment";
+    left: IRNode,
+    right: IRNode
+}
+
 export type IRNode =
   | ProgramNode
   | FunctionNode
@@ -91,4 +97,5 @@ export type IRNode =
   | ForNode
   | BlockNode
   | ExpressionStatementNode
-  | CallExpressionNode;
+  | CallExpressionNode
+  | AssignmentNode;
