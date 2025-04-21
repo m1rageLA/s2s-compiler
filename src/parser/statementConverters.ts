@@ -33,6 +33,11 @@ export function convertStatement(node: ts.Node): IRNode {
                 kind: "ExpressionStatement",
                 expression: convertExpression((node as ts.ExpressionStatement).expression),
             };
+        case ts.SyntaxKind.LabeledStatement: {
+            const lbl = node as ts.LabeledStatement;
+            // ignore the label, just transpile the wrapped statement
+            return convertStatement(lbl.statement);
+        }
         default:
             throw new Error("Unsupported node kind: " + ts.SyntaxKind[node.kind]);
     }

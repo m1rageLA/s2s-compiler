@@ -26,14 +26,14 @@ export function convertExpression(expr: ts.Expression): IRNode {
                     left: convertExpression(binExpr.left),
                     right: convertExpression(binExpr.right),
                 };
-            }
+            };
             return {
                 kind: "Binary",
                 operator,
                 left: convertExpression(binExpr.left),
                 right: convertExpression(binExpr.right),
             };
-        }
+        };
         case ts.SyntaxKind.CallExpression: {
             const call = expr as ts.CallExpression;
             return {
@@ -41,7 +41,39 @@ export function convertExpression(expr: ts.Expression): IRNode {
                 callee: convertExpression(call.expression),
                 args: call.arguments.map(convertExpression),
             };
+        };
+        case ts.SyntaxKind.ObjectLiteralExpression: {
+            const objExp = expr as ts.ObjectLiteralExpression;
+
+            const plainProps = objExp.properties.filter(p =>
+                ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p)
+            );
+
+            const props = plainProps.map((prop): { key: string; value: IRNode } => {
+                // ---- name ----
+                const nameNode = (prop as ts.NamedDeclaration).name!;
+                let key: string | undefined;
+                if (ts.isIdentifier(nameNode)) key = nameNode.escapedText.toString();
+                else if (ts.isStringLiteral(nameNode)
+                    || ts.isNumericLiteral(nameNode)) key = nameNode.text;
+                if (!key) {
+                    throw new Error(
+                        "Unsupported or missing object‑literal key: " +
+                        ts.SyntaxKind[nameNode.kind]
+                    );
+                }
+
+                // ---- value ----
+                const value = ts.isShorthandPropertyAssignment(prop)
+                    ? convertExpression(nameNode as ts.Identifier)          // `{ x }`
+                    : convertExpression((prop as ts.PropertyAssignment).initializer); // `{ x: expr }`
+
+                return { key, value };
+            });
+
+            return { kind: "ObjectLiteral", properties: props };
         }
+
         default:
             throw new Error("Unsupported expression kind: " + ts.SyntaxKind[expr.kind]);
     }

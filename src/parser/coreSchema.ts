@@ -86,7 +86,7 @@ export interface AssignmentNode {
 
 export interface ObjectLiteral {
   kind: "ObjectLiteral",
-  properties: { key: string, value: IRNode }
+  properties: { key: string, value: IRNode }[]
 }
 
 export type IRNode =
