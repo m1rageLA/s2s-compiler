@@ -90,7 +90,16 @@ function convertExpression(expr: ts.Expression): IRNode {
 
         case ts.SyntaxKind.BinaryExpression:
             const binExpr = expr as ts.BinaryExpression;
+            const operatorToken = binExpr.operatorToken.kind;
             const operator = ts.tokenToString(binExpr.operatorToken.kind) || "unknown_operator";
+
+            if (operatorToken === ts.SyntaxKind.EqualsToken) {
+                return {
+                    kind: "Assignment",
+                    left: convertExpression(binExpr.left),
+                    right: convertExpression(binExpr.right),
+                }
+            }
             return {
                 kind: "Binary",
                 operator,
@@ -108,7 +117,6 @@ function convertExpression(expr: ts.Expression): IRNode {
 
         default:
             throw new Error("Unsupported expression kind: " + ts.SyntaxKind[expr.kind]);
-
     }
 }
 
@@ -119,14 +127,14 @@ function convertFunctionDeclaration(node: ts.FunctionDeclaration): IRNode {
     const name = node.name?.text || "anonymous";
     const params = node.parameters.map((p) => {
         if (ts.isIdentifier(p.name)) {
-          return p.name.text;
+            return p.name.text;
         } else {
-          throw new Error(`Unsupported parameter pattern: ${p.name.getText?.() || "unknown"}`);
+            throw new Error(`Unsupported parameter pattern: ${p.name.getText?.() || "unknown"}`);
         }
-      });
+    });
     const body = node.body?.statements.map(convertStatement) || [];
 
-    
+
     return {
         kind: "Function",
         name,
@@ -150,20 +158,20 @@ function convertVariableStatement(node: ts.VariableStatement): IRNode {
 function singleVarDeclToIR(decl: ts.VariableDeclaration): IRNode {
     // Safely handle only identifiers for now
     if (!ts.isIdentifier(decl.name)) {
-      throw new Error(`Unsupported variable declaration pattern: ${decl.name.getText?.() || "unknown"}`);
+        throw new Error(`Unsupported variable declaration pattern: ${decl.name.getText?.() || "unknown"}`);
     }
-  
+
     const name = decl.name.text;
     const initializer = decl.initializer
-      ? convertExpression(decl.initializer)
-      : undefined;
-  
+        ? convertExpression(decl.initializer)
+        : undefined;
+
     return {
-      kind: "VariableDeclaration",
-      name,
-      value: initializer,
+        kind: "VariableDeclaration",
+        name,
+        value: initializer,
     };
-  }
+}
 
 function convertReturnStatement(node: ts.ReturnStatement): IRNode {
     if (!node.expression) {
