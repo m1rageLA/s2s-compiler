@@ -84,12 +84,12 @@ export interface AssignmentNode {
   right: IRNode
 }
 
-export interface ObjectLiteral {
+export interface ObjectLiteralNode {
   kind: "ObjectLiteral",
   properties: { key: string, value: IRNode }[]
 }
 
-export interface ArrayLiteral {
+export interface ArrayLiteralNode {
   kind: "ArrayLiteral",
   elements: IRNode[]
 }
@@ -109,5 +109,5 @@ export type IRNode =
   | ExpressionStatementNode
   | CallExpressionNode
   | AssignmentNode
-  | ObjectLiteral
-  | ArrayLiteral;
+  | ObjectLiteralNode
+  | ArrayLiteralNode;
