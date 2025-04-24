@@ -74,6 +74,13 @@ export function convertExpression(expr: ts.Expression): IRNode {
             return { kind: "ObjectLiteral", properties: props };
         }
 
+        case ts.SyntaxKind.ArrayLiteralExpression: {
+            return {
+                kind: "ArrayLiteral",
+                elements: (expr as ts.ArrayLiteralExpression).elements.map(convertExpression),
+            }
+        }
+
         default:
             throw new Error("Unsupported expression kind: " + ts.SyntaxKind[expr.kind]);
     }
