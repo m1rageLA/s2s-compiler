@@ -1,6 +1,6 @@
 import * as ts from "typescript";
 import { IRNode } from "./coreSchema";
-
+  
 export function convertExpression(expr: ts.Expression): IRNode {
     switch (expr.kind) {
         case ts.SyntaxKind.NumericLiteral:
@@ -80,6 +80,10 @@ export function convertExpression(expr: ts.Expression): IRNode {
                 elements: (expr as ts.ArrayLiteralExpression).elements.map(convertExpression),
             }
         }
+
+        case ts.SyntaxKind.ParenthesizedExpression:
+            return convertExpression((expr as ts.ParenthesizedExpression).expression);          
+
 
         default:
             throw new Error("Unsupported expression kind: " + ts.SyntaxKind[expr.kind]);
