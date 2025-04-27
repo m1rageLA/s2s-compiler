@@ -95,6 +95,11 @@ export interface ArrayLiteralNode {
 }
 
 export type IRNode =
+  // statement
+
+  // expression
+
+  // literal
   | ProgramNode
   | FunctionNode
   | VariableDeclarationNode

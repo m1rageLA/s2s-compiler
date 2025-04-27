@@ -21,19 +21,46 @@ import ts from 'typescript';
 //   | ObjectLiteralNode
 //   | ArrayLiteralNode;
 
-function parseExpr(code: string): ts.Expression {
+function parseExpr(code: string | number): ts.Expression {
   // Wrap the code so the first statement in the virtual file *is* our expression.
-  const sf = ts.createSourceFile('tmp.ts', `(${code});`, ts.ScriptTarget.Latest, true)
+  const sf = ts.createSourceFile('tmp.ts', `${code};`, ts.ScriptTarget.Latest, true)
   const stmt = sf.statements[0]
+
   if (!ts.isExpressionStatement(stmt)) {
     throw new Error('Expected an ExpressionStatement')
   }
+
   return stmt.expression
 }
 
 describe("statement converters", () => {
-    it("Should define convertFunctionDeclaration", () => {
-        const ir = convertExpression(parseExpr("10"));
-        expect(ir).toEqual<IRNode>({kind: 'Literal', value: 10});
-    }); 
+  // it("TEST", () => {
+  //   const testData =
+  //     `
+  //   function x(x) {
+    
+  //   }
+  //   `;
+
+  //   const ir = convertExpression(parseExpr(testData));
+  //   console.log("===============================");
+  //   console.log(testData);
+  //   console.log("===============================");
+  //   console.log(ir);
+  //   console.log("===============================");
+
+  // })
+
+  it("Shuld define convertNumericLiteral", () => {
+    const ir = convertExpression(parseExpr(10));
+    expect(ir).toEqual<IRNode>({ kind: 'Literal', value: 10 });
+  }
+  );
+
+  it("Should define convertStringLiteral", () => {
+    const ir = convertExpression(parseExpr('"hello"'));
+    expect(ir).toEqual<IRNode>({ kind: 'Literal', value: "hello" });
+  }
+  );
+
 });
