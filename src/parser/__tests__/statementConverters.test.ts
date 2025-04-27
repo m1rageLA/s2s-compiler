@@ -81,5 +81,9 @@ describe("statement converters", () => {
   }
   );
 
-
+  it("Should define Identifier", () => {
+    const ir = convertExpression(parseExpr("myVar"));
+    expect(ir).toEqual<IRNode>({ kind: 'Identifier', name: "myVar" });
+  }
+  );
 });
