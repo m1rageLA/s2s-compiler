@@ -1,6 +1,6 @@
 import * as ts from "typescript";
 import { IRNode } from "./coreSchema";
-  
+
 export function convertExpression(expr: ts.Expression): IRNode {
     switch (expr.kind) {
         case ts.SyntaxKind.NumericLiteral:
@@ -82,7 +82,7 @@ export function convertExpression(expr: ts.Expression): IRNode {
         }
 
         case ts.SyntaxKind.ParenthesizedExpression:
-            return convertExpression((expr as ts.ParenthesizedExpression).expression);          
+            return convertExpression((expr as ts.ParenthesizedExpression).expression);
 
 
         default:
