@@ -75,4 +75,10 @@ describe("statement converters", () => {
   }
   );
 
+  it("Should define convertNullKeyword", () => {
+    const ir = convertExpression(parseExpr("null"));
+    expect(ir).toEqual<IRNode>({ kind: 'Literal', value: null });
+  }
+  );
+
 });
