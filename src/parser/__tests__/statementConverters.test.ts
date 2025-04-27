@@ -51,34 +51,35 @@ describe("statement converters", () => {
 
   // })
 
-  it("Shuld define convertNumericLiteral", () => {
+  it("Shuld define NumericLiteral", () => {
     const ir = convertExpression(parseExpr(10));
     expect(ir).toEqual<IRNode>({ kind: 'Literal', value: 10 });
   }
   );
 
-  it("Should define convertStringLiteral", () => {
+  it("Should define StringLiteral", () => {
     const ir = convertExpression(parseExpr('"hello"'));
     expect(ir).toEqual<IRNode>({ kind: 'Literal', value: "hello" });
   }
   );
 
-  it("Should define convertTrueKeyword", () => {
+  it("Should define TrueKeyword", () => {
     const ir = convertExpression(parseExpr("true"));
     expect(ir).toEqual<IRNode>({ kind: 'Literal', value: true });
   }
   );
 
-  it("Should define convertFalseKeyword", () => {
+  it("Should define FalseKeyword", () => {
     const ir = convertExpression(parseExpr("false"));
     expect(ir).toEqual<IRNode>({ kind: 'Literal', value: false });
   }
   );
 
-  it("Should define convertNullKeyword", () => {
+  it("Should define NullKeyword", () => {
     const ir = convertExpression(parseExpr("null"));
     expect(ir).toEqual<IRNode>({ kind: 'Literal', value: null });
   }
   );
+
 
 });
