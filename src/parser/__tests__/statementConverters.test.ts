@@ -277,4 +277,15 @@ describe("statement converters", () => {
     });
   }
   );
+  it("Should define ArrayLiteralExpression", () => {
+    const ir = convertExpression(parseExpr("[1, 2, 3]"));
+    expect(ir).toEqual<IRNode>({
+      kind: 'ArrayLiteral',
+      elements: [
+        { kind: 'Literal', value: 1 },
+        { kind: 'Literal', value: 2 },
+        { kind: 'Literal', value: 3 }
+      ]
+    });
+  })
 });
