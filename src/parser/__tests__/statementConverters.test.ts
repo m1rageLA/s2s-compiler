@@ -223,4 +223,26 @@ describe("statement converters", () => {
       right: { kind: 'Identifier', name: 'b' }
     });
   })
+  it("Should define CallExpression", () => {
+    const ir = convertExpression(parseExpr("myFunc(1, 2, 3)"));
+    expect(ir).toEqual<IRNode>({
+      kind: 'CallExpression',
+      callee: { kind: 'Identifier', name: 'myFunc' },
+      args: [
+        { kind : 'Literal', value: 1 }, 
+        { kind : 'Literal', value: 2 },
+        { kind : 'Literal', value: 3 }
+      ]
+    });
+    const ir2 = convertExpression(parseExpr("myFunc('a', myVar, false)"));
+    expect(ir2).toEqual<IRNode>({
+      kind: 'CallExpression',
+      callee: { kind: 'Identifier', name: 'myFunc' },
+      args: [
+        { kind : 'Literal', value: 'a' },
+        { kind : 'Identifier', name: 'myVar' },
+        { kind : 'Literal', value: false }
+      ]
+    });
+  })
 });
