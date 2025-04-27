@@ -95,6 +95,132 @@ describe("statement converters", () => {
       left: { kind: 'Identifier', name: 'a' },
       right: { kind: 'Identifier', name: 'b' }
     });
-    
+
+    const ir2 = convertExpression(parseExpr("a - b"));
+    expect(ir2).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '-',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
+    const ir3 = convertExpression(parseExpr("a * b"));
+    expect(ir3).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '*',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
+    const ir4 = convertExpression(parseExpr("a / b"));
+    expect(ir4).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '/',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
+    const ir5 = convertExpression(parseExpr("a % b"));
+    expect(ir5).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '%',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
+    const ir6 = convertExpression(parseExpr("a ** b"));
+    expect(ir6).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '**',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
+    const ir7 = convertExpression(parseExpr("a == b"));
+    expect(ir7).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '==',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
+    const ir8 = convertExpression(parseExpr("a === b"));
+    expect(ir8).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '===',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
+    const ir9 = convertExpression(parseExpr("a != b"));
+    expect(ir9).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '!=',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
+    const ir10 = convertExpression(parseExpr("a !== b"));
+    expect(ir10).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '!==',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    }); 
+    const ir11 = convertExpression(parseExpr("a < b"));
+    expect(ir11).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '<',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
+    const ir12 = convertExpression(parseExpr("a > b"));
+    expect(ir12).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '>',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
+    const ir13 = convertExpression(parseExpr("a <= b"));
+    expect(ir13).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '<=',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
+    const ir14 = convertExpression(parseExpr("a >= b"));
+    expect(ir14).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '>=',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
+    const ir15 = convertExpression(parseExpr("a && b"));
+    expect(ir15).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '&&',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
+    const ir16 = convertExpression(parseExpr("a || b"));
+    expect(ir16).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '||',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
+    const ir17 = convertExpression(parseExpr("a ?? b"));
+    expect(ir17).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '??', 
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }    
+    });
+    const ir18 = convertExpression(parseExpr("a & b"));
+    expect(ir18).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '&',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
+    const ir19 = convertExpression(parseExpr("a | b"));
+    expect(ir19).toEqual<IRNode>({
+      kind: 'Binary', 
+      operator: '|',  
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
   })
 });
