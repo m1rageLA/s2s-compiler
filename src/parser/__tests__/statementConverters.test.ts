@@ -23,20 +23,19 @@ import ts from 'typescript';
 
 function parseExpr(code: string | number): ts.Expression {
   // Wrap the code so the first statement in the virtual file *is* our expression.
-  const sf = ts.createSourceFile('tmp.ts', `${code};`, ts.ScriptTarget.Latest, true)
+  const sf = ts.createSourceFile('tmp.ts', `${code};`, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
   const stmt = sf.statements[0]
 
-  if (!ts.isExpressionStatement(stmt)) {
-    throw new Error('Expected an ExpressionStatement')
+  if (ts.isExpressionStatement(stmt)) {
+    return stmt.expression;
   }
-
-  return stmt.expression
+  throw new Error('Expected an ExpressionStatement');
 }
 
 describe("statement converters", () => {
   // it("TEST", () => {
   //   const testData =
-  //     `
+  //     `j
   //   function x(x) {
 
   //   }
@@ -158,7 +157,7 @@ describe("statement converters", () => {
       operator: '!==',
       left: { kind: 'Identifier', name: 'a' },
       right: { kind: 'Identifier', name: 'b' }
-    }); 
+    });
     const ir11 = convertExpression(parseExpr("a < b"));
     expect(ir11).toEqual<IRNode>({
       kind: 'Binary',
@@ -204,9 +203,9 @@ describe("statement converters", () => {
     const ir17 = convertExpression(parseExpr("a ?? b"));
     expect(ir17).toEqual<IRNode>({
       kind: 'Binary',
-      operator: '??', 
+      operator: '??',
       left: { kind: 'Identifier', name: 'a' },
-      right: { kind: 'Identifier', name: 'b' }    
+      right: { kind: 'Identifier', name: 'b' }
     });
     const ir18 = convertExpression(parseExpr("a & b"));
     expect(ir18).toEqual<IRNode>({
@@ -217,8 +216,8 @@ describe("statement converters", () => {
     });
     const ir19 = convertExpression(parseExpr("a | b"));
     expect(ir19).toEqual<IRNode>({
-      kind: 'Binary', 
-      operator: '|',  
+      kind: 'Binary',
+      operator: '|',
       left: { kind: 'Identifier', name: 'a' },
       right: { kind: 'Identifier', name: 'b' }
     });
@@ -229,9 +228,9 @@ describe("statement converters", () => {
       kind: 'CallExpression',
       callee: { kind: 'Identifier', name: 'myFunc' },
       args: [
-        { kind : 'Literal', value: 1 }, 
-        { kind : 'Literal', value: 2 },
-        { kind : 'Literal', value: 3 }
+        { kind: 'Literal', value: 1 },
+        { kind: 'Literal', value: 2 },
+        { kind: 'Literal', value: 3 }
       ]
     });
     const ir2 = convertExpression(parseExpr("myFunc('a', myVar, false)"));
@@ -239,10 +238,43 @@ describe("statement converters", () => {
       kind: 'CallExpression',
       callee: { kind: 'Identifier', name: 'myFunc' },
       args: [
-        { kind : 'Literal', value: 'a' },
-        { kind : 'Identifier', name: 'myVar' },
-        { kind : 'Literal', value: false }
+        { kind: 'Literal', value: 'a' },
+        { kind: 'Identifier', name: 'myVar' },
+        { kind: 'Literal', value: false }
       ]
     });
   })
+
+  it("Should define ObjectLiteralExpression", () => {
+    const ir = convertExpression(parseExpr("({ x: 1, y: 2 })"));
+    expect(ir).toEqual<IRNode>({
+      kind: 'ObjectLiteral',
+      properties: [
+        { key: 'x', value: { kind: 'Literal', value: 1 } },
+        { key: 'y', value: { kind: 'Literal', value: 2 } }
+      ]
+    });
+  });
+  it("Should define ObjectLiteralExpression with shorthand", () => {
+    const ir = convertExpression(parseExpr("({ x, y })"));
+    expect(ir).toEqual<IRNode>({
+      kind: 'ObjectLiteral',
+      properties: [
+        { key: 'x', value: { kind: 'Identifier', name: 'x' } },
+        { key: 'y', value: { kind: 'Identifier', name: 'y' } }
+      ]
+    });
+  }
+  );
+  it("Should define ObjectLiteralExpression with shorthand and normal", () => {
+    const ir = convertExpression(parseExpr("({ x, y: 2 })"));
+    expect(ir).toEqual<IRNode>({
+      kind: 'ObjectLiteral',
+      properties: [
+        { key: 'x', value: { kind: 'Identifier', name: 'x' } },
+        { key: 'y', value: { kind: 'Literal', value: 2 } }
+      ]
+    });
+  }
+  );
 });
