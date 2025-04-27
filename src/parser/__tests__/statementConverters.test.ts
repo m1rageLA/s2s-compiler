@@ -38,7 +38,7 @@ describe("statement converters", () => {
   //   const testData =
   //     `
   //   function x(x) {
-    
+
   //   }
   //   `;
 
@@ -86,4 +86,15 @@ describe("statement converters", () => {
     expect(ir).toEqual<IRNode>({ kind: 'Identifier', name: "myVar" });
   }
   );
+
+  it("Should define binaryExpressions", () => {
+    const ir = convertExpression(parseExpr("a + b"));
+    expect(ir).toEqual<IRNode>({
+      kind: 'Binary',
+      operator: '+',
+      left: { kind: 'Identifier', name: 'a' },
+      right: { kind: 'Identifier', name: 'b' }
+    });
+    
+  })
 });
