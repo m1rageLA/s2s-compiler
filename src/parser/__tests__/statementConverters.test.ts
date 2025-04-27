@@ -63,4 +63,10 @@ describe("statement converters", () => {
   }
   );
 
+  it("Should define convertTrueKeyword", () => {
+    const ir = convertExpression(parseExpr("true"));
+    expect(ir).toEqual<IRNode>({ kind: 'Literal', value: true });
+  }
+  );
+
 });
