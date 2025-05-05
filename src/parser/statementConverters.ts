@@ -22,7 +22,8 @@ export function convertStatement(node: ts.Node): IRNode {
             return convertReturnStatement(node as ts.ReturnStatement);
         case ts.SyntaxKind.IfStatement:
             return convertIfStatement(node as ts.IfStatement);
-        case ts.SyntaxKind.WhileKeyword:
+        case ts.SyntaxKind.WhileStatement:
+
             return convertWhileKeyword(node as ts.WhileStatement);
         case ts.SyntaxKind.ForStatement:
             return convertForStatement(node as ts.ForStatement);

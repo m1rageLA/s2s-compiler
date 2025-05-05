@@ -95,23 +95,21 @@ export interface ArrayLiteralNode {
 }
 
 export type IRNode =
-  // statement
-
-  // expression
-
-  // literal
+  // Statements
   | ProgramNode
   | FunctionNode
   | VariableDeclarationNode
   | ReturnNode
-  | LiteralNode
-  | IdentifierNode
-  | BinaryNode
   | IfNode
   | WhileNode
   | ForNode
   | BlockNode
   | ExpressionStatementNode
+
+  // Expressions
+  | LiteralNode
+  | IdentifierNode
+  | BinaryNode
   | CallExpressionNode
   | AssignmentNode
   | ObjectLiteralNode
