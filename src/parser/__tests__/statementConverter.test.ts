@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import * as ts from "typescript";
 import {
     fnSentinel,
@@ -11,12 +11,22 @@ import {
     exprSentinel,
 } from "./sentinels";
 
-import { convertFunctionDeclaration, convertVariableStatement } from "../specificConverters";
+import { convertFunctionDeclaration, convertReturnStatement, convertVariableStatement } from "../specificConverters";
 import { convertStatement } from "../statementConverters";
 
 vi.mock("../specificConverters", () => ({
     convertFunctionDeclaration: vi.fn().mockReturnValue(fnSentinel),
     convertVariableStatement: vi.fn().mockReturnValue(varSentinel),
+    convertReturnStatement: vi.fn().mockReturnValue(retSentinel),
+    convertIfStatement: vi.fn().mockReturnValue(ifSentinel),
+    convertWhileKeyword: vi.fn().mockReturnValue(whileSentinel),
+    convertForStatement: vi.fn().mockReturnValue(forSentinel),
+    convertBlock: vi.fn().mockReturnValue(blockSentinel),
+    convertBlockLike: vi.fn().mockReturnValue(blockSentinel),
+}));
+
+vi.mock("../expressionConverter", () => ({
+    convertExpression: vi.fn().mockReturnValue(exprSentinel),
 }));
 
 describe('convertStatement - it should handle all statements variation', () => {
@@ -60,5 +70,13 @@ describe('convertStatement - it should handle all statements variation', () => {
         expect(convertVariableStatement).toHaveBeenCalledOnce();
         expect(convertVariableStatement).toHaveBeenCalledWith(varStmt);
         expect(result).toEqual(varSentinel);
+    });
+
+    it("delegates ReturnStatement", () => {
+        const retStmt = ts.factory.createReturnStatement(ts.factory.createNumericLiteral(1));
+        const result = convertStatement(retStmt);
+        expect(convertReturnStatement).toHaveBeenCalledOnce();
+        expect(convertReturnStatement).toHaveBeenCalledWith(retStmt);
+        expect(result).toEqual(retSentinel);
     });
 })
