@@ -84,6 +84,25 @@ export function convertExpression(expr: ts.Expression): IRNode {
         case ts.SyntaxKind.ParenthesizedExpression:
             return convertExpression((expr as ts.ParenthesizedExpression).expression);
 
+        // ---------- Property Access  obj.prop -------------------------------
+        case ts.SyntaxKind.PropertyAccessExpression: {
+            const node = expr as ts.PropertyAccessExpression;
+            return {
+                kind: "PropertyAccess",
+                object: convertExpression(node.expression),
+                property: convertExpression(node.name)   // Identifier → IdentifierNode
+            };
+        }
+
+        // ---------- Element Access  obj[idx] -------------------------------
+        case ts.SyntaxKind.ElementAccessExpression: {
+            const node = expr as ts.ElementAccessExpression;
+            return {
+                kind: "ElementAccess",
+                object: convertExpression(node.expression),
+                index: convertExpression(node.argumentExpression!)
+            };
+        }
 
         default:
             throw new Error("Unsupported expression kind: " + ts.SyntaxKind[expr.kind]);

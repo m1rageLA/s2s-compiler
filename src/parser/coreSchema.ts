@@ -94,6 +94,19 @@ export interface ArrayLiteralNode {
   elements: IRNode[]
 }
 
+export interface PropertyAccessNode {
+  kind: "PropertyAccess";
+  object: IRNode;        
+  property: IRNode;      
+}
+
+export interface ElementAccessNode {
+  kind: "ElementAccess";
+  object: IRNode;       
+  index: IRNode;    
+}
+
+
 export type IRNode =
   // Statements
   | ProgramNode
@@ -113,4 +126,7 @@ export type IRNode =
   | CallExpressionNode
   | AssignmentNode
   | ObjectLiteralNode
-  | ArrayLiteralNode;
+  | ArrayLiteralNode
+
+  | PropertyAccessNode
+  | ElementAccessNode;
