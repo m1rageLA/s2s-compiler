@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as ts from "typescript";
 import {
     fnSentinel,
@@ -10,9 +10,6 @@ import {
     blockSentinel,
     exprSentinel,
 } from "./sentinels";
-
-import { convertFunctionDeclaration, convertReturnStatement, convertVariableStatement } from "../specificConverters";
-import { convertStatement } from "../statementConverters";
 
 vi.mock("../specificConverters", () => ({
     convertFunctionDeclaration: vi.fn().mockReturnValue(fnSentinel),
@@ -29,54 +26,201 @@ vi.mock("../expressionConverter", () => ({
     convertExpression: vi.fn().mockReturnValue(exprSentinel),
 }));
 
-describe('convertStatement - it should handle all statements variation', () => {
+vi.mock("../expressionConverter", () => ({
+    convertExpression: vi.fn().mockReturnValue(exprSentinel),
+}));
+
+
+// Import after mocks so SUT picks them up
+import {
+    convertFunctionDeclaration,
+    convertVariableStatement,
+    convertReturnStatement,
+    convertIfStatement,
+    convertWhileKeyword,
+    convertForStatement,
+    convertBlock,
+} from "../specificConverters";
+import { convertExpression } from "../expressionConverter";
+import { convertStatement } from "../statementConverters";
+
+// -----------------------------------------------------------------------------
+// Test suite
+// -----------------------------------------------------------------------------
+
+beforeEach(() => {
+    vi.clearAllMocks();
+});
+
+describe("convertStatement – handles every statement variation", () => {
     it("delegates FunctionDeclaration", () => {
-        const functNode = ts.factory.createFunctionDeclaration(
-            /* decorators */ undefined,
-            /* modifiers  */ undefined,
-            /* name       */ "foo",
-            /* typeParams */ undefined,
-            /* params     */[],
-            /* returnType */ undefined,
-            ts.factory.createBlock([]),
+        const funcNode = ts.factory.createFunctionDeclaration(
+      /* decorators */ undefined,
+      /* modifiers  */ undefined,
+      /* name       */ "foo",
+      /* typeParams */ undefined,
+      /* parameters */[],
+      /* returnType */ undefined,
+            ts.factory.createBlock([], true)
         );
 
-        const result = convertStatement(functNode);
+        const result = convertStatement(funcNode);
 
+        //It did call the helper.
         expect(convertFunctionDeclaration).toHaveBeenCalledOnce();
-        expect(convertFunctionDeclaration).toHaveBeenCalledWith(functNode);
-        expect(result).toEqual(fnSentinel);
+
+        //It called the helper with the right input.
+        expect(convertFunctionDeclaration).toHaveBeenCalledWith(funcNode);
+
+        //It returned the expected result.
+        expect(result).toBe(fnSentinel);
     });
 
-    it("delegates VaribaleStatement", () => {
-        const varNode = ts.factory.createVariableDeclaration(
-            /* name */ "x",
-            /* exclamationToken */ undefined,
-            /* type */ undefined,
-            ts.factory.createNumericLiteral(1),
+
+
+
+    
+
+
+
+    it("delegates VariableStatement", () => {
+        const varDecl = ts.factory.createVariableDeclaration(
+            "x",
+      /* exclamationToken */ undefined,
+      /* type */ undefined,
+            ts.factory.createNumericLiteral(1)
         );
         const varDeclList = ts.factory.createVariableDeclarationList(
-            [varNode],
+            [varDecl],
             ts.NodeFlags.Const
         );
-
-        const varStmt = ts.factory.createVariableStatement(
-            /* modifiers */ undefined,
-            varDeclList
-        );
+        const varStmt = ts.factory.createVariableStatement(undefined, varDeclList);
 
         const result = convertStatement(varStmt);
 
         expect(convertVariableStatement).toHaveBeenCalledOnce();
         expect(convertVariableStatement).toHaveBeenCalledWith(varStmt);
-        expect(result).toEqual(varSentinel);
+        expect(result).toBe(varSentinel);
     });
 
+
+
+
+
+
+
+
+
+
     it("delegates ReturnStatement", () => {
-        const retStmt = ts.factory.createReturnStatement(ts.factory.createNumericLiteral(1));
+        const retStmt = ts.factory.createReturnStatement(ts.factory.createNumericLiteral(0));
         const result = convertStatement(retStmt);
+
         expect(convertReturnStatement).toHaveBeenCalledOnce();
         expect(convertReturnStatement).toHaveBeenCalledWith(retStmt);
-        expect(result).toEqual(retSentinel);
+        expect(result).toBe(retSentinel);
     });
-})
+
+
+
+    
+
+    it("delegates IfStatement", () => {
+        const condition = ts.factory.createIdentifier("cond");
+        const ifStmt = ts.factory.createIfStatement(
+            condition,
+            ts.factory.createBlock([], true),
+            undefined
+        );
+
+        const result = convertStatement(ifStmt);
+
+        expect(convertIfStatement).toHaveBeenCalledOnce();
+        expect(convertIfStatement).toHaveBeenCalledWith(ifStmt);
+        expect(result).toBe(ifSentinel);
+    });
+
+    it("delegates WhileStatement", () => {
+        const condition = ts.factory.createIdentifier("cond");
+        const whileStmt = ts.factory.createWhileStatement(
+            condition,
+            ts.factory.createBlock([], true)
+        );
+
+        const result = convertStatement(whileStmt);
+
+        expect(convertWhileKeyword).toHaveBeenCalledOnce();
+        expect(convertWhileKeyword).toHaveBeenCalledWith(whileStmt);
+        expect(result).toBe(whileSentinel);
+    });
+
+    it("delegates ForStatement", () => {
+        const forStmt = ts.factory.createForStatement(
+      /* initializer */ undefined,
+      /* condition   */ undefined,
+      /* incrementor */ undefined,
+            ts.factory.createBlock([], true)
+        );
+
+        const result = convertStatement(forStmt);
+
+        expect(convertForStatement).toHaveBeenCalledOnce();
+        expect(convertForStatement).toHaveBeenCalledWith(forStmt);
+        expect(result).toBe(forSentinel);
+    });
+
+    it("delegates Block", () => {
+        const blk = ts.factory.createBlock([], true);
+
+        const result = convertStatement(blk);
+
+        expect(convertBlock).toHaveBeenCalledOnce();
+        expect(convertBlock).toHaveBeenCalledWith(blk);
+        expect(result).toBe(blockSentinel);
+    });
+
+    it("converts ExpressionStatement inline", () => {
+        const expr = ts.factory.createIdentifier("x");
+        const exprStmt = ts.factory.createExpressionStatement(expr);
+
+        const result = convertStatement(exprStmt);
+
+        expect(convertExpression).toHaveBeenCalledOnce();
+        expect(convertExpression).toHaveBeenCalledWith(expr);
+        expect(result).toEqual({
+            kind: "ExpressionStatement",
+            expression: exprSentinel,
+        });
+    });
+
+    it("unwraps LabeledStatement", () => {
+        const innerVarDecl = ts.factory.createVariableDeclaration(
+            "y",
+            undefined,
+            undefined,
+            ts.factory.createNumericLiteral(2)
+        );
+        const innerList = ts.factory.createVariableDeclarationList(
+            [innerVarDecl],
+            ts.NodeFlags.Const
+        );
+        const innerVarStmt = ts.factory.createVariableStatement(undefined, innerList);
+
+        const labeled = ts.factory.createLabeledStatement(
+            ts.factory.createIdentifier("lbl"),
+            innerVarStmt
+        );
+
+        const result = convertStatement(labeled);
+
+        expect(convertVariableStatement).toHaveBeenCalledOnce();
+        expect(convertVariableStatement).toHaveBeenCalledWith(innerVarStmt);
+        expect(result).toBe(varSentinel);
+    });
+
+    it("throws on unsupported node kind", () => {
+        const unsupported = ts.factory.createToken(ts.SyntaxKind.EndOfFileToken);
+
+        expect(() => convertStatement(unsupported)).toThrow(/Unsupported node kind/);
+    });
+});
