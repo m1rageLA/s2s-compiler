@@ -1,6 +1,8 @@
 // irSchema.ts
 // Discriminated-union definitions for all IR nodes
 
+import { BreakStatement } from "typescript";
+
 export interface ProgramNode {
   kind: "Program";
   body: IRNode[];
@@ -112,7 +114,19 @@ export interface NewExpressionNode {
   args: IRNode[];
 }
 
+export interface SwitchNode {
+  kind: "Switch";
+  expression: IRNode;
+  cases: Array<{
+    test: IRNode | "default";
+    consequent: IRNode[];
+  }>;
+}
 
+export interface BreakStatementNode {
+  kind: "BreakStatement";
+  label?: string;
+}
 
 export type IRNode =
   // Statements
@@ -125,6 +139,7 @@ export type IRNode =
   | ForNode
   | BlockNode
   | ExpressionStatementNode
+  | BreakStatementNode
 
   // Expressions
   | LiteralNode
@@ -137,4 +152,6 @@ export type IRNode =
 
   | PropertyAccessNode
   | ElementAccessNode
-  | NewExpressionNode;
+  | NewExpressionNode
+  | SwitchNode
+  ;

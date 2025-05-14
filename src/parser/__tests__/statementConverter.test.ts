@@ -10,6 +10,7 @@ import {
     blockSentinel,
     exprSentinel,
 } from "./sentinels";
+import { IRNode } from '../coreSchema';
 
 vi.mock("../specificConverters", () => ({
     convertFunctionDeclaration: vi.fn().mockReturnValue(fnSentinel),
@@ -79,7 +80,7 @@ describe("convertStatement – handles every statement variation", () => {
 
 
 
-    
+
 
 
 
@@ -123,7 +124,7 @@ describe("convertStatement – handles every statement variation", () => {
 
 
 
-    
+
 
     it("delegates IfStatement", () => {
         const condition = ts.factory.createIdentifier("cond");
@@ -222,5 +223,97 @@ describe("convertStatement – handles every statement variation", () => {
         const unsupported = ts.factory.createToken(ts.SyntaxKind.EndOfFileToken);
 
         expect(() => convertStatement(unsupported)).toThrow(/Unsupported node kind/);
+    });
+
+    it('converts switch with cases and default', () => {
+        const switchNode = ts.factory.createSwitchStatement(
+            ts.factory.createIdentifier('x'),
+            ts.factory.createCaseBlock([
+                ts.factory.createCaseClause(
+                    ts.factory.createNumericLiteral('1'),
+                    [
+                        ts.factory.createExpressionStatement(
+                            ts.factory.createCallExpression(
+                                ts.factory.createIdentifier('doOne'),
+                /* typeArgs */ undefined,
+                /* args */[]
+                            )
+                        ),
+                        ts.factory.createBreakStatement()
+                    ]
+                ),
+                ts.factory.createCaseClause(
+                    ts.factory.createStringLiteral('foo'),
+                    [
+                        ts.factory.createExpressionStatement(
+                            ts.factory.createCallExpression(
+                                ts.factory.createIdentifier('doFoo'),
+                                undefined,
+                                []
+                            )
+                        ),
+                        ts.factory.createBreakStatement()
+                    ]
+                ),
+                ts.factory.createDefaultClause([
+                    ts.factory.createExpressionStatement(
+                        ts.factory.createCallExpression(
+                            ts.factory.createIdentifier('doDefault'),
+                            undefined,
+                            []
+                        )
+                    )
+                ])
+            ])
+        );
+
+        const ir = convertStatement(switchNode);
+        expect(ir).toEqual<IRNode>({
+            kind: 'Switch',
+            expression: { kind: 'Identifier', name: 'x' },
+            cases: [
+                {
+                    test: { kind: 'Literal', value: 1 },
+                    consequent: [
+                        {
+                            kind: 'ExpressionStatement',
+                            expression: {
+                                kind: 'CallExpression',
+                                callee: { kind: 'Identifier', name: 'doOne' },
+                                args: []
+                            }
+                        },
+                        { kind: 'BreakStatement' }
+                    ]
+                },
+                {
+                    test: { kind: 'Literal', value: 'foo' },
+                    consequent: [
+                        {
+                            kind: 'ExpressionStatement',
+                            expression: {
+                                kind: 'CallExpression',
+                                callee: { kind: 'Identifier', name: 'doFoo' },
+                                args: []
+                            }
+                        },
+                        { kind: 'BreakStatement' }
+                    ]
+                },
+                {
+                    test: 'default',
+                    consequent: [
+                        {
+                            kind: 'ExpressionStatement',
+                            expression: {
+                                kind: 'CallExpression',
+                                callee: { kind: 'Identifier', name: 'doDefault' },
+                                args: []
+                            }
+                        }
+                    ]
+                }
+            ]
+        });
     });
 });
