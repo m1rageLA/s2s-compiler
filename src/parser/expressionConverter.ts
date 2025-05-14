@@ -104,6 +104,15 @@ export function convertExpression(expr: ts.Expression): IRNode {
             };
         }
 
+        case ts.SyntaxKind.NewExpression: {
+            const node = expr as ts.NewExpression;
+            return {
+                kind: "NewExpression",
+                callee: convertExpression(node.expression),
+                args: node.arguments ? node.arguments.map(convertExpression) : []
+            };
+        }
+
         default:
             throw new Error("Unsupported expression kind: " + ts.SyntaxKind[expr.kind]);
     }
