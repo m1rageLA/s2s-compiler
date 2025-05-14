@@ -288,27 +288,27 @@ describe("statement converters", () => {
       ]
     });
   })
-});
-it("PropertyAccess – obj.prop", () => {
-  const expr = ts.factory.createPropertyAccessExpression(
-    ts.factory.createIdentifier("obj"),
-    ts.factory.createIdentifier("prop")
-  );
+  it("PropertyAccess – obj.prop", () => {
+    const expr = ts.factory.createPropertyAccessExpression(
+      ts.factory.createIdentifier("obj"),
+      ts.factory.createIdentifier("prop")
+    );
 
-  const ir = convertExpression(expr) as IRNode;
-  expect(ir.kind).toBe("PropertyAccess");
-  expect((ir as any).object).toEqual({ kind: "Identifier", name: "obj" });
-  expect((ir as any).property).toEqual({ kind: "Identifier", name: "prop" });
-});
+    const ir = convertExpression(expr) as IRNode;
+    expect(ir.kind).toBe("PropertyAccess");
+    expect((ir as any).object).toEqual({ kind: "Identifier", name: "obj" });
+    expect((ir as any).property).toEqual({ kind: "Identifier", name: "prop" });
+  });
 
-it("ElementAccess – arr[i]", () => {
-  const expr = ts.factory.createElementAccessExpression(
-    ts.factory.createIdentifier("arr"),
-    ts.factory.createIdentifier("i")
-  );
+  it("ElementAccess – arr[i]", () => {
+    const expr = ts.factory.createElementAccessExpression(
+      ts.factory.createIdentifier("arr"),
+      ts.factory.createIdentifier("i")
+    );
 
-  const ir = convertExpression(expr) as IRNode;
-  expect(ir.kind).toBe("ElementAccess");
-  expect((ir as any).object).toEqual({ kind: "Identifier", name: "arr" });
-  expect((ir as any).index).toEqual({ kind: "Identifier", name: "i" });
+    const ir = convertExpression(expr) as IRNode;
+    expect(ir.kind).toBe("ElementAccess");
+    expect((ir as any).object).toEqual({ kind: "Identifier", name: "arr" });
+    expect((ir as any).index).toEqual({ kind: "Identifier", name: "i" });
+  });
 });
