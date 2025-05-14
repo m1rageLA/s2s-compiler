@@ -311,4 +311,27 @@ describe("statement converters", () => {
     expect((ir as any).object).toEqual({ kind: "Identifier", name: "arr" });
     expect((ir as any).index).toEqual({ kind: "Identifier", name: "i" });
   });
+
+  it("Should define new expression", () => {
+    const tsNode = ts.factory.createNewExpression(
+      ts.factory.createIdentifier("MyClass"),
+      undefined,
+      [
+        ts.factory.createNumericLiteral(1), 
+        ts.factory.createStringLiteral("a")
+      ]
+    );
+
+    const ir = convertExpression(tsNode);
+    expect(ir).toEqual<IRNode>({
+      kind: "NewExpression",
+      callee: { kind: "Identifier", name: "MyClass" },
+      args: [
+        { kind: "Literal", value: 1 },
+        { kind: "Literal", value: "a" }
+      ]
+    });
+  });
+
+
 });

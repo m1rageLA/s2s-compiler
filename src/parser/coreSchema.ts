@@ -106,6 +106,13 @@ export interface ElementAccessNode {
   index: IRNode;    
 }
 
+export interface NewExpressionNode {
+  kind: "NewExpression";
+  callee: IRNode;
+  args: IRNode[];
+}
+
+
 
 export type IRNode =
   // Statements
@@ -129,4 +136,5 @@ export type IRNode =
   | ArrayLiteralNode
 
   | PropertyAccessNode
-  | ElementAccessNode;
+  | ElementAccessNode
+  | NewExpressionNode;
