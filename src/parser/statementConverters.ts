@@ -67,7 +67,12 @@ export function convertStatement(node: ts.Node): IRNode {
                 ? { kind: "BreakStatement", label: br.label.text }
                 : { kind: "BreakStatement" };
         }
-
+        case ts.SyntaxKind.ContinueStatement: {
+            const cs = node as ts.ContinueStatement;
+            return cs.label
+                ? { kind: "ContinueStatement", label: cs.label.text }
+                : { kind: "ContinueStatement" };
+        }
         default:
             throw new Error("Unsupported node kind: " + ts.SyntaxKind[node.kind]);
     }
