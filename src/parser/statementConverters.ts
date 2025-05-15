@@ -39,6 +39,35 @@ export function convertStatement(node: ts.Node): IRNode {
             // ignore the label, just transpile the wrapped statement
             return convertStatement(lbl.statement);
         }
+        case ts.SyntaxKind.SwitchStatement: {
+            const stmt = node as ts.SwitchStatement;
+            const cases = stmt.caseBlock.clauses.map(clause => {
+                if (ts.isCaseClause(clause)) {
+                    return {
+                        test: convertExpression(clause.expression),
+                        consequent: clause.statements.map(s => convertStatement(s))
+                    };
+                } else {
+                    return {
+                        test: "default" as const,
+                        consequent: clause.statements.map(s => convertStatement(s))
+                    };
+                }
+            });
+
+            return {
+                kind: "Switch",
+                expression: convertExpression(stmt.expression),
+                cases
+            };
+        }
+        case ts.SyntaxKind.BreakStatement: {
+            const br = node as ts.BreakStatement;
+            return br.label
+                ? { kind: "BreakStatement", label: br.label.text }
+                : { kind: "BreakStatement" };
+        }
+
         default:
             throw new Error("Unsupported node kind: " + ts.SyntaxKind[node.kind]);
     }
