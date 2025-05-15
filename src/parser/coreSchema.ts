@@ -128,6 +128,10 @@ export interface BreakStatementNode {
   label?: string;
 }
 
+export interface ContinueNode {
+  kind: "ContinueStatement";
+  label?: string;
+}
 export type IRNode =
   // Statements
   | ProgramNode
@@ -154,4 +158,6 @@ export type IRNode =
   | ElementAccessNode
   | NewExpressionNode
   | SwitchNode
+  | ContinueNode
+  | ContinueNode
   ;

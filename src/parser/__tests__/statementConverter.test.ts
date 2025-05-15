@@ -93,4 +93,79 @@ describe("convertStatement – real integration", () => {
     const blk = ts.factory.createBlock([], true);
     expect(convertStatement(blk)).toStrictEqual(convertBlock(blk));
   });
+
+  it("SwitchStatement with break and continue", () => {
+  const sw = ts.factory.createSwitchStatement(
+    ts.factory.createIdentifier("x"),
+    ts.factory.createCaseBlock([
+      ts.factory.createCaseClause(ts.factory.createNumericLiteral(1), [
+        ts.factory.createBreakStatement()
+      ]),
+      ts.factory.createCaseClause(ts.factory.createNumericLiteral(2), [
+        ts.factory.createContinueStatement()    // ← new continue
+      ]),
+      ts.factory.createDefaultClause([
+        ts.factory.createBreakStatement()
+      ])
+    ])
+  );
+
+  const ir = convertStatement(sw);
+
+  expect(ir).toEqual<IRNode>({
+    kind: "Switch",
+    expression: convertExpression(ts.factory.createIdentifier("x")),
+    cases: [
+      {
+        test: convertExpression(ts.factory.createNumericLiteral(1)),
+        consequent: [{ kind: "BreakStatement" }]
+      },
+      {
+        test: convertExpression(ts.factory.createNumericLiteral(2)),
+        consequent: [{ kind: "ContinueStatement" }]   // ← asserted
+      },
+      {
+        test: "default",
+        consequent: [{ kind: "BreakStatement" }]
+      }
+    ]
+  });
+});
+  it("SwitchStatement with break and continue (with label)", () => {
+    const sw = ts.factory.createSwitchStatement(
+      ts.factory.createIdentifier("x"),
+      ts.factory.createCaseBlock([
+        ts.factory.createCaseClause(ts.factory.createNumericLiteral(1), [
+          ts.factory.createBreakStatement(ts.factory.createIdentifier("label"))
+        ]),
+        ts.factory.createCaseClause(ts.factory.createNumericLiteral(2), [
+          ts.factory.createContinueStatement(ts.factory.createIdentifier("label"))    // ← new continue
+        ]),
+        ts.factory.createDefaultClause([
+          ts.factory.createBreakStatement()
+        ])
+      ])
+    );
+
+    const ir = convertStatement(sw);
+
+    expect(ir).toEqual<IRNode>({
+      kind: "Switch",
+      expression: convertExpression(ts.factory.createIdentifier("x")),
+      cases: [
+        {
+          test: convertExpression(ts.factory.createNumericLiteral(1)),
+          consequent: [{ kind: "BreakStatement", label: "label" }]
+        },
+        {
+          test: convertExpression(ts.factory.createNumericLiteral(2)),
+          consequent: [{ kind: "ContinueStatement", label: "label" }]   // ← asserted
+        },
+        {
+          test: "default",
+          consequent: [{ kind: "BreakStatement" }]
+        }
+      ]
+    });
+  });
 });
