@@ -144,8 +144,6 @@ export type IRNode =
   | BlockNode
   | ExpressionStatementNode
   | BreakStatementNode
-
-  // Expressions
   | LiteralNode
   | IdentifierNode
   | BinaryNode
@@ -153,7 +151,6 @@ export type IRNode =
   | AssignmentNode
   | ObjectLiteralNode
   | ArrayLiteralNode
-
   | PropertyAccessNode
   | ElementAccessNode
   | NewExpressionNode

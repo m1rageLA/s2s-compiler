@@ -6,7 +6,7 @@ import {
     convertVariableStatement,
     convertReturnStatement,
     convertIfStatement,
-    convertWhileKeyword,
+    convertWhileStatement,
     convertForStatement,
     convertBlock,
     convertBlockLike
@@ -23,8 +23,7 @@ export function convertStatement(node: ts.Node): IRNode {
         case ts.SyntaxKind.IfStatement:
             return convertIfStatement(node as ts.IfStatement);
         case ts.SyntaxKind.WhileStatement:
-
-            return convertWhileKeyword(node as ts.WhileStatement);
+            return convertWhileStatement(node as ts.WhileStatement);
         case ts.SyntaxKind.ForStatement:
             return convertForStatement(node as ts.ForStatement);
         case ts.SyntaxKind.Block:
