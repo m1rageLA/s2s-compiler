@@ -9,7 +9,7 @@ import {
   convertVariableStatement,
   convertReturnStatement,
   convertIfStatement,
-  convertWhileKeyword,
+  convertWhileStatement,
   convertForStatement,
   convertBlock
 } from "../specificConverters";
@@ -75,7 +75,7 @@ describe("convertStatement – real integration", () => {
       ts.factory.createBlock([], true)
     );
     expect(convertStatement(node)).toStrictEqual(
-      convertWhileKeyword(node)
+      convertWhileStatement(node)
     );
   });
 
