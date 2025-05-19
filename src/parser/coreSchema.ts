@@ -3,9 +3,13 @@
 
 import { BreakStatement } from "typescript";
 
+export interface BaseNode {
+  kind: string;
+}
 
+// ==========================
 
-export interface ProgramNode {
+export interface ProgramNode extends BaseNode {
   kind: "Program";
   body: IRNode[];
 }
@@ -21,6 +25,7 @@ export interface VariableDeclarationNode {
   kind: "VariableDeclaration";
   name: string;
   value?: IRNode;
+  initializer?: (init: IRNode, ctx: any) => string;
 }
 
 export interface ReturnNode {

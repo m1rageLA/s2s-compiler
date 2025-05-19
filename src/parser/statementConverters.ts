@@ -9,7 +9,6 @@ import {
     convertWhileStatement,
     convertForStatement,
     convertBlock,
-    convertBlockLike
 } from "./specificConverters";
 
 export function convertStatement(node: ts.Node): IRNode {
