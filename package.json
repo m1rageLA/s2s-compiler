@@ -4,7 +4,6 @@
   "main": "index.js",
   "scripts": {
     "start": "ts-node src/index.ts",
-    "rast": "cd src/codegen && cargo run --release",
     "ast": "ts-node src/ASTCheck",
     "test": "vitest"
   },
