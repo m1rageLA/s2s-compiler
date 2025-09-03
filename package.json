@@ -29,7 +29,7 @@
       "path": "node_modules/cz-customizable"
     },
     "cz-customizable": {
-      "config": ".cz-config.js"
+      "path": "./node_modules/cz-customizable"
     }
   }
 }

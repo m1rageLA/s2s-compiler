@@ -3,6 +3,7 @@ use swc_common::errors::EmitterWriter;
 use swc_common::errors::Handler;
 use swc_common::sync::Lrc;
 use swc_common::{errors::ColorConfig, FilePathMapping, SourceMap, Span};
+use swc_ecma_parser::EsSyntax;
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax};
 
 fn main() {
@@ -15,12 +16,19 @@ fn main() {
         "let x = 1",
     );
 
-    let span = Span::new(fm.start_pos, swc_common::BytePos(fm.start_pos.0 + 3));
-    let pos = cm.lookup_char_pos(span.lo());
-    println!(
-        "File {}, Line {}, Column {}",
-        pos.file.name, pos.line, pos.col_display
+    let lexer = Lexer::new(
+        Syntax::Es(Default::default()),
+        Default::default(),
+        StringInput::from(&*fm),
+        None,
     );
 
-    handler.struct_span_err(span, "test").emit();
+    let mut parser = Parser::new_from(lexer);
+
+    let _module = parser
+        .parse_module()
+        .map_err(|e| e.into_diagnostic(&handler).emit())
+        .expect("failed to parser module");
+
+    println!("{:#?}", _module);
 }
