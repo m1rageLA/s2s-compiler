@@ -1,11 +1,11 @@
 [package]
-name = "core"
+name = "lowering"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-swc = { path = "../swc" }
+parser = { path = "../parser" }
 
 [lib]
-name = "core"
+name = "lowering"
 path = "src/lib.rs"

@@ -1,5 +1,5 @@
 [package]
-name = "swc"
+name = "parser"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,5 +12,5 @@ swc_ecma_parser = "23.0.0"
 swc_common = "14.0.3"
 
 [lib]
-name = "swc"
+name = "parser"
 path = "src/lib.rs"

@@ -1,3 +1,3 @@
 fn main() {
-    core::core();
+    lowering::core();
 }
