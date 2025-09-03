@@ -130,3 +130,7 @@ build
 # Temporary folders
 tmp/
 temp/
+
+# Added by cargo
+
+/target

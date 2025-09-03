@@ -6,7 +6,7 @@ use swc_common::{errors::ColorConfig, FilePathMapping, SourceMap, Span};
 use swc_ecma_parser::EsSyntax;
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax};
 
-fn main() {
+pub fn ast() {
     let cm: Lrc<SourceMap> = Default::default();
     let emitter = EmitterWriter::new(Box::new(std::io::stderr()), Some(cm.clone()), true, true);
     let handler = Handler::with_emitter(true, false, Box::new(emitter));
