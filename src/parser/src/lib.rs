@@ -3,11 +3,12 @@ use swc_common::errors::EmitterWriter;
 use swc_common::errors::Handler;
 use swc_common::sync::Lrc;
 use swc_common::{errors::ColorConfig, FilePathMapping, SourceMap, Span};
+use swc_ecma_ast::Module;
 use swc_ecma_parser::EsSyntax;
 use swc_ecma_parser::TsSyntax;
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax};
 
-pub fn ast() {
+pub fn ast() -> Module {
     let cm: Lrc<SourceMap> = Default::default();
     let emitter = EmitterWriter::new(Box::new(std::io::stderr()), Some(cm.clone()), true, true);
     let handler = Handler::with_emitter(true, false, Box::new(emitter));
@@ -26,10 +27,9 @@ pub fn ast() {
 
     let mut parser = Parser::new_from(lexer);
 
-    let _module = parser
+    let _module: Module = parser
         .parse_module()
         .map_err(|e| e.into_diagnostic(&handler).emit())
         .expect("failed to parser module");
-
-    println!("{:#?}", _module);
+    _module
 }
