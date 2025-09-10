@@ -4,6 +4,7 @@ use swc_common::errors::Handler;
 use swc_common::sync::Lrc;
 use swc_common::{errors::ColorConfig, FilePathMapping, SourceMap, Span};
 use swc_ecma_parser::EsSyntax;
+use swc_ecma_parser::TsSyntax;
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax};
 
 pub fn ast() {
@@ -13,11 +14,11 @@ pub fn ast() {
 
     let fm = cm.new_source_file(
         Lrc::new(swc_common::FileName::Custom("test.ts".into())),
-        "let x = 1",
+        "let x: number = 1",
     );
 
     let lexer = Lexer::new(
-        Syntax::Es(Default::default()),
+        Syntax::Typescript(TsSyntax::default()),
         Default::default(),
         StringInput::from(&*fm),
         None,
