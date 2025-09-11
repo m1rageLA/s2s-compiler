@@ -13,6 +13,7 @@ module.exports = {
     { name: 'lexer' },
     { name: 'parser' },
     { name: 'ast' },
+    { name: 'ir' },
     { name: 'tokenizer' },
     { name: 'grammar' },
     { name: 'error-handling' },
