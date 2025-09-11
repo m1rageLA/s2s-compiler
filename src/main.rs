@@ -1,6 +1,5 @@
-mod ir;
-use ir::*;
+use ir::*; // Declare `parser` as a local module
 
 fn main() {
-    lowering::core();
+    lowering::ast_to_ir(&parser::ast());
 }

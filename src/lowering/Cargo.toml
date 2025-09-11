@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 parser = { path = "../parser" }
 swc_ecma_ast = "15.0.0"
+ir = { path = "../ir" }
 
 [lib]
 name = "lowering"

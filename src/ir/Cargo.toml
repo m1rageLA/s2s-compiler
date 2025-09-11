@@ -1,0 +1,9 @@
+[package]
+name = "ir"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "ir"
+path = "src/lib.rs"
+

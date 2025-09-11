@@ -1,6 +1,6 @@
 #[derive(Debug)]
 pub struct IrModule {
-    pub item: Vec<IrItem>,
+    pub items: Vec<IrItem>,
 }
 
 #[derive(Debug)]
@@ -68,3 +68,32 @@ pub enum IrBinOp {
     Eq,
     Neq,
 }
+#[derive(Debug, Clone)]
+pub enum Type {
+    F64,
+    Bool,
+    String,
+    Unit,
+}
+
+#[derive(Debug, Clone)]
+pub struct Ident(pub String);
+
+#[derive(Debug, Clone)]
+pub enum BinOp {
+    Add,
+    Multiply,
+    Divide,
+    Subtract,
+    Equals,
+    NotEquals,
+    LessThan,
+    LessThanEquals,
+    GreaterThan,
+    GreaterThanEquals,
+    And,
+    Or,
+    Xor,
+    Not,
+}
+

@@ -6,7 +6,9 @@ version = 4
 name = "TS2RUST"
 version = "0.1.0"
 dependencies = [
+ "ir",
  "lowering",
+ "parser",
 ]
 
 [[package]]
@@ -282,6 +284,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ir"
+version = "0.1.0"
+
+[[package]]
 name = "is-macro"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -315,6 +321,7 @@ checksum = "241eaef5fd12c88705a01fc1066c48c4b36e0dd4377dcdc7ec3942cea7a69956"
 name = "lowering"
 version = "0.1.0"
 dependencies = [
+ "ir",
  "parser",
  "swc_ecma_ast",
 ]

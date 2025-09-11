@@ -5,3 +5,5 @@ edition = "2024"
 
 [dependencies]
 lowering = { path = "src/lowering" }
+parser = { path = "src/parser" }
+ir = { path = "src/ir" }
