@@ -38,9 +38,9 @@ pub struct IrParam {
 
 #[derive(Debug)]
 pub enum IrType {
-    Int(i32),
-    Str(String),
-    Bool(bool),
+    Int,
+    Str,
+    Bool,
     Unit,
     Any,
 }
