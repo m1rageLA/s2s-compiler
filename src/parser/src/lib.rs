@@ -1,21 +1,19 @@
-use std::sync::Arc;
 use swc_common::errors::EmitterWriter;
 use swc_common::errors::Handler;
 use swc_common::sync::Lrc;
-use swc_common::{errors::ColorConfig, FilePathMapping, SourceMap, Span};
+use swc_common::SourceMap;
 use swc_ecma_ast::Module;
-use swc_ecma_parser::EsSyntax;
 use swc_ecma_parser::TsSyntax;
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax};
 
-pub fn ast() -> Module {
+pub fn ast(sourcecode: &str) -> Module {
     let cm: Lrc<SourceMap> = Default::default();
     let emitter = EmitterWriter::new(Box::new(std::io::stderr()), Some(cm.clone()), true, true);
     let handler = Handler::with_emitter(true, false, Box::new(emitter));
 
     let fm = cm.new_source_file(
         Lrc::new(swc_common::FileName::Custom("test.ts".into())),
-        "let x: number = 1",
+        sourcecode.to_string(),
     );
 
     let lexer = Lexer::new(
