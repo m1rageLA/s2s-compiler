@@ -1,5 +1,5 @@
 
 
 fn main() {
-    lowering::ast_to_ir(&parser::ast("let x = 10"));
+    lowering::ast_to_ir(&parser::ast("let x: number = 10"));
 }

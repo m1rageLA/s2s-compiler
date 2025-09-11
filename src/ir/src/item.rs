@@ -48,7 +48,7 @@ pub enum IrType {
 #[derive(Debug)]
 pub enum IrExpression {
     Identifier(String),
-    Literal(i32),
+    Literal(IrLiteral),
     Binary {
         op: IrBinOp,
         left: Box<IrExpression>,
@@ -59,6 +59,14 @@ pub enum IrExpression {
         args: Vec<IrExpression>,
     },
 }
+
+#[derive(Debug)]
+pub enum IrLiteral {
+    Int(i32),
+    Str(String),
+    Bool(bool),
+}
+
 #[derive(Debug)]
 pub enum IrBinOp {
     Add,

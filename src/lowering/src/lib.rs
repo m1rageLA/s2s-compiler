@@ -43,11 +43,16 @@ fn var_decl_to_ir(decl: &ast::VarDeclarator) -> Option<IrVariable> {
     } else {
         IrType::Any
     };
-    
+
+    let init = decl.init.as_ref().map(|expr| match &**expr {
+        ast::Expr::Lit(ast::Lit::Num(n)) => IrExpression::Literal(IrLiteral::Int(n.value as i32)),
+        ast::Expr::Lit(ast::Lit::Str(s)) => IrExpression::Literal(IrLiteral::Str(s.value.to_string())),
+        _ => IrExpression::Identifier("unsupported".to_string()),
+    });
 
     Some(IrVariable {
         name: name,
         ty: ty,
-        value: None,
+        value: init,
     })
 }
