@@ -20,6 +20,7 @@ pub struct IrVariable {
 pub struct IrFunction {
     pub name: String,
     pub params: Vec<IrParam>,
+    pub ret: IrType,
     pub body: Vec<IrStmt>,
 }
 

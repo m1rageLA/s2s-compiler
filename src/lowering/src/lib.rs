@@ -21,7 +21,6 @@ pub fn ast_to_ir(module: &ast::Module) -> IrModule {
             _ => (),
         }
     }
-    println!("items: {:#?}", items);
     IrModule { items }
 }
 
@@ -89,10 +88,15 @@ fn fn_decl_to_ir(fn_decl: &ast::FnDecl) -> Option<IrFunction> {
             _ => return None,
         }
     }
+    let ret_ty: IrType = match &fn_decl.function.return_type {
+        Some(ann) => ts_type_ann_to_ir(ann),
+        None => IrType::Any,
+    };
+
     Some(IrFunction {
         name,
         params,
-        // ret: ret_ty,          // TODO: раскомментируйте, если в вашей IR есть поле возвращаемого типа
+        ret: ret_ty,
         body: Vec::new(), // TODO: замените на тип вашей IR (например, None)
     })
 }
