@@ -1,7 +1,7 @@
 fn main() {
-    // lowering::ast_to_ir(&parser::ast("let x: number = 10"));
-    let ast = parser::ast("function lib(x: number, y: number) {return x+ y}");
-    println!("{:#?}", ast);
+    let ir =lowering::ast_to_ir(&parser::ast("function lib(x: number, y: number) {}"));
+    // let ast = parser::ast("function lib(x: number, y: number) {return x+ y}");
+    println!("{:#?}", ir);
 }
 
 //TODO имплементировать лог ошибок компилятора ts

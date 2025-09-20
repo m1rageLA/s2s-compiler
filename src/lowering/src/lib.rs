@@ -1,5 +1,3 @@
-use std::array;
-
 use ir::*;
 use swc_ecma_ast::{self as ast, Number, Str};
 
@@ -16,8 +14,9 @@ pub fn ast_to_ir(module: &ast::Module) -> IrModule {
                 }
             }
             ast::ModuleItem::Stmt(ast::Stmt::Decl(ast::Decl::Fn(fn_decl))) => {
-                for param in &fn_decl.function.params {}
-                if let Some(ir_fn) = fn_decl_to_ir(fn_decl) {}
+                if let Some(ir_fn) = fn_decl_to_ir(fn_decl) {
+                    items.push(IrItem::Function(ir_fn));
+                }
             }
             _ => (),
         }
@@ -98,3 +97,14 @@ fn fn_decl_to_ir(fn_decl: &ast::FnDecl) -> Option<IrFunction> {
     })
 }
 
+fn ts_type_ann_to_ir(ann: &ast::TsTypeAnn) -> IrType {
+    match &*ann.type_ann {
+        ast::TsType::TsKeywordType(keyword) => match keyword.kind {
+            ast::TsKeywordTypeKind::TsStringKeyword => IrType::Str,
+            ast::TsKeywordTypeKind::TsNumberKeyword => IrType::Int,
+            ast::TsKeywordTypeKind::TsBooleanKeyword => IrType::Bool,
+            _ => IrType::Any,
+        },
+        _ => IrType::Any,
+    }
+}
