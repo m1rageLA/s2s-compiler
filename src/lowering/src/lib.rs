@@ -1,6 +1,7 @@
 use ir::*;
 use swc_ecma_ast::{self as ast, Number, Str};
 
+//ENTRY POIN
 pub fn ast_to_ir(module: &ast::Module) -> IrModule {
     let mut items: Vec<IrItem> = Vec::new();
 
@@ -24,6 +25,7 @@ pub fn ast_to_ir(module: &ast::Module) -> IrModule {
     IrModule { items }
 }
 
+//DECLARATIONS
 fn var_decl_to_ir(decl: &ast::VarDeclarator) -> Option<IrVariable> {
     let name = match &decl.name {
         ast::Pat::Ident(ident) => ident.id.sym.to_string(),
@@ -62,7 +64,6 @@ fn var_decl_to_ir(decl: &ast::VarDeclarator) -> Option<IrVariable> {
         value: init,
     })
 }
-
 fn fn_decl_to_ir(fn_decl: &ast::FnDecl) -> Option<IrFunction> {
     /*
         pub name: String,
@@ -101,6 +102,7 @@ fn fn_decl_to_ir(fn_decl: &ast::FnDecl) -> Option<IrFunction> {
     })
 }
 
+//TYPES
 fn ts_type_ann_to_ir(ann: &ast::TsTypeAnn) -> IrType {
     match &*ann.type_ann {
         ast::TsType::TsKeywordType(keyword) => match keyword.kind {
@@ -110,5 +112,14 @@ fn ts_type_ann_to_ir(ann: &ast::TsTypeAnn) -> IrType {
             _ => IrType::Any,
         },
         _ => IrType::Any,
+    }
+}
+
+fn expr_to_ir(expr: &ast::Expr) ->IrExpression {
+    match expr {
+        ast::Expr::Lit(ast::Lit::Num(n)) => IrExpression::Literal(IrLiteral::Int(n.value as i32)),
+        ast::Expr::Lit(ast::Lit::Str(s)) => IrExpression::Literal(IrLiteral::Str(s.value.to_string())),
+        ast::Expr::Ident(i) => IrExpression::Identifier(i.to_string()),
+        _ => IrExpression::Identifier("unsupported".to_string()),
     }
 }
