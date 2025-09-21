@@ -1,5 +1,5 @@
 use ir::*;
-use swc_ecma_ast::{self as ast, Number, Str};
+use swc_ecma_ast::{self as ast};
 
 //ENTRY POIN
 pub fn ast_to_ir(module: &ast::Module) -> IrModule {
@@ -19,7 +19,10 @@ pub fn ast_to_ir(module: &ast::Module) -> IrModule {
                     items.push(IrItem::Function(ir_fn));
                 }
             }
-            
+            ast::ModuleItem::Stmt(ast::Stmt::Expr(expr_stmt)) => {
+                let ir_expr = expr_to_ir(&expr_stmt.expr);
+                items.push(IrItem::Expression(ir_expr));
+            }
             _ => (),
         }
     }
