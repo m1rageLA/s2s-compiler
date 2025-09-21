@@ -7,6 +7,7 @@ pub struct IrModule {
 pub enum IrItem {
     Variable(IrVariable),
     Function(IrFunction),
+    Expression(IrExpression),
 }
 
 #[derive(Debug)]
@@ -69,14 +70,70 @@ pub enum IrLiteral {
 }
 
 #[derive(Debug)]
+pub enum BinaryOp {
+    EqEq,       // ==
+    NotEq,      // !=
+    EqEqEq,     // ===
+    NotEqEq,    // !==
+    Lt,         // <
+    LtEq,       // <=
+    Gt,         // >
+    GtEq,       // >=
+    LShift,     // <<
+    RShift,     // >>
+    ZeroFillRShift, // >>>
+    Add,        // +
+    Sub,        // -
+    Mul,        // *
+    Div,        // /
+    Mod,        // %
+    BitOr,      // |
+    BitXor,     // ^
+    BitAnd,     // &
+    LogicalOr,  // ||
+    LogicalAnd, // &&
+    In,         // in
+    InstanceOf, // instanceof
+    Exp,        // ** (возведение в степень)
+}
+
+#[derive(Debug)]
 pub enum IrBinOp {
     Add,
     Sub,
     Mul,
     Div,
-    Eq,
-    Neq,
+    Mod,
+    Exp,
+
+    Equal,               // ==
+    StrictEqual,         // ===
+    NotEqual,            // !=
+    StrictNotEqual,      // !==
+
+    LessThan,            // <
+    LessThanOrEqual,     // <=
+    GreaterThan,         // >
+    GreaterThanOrEqual,  // >=
+
+    LeftShift,           // <<
+    RightShift,          // >>
+    UnsignedRightShift,  // >>>
+
+    BitwiseOr,           // |
+    BitwiseXor,          // ^
+    BitwiseAnd,          // &
+
+    LogicalOr,           // ||
+    LogicalAnd,          // &&
+
+    In,                  // in
+    InstanceOf,          // instanceof
+
+    Unsupported,
 }
+
+
 #[derive(Debug, Clone)]
 pub enum Type {
     F64,
@@ -87,22 +144,3 @@ pub enum Type {
 
 #[derive(Debug, Clone)]
 pub struct Ident(pub String);
-
-#[derive(Debug, Clone)]
-pub enum BinOp {
-    Add,
-    Multiply,
-    Divide,
-    Subtract,
-    Equals,
-    NotEquals,
-    LessThan,
-    LessThanEquals,
-    GreaterThan,
-    GreaterThanEquals,
-    And,
-    Or,
-    Xor,
-    Not,
-}
-
