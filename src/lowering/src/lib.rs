@@ -54,11 +54,11 @@ fn var_decl_to_ir(decl: &ast::VarDeclarator) -> Option<IrVariable> {
         IrType::Any
     };
 
-    let init = expr_to_ir(decl.init.as_ref().unwrap());
+    let value = decl.init.as_ref().map(|expr| expr_to_ir(expr));
     Some(IrVariable {
-        name: name,
-        ty: ty,
-        value: Option::from(init),
+        name,
+        ty,
+        value,
     })
 }
 fn fn_decl_to_ir(fn_decl: &ast::FnDecl) -> Option<IrFunction> {
@@ -118,7 +118,11 @@ fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
         ast::Expr::Lit(ast::Lit::Str(s)) => {
             IrExpression::Literal(IrLiteral::Str(s.value.to_string()))
         }
-        ast::Expr::Ident(i) => IrExpression::Identifier(i.to_string()),
+        ast::Expr::Lit(ast::Lit::Bool(b)) => {
+            IrExpression::Literal(IrLiteral::Bool(b.value))
+        }
+        ast::Expr::Ident(i) => IrExpression::Identifier(i.sym.to_string()),
+        ast::Expr::Paren(p) => expr_to_ir(&p.expr),
         ast::Expr::Bin(b) => IrExpression::Binary {
             op: bin_op_to_ir(&b.op),
             left: Box::new(expr_to_ir(&b.left)),

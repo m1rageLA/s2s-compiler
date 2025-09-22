@@ -1,23 +1,23 @@
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IrModule {
     pub items: Vec<IrItem>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum IrItem {
     Variable(IrVariable),
     Function(IrFunction),
     Expression(IrExpression),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IrVariable {
     pub name: String,
     pub ty: IrType,
     pub value: Option<IrExpression>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IrFunction {
     pub name: String,
     pub params: Vec<IrParam>,
@@ -25,20 +25,20 @@ pub struct IrFunction {
     pub body: Vec<IrStmt>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum IrStmt {
     Leteral(IrVariable),
     Expression(IrExpression),
     Return(Option<IrExpression>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IrParam {
     pub name: String,
     pub ty: IrType,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IrType {
     Int,
     Str,
@@ -47,7 +47,7 @@ pub enum IrType {
     Any,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum IrExpression {
     Identifier(String),
     Literal(IrLiteral),
@@ -62,14 +62,14 @@ pub enum IrExpression {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum IrLiteral {
     Int(i32),
     Str(String),
     Bool(bool),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOp {
     EqEq,       // ==
     NotEq,      // !=
@@ -97,7 +97,7 @@ pub enum BinaryOp {
     Exp,        // ** (возведение в степень)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IrBinOp {
     Add,
     Sub,
@@ -134,7 +134,7 @@ pub enum IrBinOp {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     F64,
     Bool,
@@ -142,5 +142,5 @@ pub enum Type {
     Unit,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ident(pub String);

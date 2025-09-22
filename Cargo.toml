@@ -7,3 +7,8 @@ edition = "2024"
 lowering = { path = "src/lowering" }
 parser = { path = "src/parser" }
 ir = { path = "src/ir" }
+
+[dev-dependencies]
+swc_ecma_parser = "23.0.0"
+swc_common = "14.0.3"
+swc_ecma_ast = "15.0.0"
