@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "dev": "cargo run --release",
+    "gui": "cd gui && npm run tauri dev",
     "ast": "ts-node src/index.ts",
     "test": "vitest"
   },
