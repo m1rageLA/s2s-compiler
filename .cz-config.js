@@ -20,6 +20,7 @@ module.exports = {
     { name: 'optimizer' },
     { name: 'runtime' },
     { name: 'cli' },
+    { name: 'gui' },
     { name: 'docs' },
     { name: 'tests' },
     { name: 'infra' }

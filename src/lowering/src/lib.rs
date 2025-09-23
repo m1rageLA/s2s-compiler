@@ -23,6 +23,7 @@ pub fn ast_to_ir(module: &ast::Module) -> IrModule {
                 let ir_expr = expr_to_ir(&expr_stmt.expr);
                 items.push(IrItem::Expression(ir_expr));
             }
+
             _ => (),
         }
     }
@@ -55,11 +56,7 @@ fn var_decl_to_ir(decl: &ast::VarDeclarator) -> Option<IrVariable> {
     };
 
     let value = decl.init.as_ref().map(|expr| expr_to_ir(expr));
-    Some(IrVariable {
-        name,
-        ty,
-        value,
-    })
+    Some(IrVariable { name, ty, value })
 }
 fn fn_decl_to_ir(fn_decl: &ast::FnDecl) -> Option<IrFunction> {
     /*
@@ -118,9 +115,7 @@ fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
         ast::Expr::Lit(ast::Lit::Str(s)) => {
             IrExpression::Literal(IrLiteral::Str(s.value.to_string()))
         }
-        ast::Expr::Lit(ast::Lit::Bool(b)) => {
-            IrExpression::Literal(IrLiteral::Bool(b.value))
-        }
+        ast::Expr::Lit(ast::Lit::Bool(b)) => IrExpression::Literal(IrLiteral::Bool(b.value)),
         ast::Expr::Ident(i) => IrExpression::Identifier(i.sym.to_string()),
         ast::Expr::Paren(p) => expr_to_ir(&p.expr),
         ast::Expr::Bin(b) => IrExpression::Binary {
@@ -128,6 +123,20 @@ fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
             left: Box::new(expr_to_ir(&b.left)),
             right: Box::new(expr_to_ir(&b.right)),
         },
+
+        ast::Expr::Array(a) => IrExpression::Array(
+            a.elems
+                .iter()
+                .filter_map(|opt| opt.as_ref()) // убираем None
+                .map(|expr_or_spread| match expr_or_spread {
+                    ast::ExprOrSpread { spread: None, expr } => expr_to_ir(expr),
+                    ast::ExprOrSpread {
+                        spread: Some(_), ..
+                    } => IrExpression::Identifier("spread_not_supported".to_string()),
+                })
+                .collect::<Vec<_>>(),
+        ),
+
         _ => IrExpression::Identifier("unsupported".to_string()),
     }
 }

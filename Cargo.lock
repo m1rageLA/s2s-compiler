@@ -289,6 +289,9 @@ dependencies = [
 [[package]]
 name = "ir"
 version = "0.1.0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "is-macro"
