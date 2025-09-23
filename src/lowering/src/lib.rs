@@ -24,6 +24,10 @@ pub fn ast_to_ir(module: &ast::Module) -> IrModule {
                 items.push(IrItem::Expression(ir_expr));
             }
 
+            ast::ModuleItem::Stmt(ast::Stmt::Block(block)) => {
+                let ir_block = block_to_ir(block);
+                items.push(IrItem::Block(ir_block));
+            }
             _ => (),
         }
     }
@@ -108,6 +112,39 @@ fn ts_type_ann_to_ir(ann: &ast::TsTypeAnn) -> IrType {
         _ => IrType::Any,
     }
 }
+fn stmt_to_ir(stmt: &ast::Stmt) -> IrStmt {
+    match stmt {
+        ast::Stmt::Expr(expr_stmt) => {
+            let ir_expr = expr_to_ir(&expr_stmt.expr);
+            IrStmt::Expression(ir_expr)
+        }
+
+        ast::Stmt::Return(ret_stmt) => {
+            let value = ret_stmt
+                .arg
+                .as_ref()
+                .map(|expr| expr_to_ir(expr))
+                .unwrap_or(IrExpression::Identifier("undefined".to_string()));
+            IrStmt::Return(Some(value))
+        }
+
+        ast::Stmt::Decl(ast::Decl::Var(var_decl)) => {
+            let vars = var_decl
+                .decls
+                .iter()
+                .filter_map(|decl| var_decl_to_ir(decl))
+                .collect::<Vec<_>>();
+            IrStmt::VarDecl(vars)
+        }
+
+        ast::Stmt::Block(block) => {
+            let inner = block_to_ir(block);
+            IrStmt::Block(inner)
+        }
+
+        _ => IrStmt::Unsupported("stmt".into()),
+    }
+}
 
 fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
     match expr {
@@ -176,4 +213,12 @@ fn bin_op_to_ir(op: &ast::BinaryOp) -> IrBinOp {
 
         _ => IrBinOp::Unsupported,
     }
+}
+
+fn block_to_ir(block: &ast::BlockStmt) -> Vec<IrStmt> {
+    block
+        .stmts
+        .iter()
+        .map(stmt_to_ir) // нужно будет написать stmt_to_ir
+        .collect()
 }

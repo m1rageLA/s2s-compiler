@@ -10,6 +10,7 @@ pub enum IrItem {
     Variable(IrVariable),
     Function(IrFunction),
     Expression(IrExpression),
+    Block(Vec<IrStmt>),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -33,7 +34,9 @@ pub enum IrStmt {
     Expression(IrExpression),
     Return(Option<IrExpression>),
     Block(Vec<IrStmt>),
-    While(IrExpression, Vec<IrStmt>)
+    While(IrExpression, Vec<IrStmt>),
+    VarDecl(Vec<IrVariable>),
+    Unsupported(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
