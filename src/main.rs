@@ -19,9 +19,10 @@ fn main() {
     let code = x2;
 
     let ir = lowering::ast_to_ir(&parser::ast(code));
-    let ast = parser::ast(code);
+    let ast: swc_ecma_ast::Module = parser::ast(code);
+    let rust = codegen::gen_rust();
 
-    println!("{:#?}", ir);
+    println!("{:#?}", rust);
 }
 
 //TODO имплементировать лог ошибок компилятора ts

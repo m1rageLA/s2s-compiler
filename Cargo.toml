@@ -7,8 +7,16 @@ edition = "2024"
 lowering = { path = "src/lowering" }
 parser = { path = "src/parser" }
 ir = { path = "src/ir" }
+codegen = { path = "src/codegen" }
+serde = { version = "1.0.227", features = ["derive"] }
+serde_json = "1.0.145"
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full"] }
+swc_ecma_ast = "15.0.0"
+
 
 [dev-dependencies]
-swc_ecma_parser = "23.0.0"
-swc_common = "14.0.3"
+swc_ecma_parser = "24.0.1"
+swc_common = "14.0.4"
 swc_ecma_ast = "15.0.0"
