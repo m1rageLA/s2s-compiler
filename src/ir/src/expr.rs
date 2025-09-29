@@ -14,7 +14,7 @@ pub enum IrExpression {
         args: Vec<IrExpression>,
     },
     Array(Vec<IrExpression>),
-    RuntimeCall(IrRuntimeCall),
+    RuntimeCall(RuntimeNamespace),
     Member {
         object: Box<IrExpression>,
         property: String,
@@ -31,10 +31,6 @@ pub enum IrLiteral {
     Bool(bool),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct IrRuntimeCall {
-    pub kind: RuntimeNamespace,
-}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum RuntimeNamespace {

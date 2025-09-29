@@ -9,6 +9,7 @@ fn main() {
     
     
     let x: number = 42 + 31; x + 1;
+    console.log(x);
 
     
 ";
@@ -17,7 +18,7 @@ fn main() {
     //    (парсим один раз и по цепочке)
     let ast = parser::ast(code);
     let ir_module = lowering::ast_to_ir(&ast);
-
+    println!("ir_module: {:#?}", ir_module);
     let mut generator = ModuleGenerator::new();
     for item in &ir_module.items {
         let element = item.codegen();

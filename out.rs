@@ -1,5 +1,1 @@
-fn main() {
-    let x: i32 = (42) + (31);
-    (x) + (1);
-    
-}
+fn main () { let x : i32 = (42) + (31) ; (x) + (1) ; panic ! ("codegen for runtime call not implemented") ; }

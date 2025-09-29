@@ -36,33 +36,41 @@ fn call_to_ir(c: &ast::CallExpr) -> IrExpression {
     match &c.callee {
         ast::Callee::Expr(expr) => {
             let callee = callee_to_ir(expr);
-            let args = c
-                .args
-                .iter()
-                .map(|a| match a {
-                    ast::ExprOrSpread { spread: None, expr } => expr_to_ir(expr),
-                    _ => IrExpression::Identifier("spread_not_supported".to_string()),
-                })
-                .collect::<Vec<_>>();
+            let args = c.args.iter().map(|a| match a {
+                ast::ExprOrSpread { spread: None, expr } => expr_to_ir(expr),
+                _ => IrExpression::Identifier("spread_not_supported".to_string()),
+            }).collect::<Vec<_>>();
+
+            // Спец-случай: console.log(...)
+            if let IrExpression::Member { object, property } = &callee {
+                if matches!(**object, IrExpression::Identifier(ref s) if s == "console")
+                    && property == "log"
+                {
+                    return IrExpression::RuntimeCall(RuntimeNamespace::Console(ir::ConsoleCall::Log(args)));
+                }
+            }
+
             IrExpression::Call {
                 callee: Box::new(callee),
                 args,
             }
         }
+
         ast::Callee::Super(_) => {
-            let args = c
-                .args
-                .iter()
-                .map(|a| match a {
-                    ast::ExprOrSpread { spread: None, expr } => expr_to_ir(expr),
-                    _ => IrExpression::Identifier("spread_not_supported".to_string()),
-                })
-                .collect();
+            let args = c.args.iter().map(|a| match a {
+                ast::ExprOrSpread { spread: None, expr } => expr_to_ir(expr),
+                _ => IrExpression::Identifier("spread_not_supported".to_string()),
+            }).collect::<Vec<_>>();
+
             IrExpression::SuperCall { args }
         }
-        ast::Callee::Import(_) => IrExpression::Identifier("import_call_not_supported".to_string()),
+
+        ast::Callee::Import(_) => {
+            IrExpression::Identifier("import_call_not_supported".to_string())
+        }
     }
 }
+
 
 fn callee_to_ir(expr: &ast::Expr) -> IrExpression {
     match expr {
