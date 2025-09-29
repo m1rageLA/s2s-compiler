@@ -1,3 +1,14 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IrType {
+    Int,
+    Str,
+    Bool,
+    Unit,
+    Any,
+}
+
 #[derive(Debug, Clone)]
 pub enum Type {
     F64,
@@ -26,4 +37,3 @@ pub enum BinOp {
     Xor,
     Not,
 }
-

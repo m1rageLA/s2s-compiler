@@ -1,15 +1,33 @@
 use std::fs;
 use std::process::{Command, Stdio};
 
+use codegen::{Codegen, ModuleGenerator};
+
 fn main() {
     // 1) входные данные TS (пример)
-    let code = "let x: number;";
+    let code = "
+    
+    
+    let x: number = 42 + 31; x + 1;
+
+    
+";
 
     // 2) фронтенд твоего компилятора
     //    (парсим один раз и по цепочке)
     let ast = parser::ast(code);
-    let ir = lowering::ast_to_ir(&ast);
-    let ts = codegen::gen_module(&ir); // proc_macro2::TokenStream
+    let ir_module = lowering::ast_to_ir(&ast);
+
+    let mut generator = ModuleGenerator::new();
+    for item in &ir_module.items {
+        let element = item.codegen();
+        if !element.is_empty() {
+            println!("{}", element);
+        }
+        generator.add_element(element);
+    }
+
+    let ts = generator.finish();
 
     // 3) код как строка (то, что будем компилировать rustc)
     let rust_code = ts.to_string();
@@ -32,10 +50,14 @@ fn main() {
 /// Возвращает stdout программы или подробную ошибку со stderr компилятора.
 fn run_generated(rust: &str) -> Result<String, String> {
     // сохранить файл
-    // fs::write("out.rs", rust).map_err(|e| format!("write out.rs failed: {e}"))?;
+    fs::write("out.rs", rust).map_err(|e| format!("write out.rs failed: {e}"))?;
 
     // имя бинаря c учётом Windows
-    let bin = if cfg!(windows) { "out_bin.exe" } else { "out_bin" };
+    let bin = if cfg!(windows) {
+        "out_bin.exe"
+    } else {
+        "out_bin"
+    };
 
     // скомпилировать
     let compile = Command::new("rustc")

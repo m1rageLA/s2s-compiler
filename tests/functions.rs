@@ -1,8 +1,8 @@
 mod common;
 use common::parse_ts_module;
 
-use lowering::ast_to_ir;
 use ir::*;
+use lowering::ast_to_ir;
 
 fn only_fn(ir: &IrModule) -> &IrFunction {
     match &ir.items[0] {
@@ -13,9 +13,11 @@ fn only_fn(ir: &IrModule) -> &IrFunction {
 
 #[test]
 fn fn_with_typed_params_and_return() {
-    let m = parse_ts_module(r#"
+    let m = parse_ts_module(
+        r#"
         function add(x: number, y: number): number { return x + y; }
-    "#);
+    "#,
+    );
     let ir = ast_to_ir(&m);
     assert_eq!(ir.items.len(), 1);
     let f = only_fn(&ir);
@@ -45,17 +47,22 @@ fn fn_with_unsupported_param_pattern_is_ignored() {
     // Такой fn должен быть пропущен (возвращается None в fn_decl_to_ir)
     let m = parse_ts_module("function g({a}: {a: number}) { return a; }");
     let ir = ast_to_ir(&m);
-    assert!(ir.items.is_empty(), "function with pattern param should be ignored");
+    assert!(
+        ir.items.is_empty(),
+        "function with pattern param should be ignored"
+    );
 }
 
 #[test]
 fn module_mixed_items_keeps_only_supported() {
-    let m = parse_ts_module(r#"
+    let m = parse_ts_module(
+        r#"
         function ok(x: number): number { return x; }
         function bad({a}: any) { return a; } // игнор
         let n: number = 1;
         const {p} = obj; // игнор
-    "#);
+    "#,
+    );
     let ir = ast_to_ir(&m);
     assert_eq!(ir.items.len(), 2);
 

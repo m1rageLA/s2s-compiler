@@ -1,8 +1,8 @@
 mod common;
 use common::parse_ts_module;
 
-use lowering::ast_to_ir;
 use ir::*;
+use lowering::ast_to_ir;
 
 fn only_var(ir: &IrModule) -> &IrVariable {
     match &ir.items[0] {

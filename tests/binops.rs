@@ -1,8 +1,8 @@
 mod common;
 use common::parse_ts_module;
 
-use lowering::ast_to_ir;
 use ir::*;
+use lowering::ast_to_ir;
 
 fn op_of_var_init(ir: &IrModule) -> &IrBinOp {
     let v = match &ir.items[0] {
@@ -25,28 +25,22 @@ fn all_binary_ops_mapped() {
         ("const r = 6 / 2;", IrBinOp::Div),
         ("const r = 5 % 2;", IrBinOp::Mod),
         ("const r = 2 ** 3;", IrBinOp::Exp),
-
         ("const r = 1 == 2;", IrBinOp::Equal),
         ("const r = 1 === 2;", IrBinOp::StrictEqual),
         ("const r = 1 != 2;", IrBinOp::NotEqual),
         ("const r = 1 !== 2;", IrBinOp::StrictNotEqual),
-
         ("const r = 1 < 2;", IrBinOp::LessThan),
         ("const r = 1 <= 2;", IrBinOp::LessThanOrEqual),
         ("const r = 2 > 1;", IrBinOp::GreaterThan),
         ("const r = 2 >= 1;", IrBinOp::GreaterThanOrEqual),
-
         ("const r = 1 << 2;", IrBinOp::LeftShift),
         ("const r = 4 >> 1;", IrBinOp::RightShift),
         ("const r = 4 >>> 1;", IrBinOp::UnsignedRightShift),
-
         ("const r = 1 | 2;", IrBinOp::BitwiseOr),
         ("const r = 1 ^ 2;", IrBinOp::BitwiseXor),
         ("const r = 1 & 2;", IrBinOp::BitwiseAnd),
-
         ("const r = true || false;", IrBinOp::LogicalOr),
         ("const r = true && false;", IrBinOp::LogicalAnd),
-
         ("const r = 'x' in obj;", IrBinOp::In),
         ("const r = a instanceof B;", IrBinOp::InstanceOf),
     ];
@@ -65,8 +59,13 @@ fn binary_subtrees_are_recursively_converted() {
     let m = parse_ts_module("const z = (1 + 2) * (3 - 4);");
     let ir = ast_to_ir(&m);
 
-    let v = match &ir.items[0] { IrItem::Variable(v) => v, _ => unreachable!() };
-    let IrExpression::Binary { op, left, right } = v.value.as_ref().unwrap() else { unreachable!() };
+    let v = match &ir.items[0] {
+        IrItem::Variable(v) => v,
+        _ => unreachable!(),
+    };
+    let IrExpression::Binary { op, left, right } = v.value.as_ref().unwrap() else {
+        unreachable!()
+    };
 
     assert_eq!(*op, IrBinOp::Mul);
 

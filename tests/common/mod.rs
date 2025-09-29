@@ -1,7 +1,7 @@
 // Общие хелперы для всех тестов
 use swc_common::{FileName, SourceMap};
 use swc_ecma_ast as ast;
-use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
+use swc_ecma_parser::{Parser, StringInput, Syntax, TsSyntax, lexer::Lexer};
 
 pub fn parse_ts_module(src: &str) -> ast::Module {
     let cm = SourceMap::default();
