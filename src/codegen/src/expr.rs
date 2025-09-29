@@ -21,6 +21,9 @@ impl Codegen for IrExpression {
             }
             IrExpression::Call { .. } => unsupported_expr("call expression"),
             IrExpression::Array(_) => unsupported_expr("array expression"),
+            IrExpression::RuntimeCall(_) => unsupported_expr("runtime call"),
+            IrExpression::Member { .. } => unsupported_expr("member expression"),
+            IrExpression::SuperCall { .. } => unsupported_expr("super call"),
         }
     }
 }

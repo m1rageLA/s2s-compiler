@@ -14,6 +14,14 @@ pub enum IrExpression {
         args: Vec<IrExpression>,
     },
     Array(Vec<IrExpression>),
+    RuntimeCall(IrRuntimeCall),
+    Member {
+        object: Box<IrExpression>,
+        property: String,
+    },
+    SuperCall {
+        args: Vec<IrExpression>,
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -22,6 +30,23 @@ pub enum IrLiteral {
     Str(String),
     Bool(bool),
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct IrRuntimeCall {
+    pub kind: RuntimeNamespace,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum RuntimeNamespace {
+    Console(ConsoleCall),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ConsoleCall {
+    Log(Vec<IrExpression>),
+    Error(Vec<IrExpression>),
+}
+
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IrBinOp {
