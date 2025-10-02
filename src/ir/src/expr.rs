@@ -40,7 +40,6 @@ pub enum RuntimeNamespace {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ConsoleCall {
     Log(Vec<IrExpression>),
-    Error(Vec<IrExpression>),
 }
 
 

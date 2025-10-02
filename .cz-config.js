@@ -10,11 +10,11 @@ module.exports = {
   ],
 
   scopes: [
+    { name: 'runtime' },
     { name: 'ast' },
     { name: 'ir' },
     { name: 'codegen' },
     { name: 'compiler' },
-    { name: 'codegen' },
     { name: 'lexer' },
     { name: 'parser' },
     { name: 'tokenizer' },

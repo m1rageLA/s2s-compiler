@@ -1,3 +1,4 @@
+#[derive(Debug, Clone)]
 pub enum Value {
     Number(f64),
     String(String),
@@ -12,8 +13,8 @@ impl ToString for Value {
             Value::Number(n) => n.to_string(),
             Value::String(s) => s.clone(),
             Value::Bool(b) => b.to_string(),
-            JsValue::Null => "null".into(),
-            JsValue::Undefined => "undefined".into(),
+            Value::Null => "null".into(),
+            Value::Undefined => "undefined".into(),
         }
     }
 }

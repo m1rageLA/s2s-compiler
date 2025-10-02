@@ -8,7 +8,7 @@ lowering = { path = "src/lowering" }
 parser = { path = "src/parser" }
 ir = { path = "src/ir" }
 codegen = { path = "src/codegen" }
-
+runtime = { path = "src/runtime"}
 
 quote = "1"
 syn = { version = "2", features = ["full"] }

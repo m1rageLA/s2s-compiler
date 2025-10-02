@@ -1,6 +1,7 @@
-use ir::{IrBinOp, IrExpression, IrLiteral};
+use ir::{ConsoleCall, IrBinOp, IrExpression, IrLiteral, RuntimeNamespace};
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
+use runtime::{console::log, value::Value};
 
 use crate::Codegen;
 
@@ -21,7 +22,12 @@ impl Codegen for IrExpression {
             }
             IrExpression::Call { .. } => unsupported_expr("call expression"),
             IrExpression::Array(_) => unsupported_expr("array expression"),
-            IrExpression::RuntimeCall(_) => unsupported_expr("runtime call"),
+
+            IrExpression::RuntimeCall(RuntimeNamespace::Console(ConsoleCall::Log(args))) => {
+                let arg_tokens: Vec<TokenStream> = args.iter().map(|a| a.codegen(),).collect();
+                quote! { runtime::console::log(vec![ #( #arg_tokens ),* ]) }
+            }
+
             IrExpression::Member { .. } => unsupported_expr("member expression"),
             IrExpression::SuperCall { .. } => unsupported_expr("super call"),
         }
