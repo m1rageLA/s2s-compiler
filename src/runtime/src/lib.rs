@@ -5,7 +5,5 @@ pub mod value;
 
 pub mod prelude {
     pub use crate::console::*;
-    pub use crate::math::*;
-    pub use crate::time::*;
     pub use crate::value::*;
 }

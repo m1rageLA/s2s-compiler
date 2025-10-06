@@ -1,16 +1,12 @@
 use codegen::{Codegen, ModuleGenerator};
-use runtime::console::log;
-use runtime::value::Value;
 use std::fs;
 use std::process::{Command, Stdio};
 
 fn main() {
-    // 1) входные данные TS (пример)
     let code = "
     
-    
-    let x: number = 42 + 31; x + 1;
-    console.log('ЗАЛУЦЫФВДЖЫЛЖДЫВЛЖЫЛФДЛЫЖДВЛЖФЫЛЛВЫЛДФЫЛВЖДЛДФВЛЫ', 'asddsadassdasddsasads', 'asdsaad');
+    let x: number = 10
+    console.log(`${x}`);
 ";
 
     // 2) фронтенд твоего компилятора
@@ -42,21 +38,18 @@ fn main() {
             eprintln!("Failed to compile/run generated code:\n{}", err);
         }
     }
-
-    // 5) по желанию — вывести сам сгенерированный Rust
-    // println!("--- generated.rs ---\n{}", rust_code);
 }
 
-/// Компилирует `rust` с помощью `rustc` и запускает бинарь.
-/// Возвращает stdout программы или подробную ошибку со stderr компилятора.
 fn run_generated(rust: &str) -> Result<String, String> {
+    fs::create_dir_all("out/src").map_err(|e| format!("create out dir failed: {e}"))?;
     // сохранить файл
-    fs::write("src/out/src/main.rs", rust).map_err(|e| format!("write out.rs failed: {e}"))?;
+    fs::write("out/src/main.rs", rust)
+        .map_err(|e| format!("write out/src/main.rs failed: {e}"))?;
 
-    // собрать и запустить сгенерированный проект в `src/out`
+    // собрать и запустить сгенерированный проект в `out`
     let run = Command::new("cargo")
         .args(["run", "--quiet"])
-        .current_dir("src/out")
+        .current_dir("out")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
