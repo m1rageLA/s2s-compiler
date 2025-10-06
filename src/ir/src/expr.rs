@@ -19,6 +19,7 @@ pub enum IrExpression {
         object: Box<IrExpression>,
         property: String,
     },
+    Template(Vec<IrTemplatePart>),
     SuperCall {
         args: Vec<IrExpression>,
     }
@@ -40,6 +41,12 @@ pub enum RuntimeNamespace {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ConsoleCall {
     Log(Vec<IrExpression>),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum IrTemplatePart {
+    String(String),
+    Expr(Box<IrExpression>),
 }
 
 

@@ -1,4 +1,4 @@
-use ir::{IrBinOp, IrExpression, IrLiteral, RuntimeNamespace};
+use ir::{IrBinOp, IrExpression, IrLiteral, IrTemplatePart, RuntimeNamespace};
 use swc_ecma_ast::{self as ast};
 
 pub(crate) fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
@@ -28,6 +28,7 @@ pub(crate) fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
                 })
                 .collect(),
         ),
+        ast::Expr::Tpl(tpl) => IrExpression::Template(template_to_ir(tpl)),
         _ => IrExpression::Identifier("unsupported".to_string()),
     }
 }
@@ -69,6 +70,24 @@ fn call_to_ir(c: &ast::CallExpr) -> IrExpression {
             IrExpression::Identifier("import_call_not_supported".to_string())
         }
     }
+}
+
+fn template_to_ir(tpl: &ast::Tpl) -> Vec<IrTemplatePart> {
+    let mut parts = Vec::new();
+
+    for (idx, quasi) in tpl.quasis.iter().enumerate() {
+        let cooked = quasi
+            .cooked
+            .as_ref()
+            .map(|atom| atom.to_string())
+            .unwrap_or_else(|| quasi.raw.to_string());
+        parts.push(IrTemplatePart::String(cooked));
+        if let Some(expr) = tpl.exprs.get(idx) {
+            parts.push(IrTemplatePart::Expr(Box::new(expr_to_ir(expr))));
+        }
+    }
+
+    parts
 }
 
 

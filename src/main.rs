@@ -6,7 +6,7 @@ fn main() {
     let code = "
     
     let x: number = 10
-    console.log(`${x}`);
+    console.log(`${x+2}saa`);
 ";
 
     // 2) фронтенд твоего компилятора

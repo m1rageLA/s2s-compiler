@@ -1,4 +1,4 @@
-use ir::{ConsoleCall, IrBinOp, IrExpression, IrLiteral, RuntimeNamespace};
+use ir::{ConsoleCall, IrBinOp, IrExpression, IrLiteral, IrTemplatePart, RuntimeNamespace};
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
@@ -21,6 +21,8 @@ impl Codegen for IrExpression {
             }
             IrExpression::Call { .. } => unsupported_expr("call expression"),
             IrExpression::Array(_) => unsupported_expr("array expression"),
+
+            IrExpression::Template(parts) => template_literal_tokens(parts),
 
             IrExpression::RuntimeCall(RuntimeNamespace::Console(ConsoleCall::Log(args))) => {
                 let arg_tokens: Vec<TokenStream> = args
@@ -61,6 +63,42 @@ impl Codegen for IrLiteral {
             }
         }
     }
+}
+
+fn template_literal_tokens(parts: &[IrTemplatePart]) -> TokenStream {
+    let mut format_string = String::new();
+    let mut expr_tokens: Vec<TokenStream> = Vec::new();
+
+    for part in parts {
+        match part {
+            IrTemplatePart::String(text) => format_string.push_str(&escape_format_text(text)),
+            IrTemplatePart::Expr(expr) => {
+                format_string.push_str("{}");
+                let inner = expr.codegen();
+                expr_tokens.push(quote! { runtime::console::stringify(&(#inner)) });
+            }
+        }
+    }
+
+    let fmt_literal = Literal::string(&format_string);
+
+    if expr_tokens.is_empty() {
+        quote! { #fmt_literal.to_string() }
+    } else {
+        quote! { format!(#fmt_literal #(, #expr_tokens)*) }
+    }
+}
+
+fn escape_format_text(text: &str) -> String {
+    let mut escaped = String::with_capacity(text.len());
+    for ch in text.chars() {
+        match ch {
+            '{' => escaped.push_str("{{"),
+            '}' => escaped.push_str("}}"),
+            _ => escaped.push(ch),
+        }
+    }
+    escaped
 }
 
 fn binary_op_tokens(op: IrBinOp, left: TokenStream, right: TokenStream) -> TokenStream {
