@@ -1,6 +1,10 @@
-function add(a: number, b: number): number {
-    return a + b;
+function fib(n: number): number {
+    if (n <= 1) {
+        return n;
+    }
+    return fib(n - 1) + fib(n - 2);
 }
 
-const x: number = add(2, 3);
-console.log(x);
+const INPUT: number = 20;
+
+console.log(fib(INPUT));

@@ -1,0 +1,38 @@
+// Re-export shared types and aliases for submodules
+pub(crate) use ir::{
+    IrBinOp, IrExpression, IrLiteral, IrTemplatePart, RuntimeNamespace,
+};
+pub(crate) use swc_ecma_ast as ast;
+
+mod binary;
+mod unary;
+mod call;
+mod arrow;
+mod literal;
+mod template;
+mod array;
+
+pub use binary::*;
+pub use unary::*;
+pub use call::*;
+pub use arrow::*;
+pub use literal::*;
+pub use template::*;
+pub use array::*;
+
+pub(crate) fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
+    match expr {
+        ast::Expr::Lit(ast::Lit::Num(n)) => IrExpression::Literal(IrLiteral::Number(n.value)),
+        ast::Expr::Lit(ast::Lit::Str(s)) => IrExpression::Literal(IrLiteral::Str(s.value.to_string())),
+        ast::Expr::Lit(ast::Lit::Bool(b)) => IrExpression::Literal(IrLiteral::Bool(b.value)),
+        ast::Expr::Ident(i) => IrExpression::Identifier(i.sym.to_string()),
+        ast::Expr::Paren(p) => expr_to_ir(&p.expr),
+        ast::Expr::Bin(b) => binary_expr_to_ir(b),
+        ast::Expr::Unary(u) => unary_expr_to_ir(u),
+        ast::Expr::Call(call) => call_to_ir(call),
+        ast::Expr::Array(a) => array_expr_to_ir(a),
+        ast::Expr::Tpl(tpl) => IrExpression::Template(template_to_ir(tpl)),
+        
+        _ => IrExpression::Identifier("unsupported".to_string()),
+    }
+}
