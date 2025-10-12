@@ -1,7 +1,8 @@
-use ir::{IrFunction, IrParam, IrType, IrVariable};
+use ir::{IrFunction, IrType, IrVariable};
 use swc_ecma_ast::{self as ast};
 
 use crate::expressions::expr_to_ir;
+use crate::params::params_to_ir;
 use crate::statements::block_to_ir;
 use crate::types::ts_type_ann_to_ir;
 
@@ -28,23 +29,7 @@ pub(crate) fn var_decl_to_ir(decl: &ast::VarDeclarator) -> Option<IrVariable> {
 pub(crate) fn fn_decl_to_ir(fn_decl: &ast::FnDecl) -> Option<IrFunction> {
     let name = fn_decl.ident.sym.to_string();
 
-    let mut params: Vec<IrParam> = Vec::new();
-    for p in &fn_decl.function.params {
-        match &p.pat {
-            ast::Pat::Ident(ast::BindingIdent { id, type_ann }) => {
-                let param_name = id.sym.to_string();
-                let param_ty = type_ann
-                    .as_ref()
-                    .map(|ann| ts_type_ann_to_ir(ann))
-                    .unwrap_or(IrType::Any);
-                params.push(IrParam {
-                    name: param_name,
-                    ty: param_ty,
-                });
-            }
-            _ => return None,
-        }
-    }
+    let params = params_to_ir(&fn_decl.function.params);
 
     let ret_ty = fn_decl
         .function

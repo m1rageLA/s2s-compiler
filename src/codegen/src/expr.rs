@@ -1,8 +1,12 @@
-use ir::{ConsoleCall, IrBinOp, IrExpression, IrLiteral, IrTemplatePart, RuntimeNamespace};
+use ir::{
+    ConsoleCall, IrArrowBody, IrBinOp, IrExpression, IrLiteral, IrParam, IrTemplatePart,
+    RuntimeNamespace,
+};
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
 use crate::Codegen;
+use crate::function::render_type;
 
 impl Codegen for IrExpression {
     type Output = TokenStream;
@@ -36,13 +40,13 @@ impl Codegen for IrExpression {
             IrExpression::Array(_) => unsupported_expr("array expression"),
             IrExpression::Member { object, property } => member_tokens(object, property),
             IrExpression::SuperCall { .. } => unsupported_expr("super call"),
+            IrExpression::Arrow { params, body } => arrow_tokens(params, body),
         }
     }
 }
 
 impl Codegen for IrLiteral {
     type Output = TokenStream;
-
     fn codegen(&self) -> TokenStream {
         match self {
             IrLiteral::Number(value) => {
@@ -64,6 +68,29 @@ impl Codegen for IrLiteral {
     }
 }
 
+fn arrow_tokens(params: &[IrParam], body: &IrArrowBody) -> TokenStream {
+    let param_bindings: Vec<TokenStream> = params
+        .iter()
+        .map(|param| {
+            let ident = format_ident!("{}", param.name);
+            let ty = render_type(&param.ty);
+            quote! { #ident: #ty }
+        })
+        .collect();
+
+    match body {
+        IrArrowBody::Expr(expr) => {
+            let params = &param_bindings;
+            let expr_tokens = expr.codegen();
+            quote! { move | #( #params ),* | { #expr_tokens } }
+        }
+        IrArrowBody::Block(stmts) => {
+            let params = &param_bindings;
+            let stmt_tokens = stmts.iter().map(|stmt| stmt.codegen());
+            quote! { move | #( #params ),* | { #( #stmt_tokens )* } }
+        }
+    }
+}
 fn template_literal_tokens(parts: &[IrTemplatePart]) -> TokenStream {
     let mut format_string = String::new();
     let mut expr_tokens: Vec<TokenStream> = Vec::new();

@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::{IrParam, IrStmt};
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum IrExpression {
     Identifier(String),
@@ -14,6 +16,10 @@ pub enum IrExpression {
         args: Vec<IrExpression>,
     },
     Array(Vec<IrExpression>),
+    Arrow {
+        params: Vec<IrParam>,
+        body: IrArrowBody,
+    },
     RuntimeCall(RuntimeNamespace),
     Member {
         object: Box<IrExpression>,
@@ -22,7 +28,13 @@ pub enum IrExpression {
     Template(Vec<IrTemplatePart>),
     SuperCall {
         args: Vec<IrExpression>,
-    }
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum IrArrowBody {
+    Expr(Box<IrExpression>),
+    Block(Vec<IrStmt>),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -31,7 +43,6 @@ pub enum IrLiteral {
     Str(String),
     Bool(bool),
 }
-
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum RuntimeNamespace {
@@ -48,7 +59,6 @@ pub enum IrTemplatePart {
     String(String),
     Expr(Box<IrExpression>),
 }
-
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IrBinOp {

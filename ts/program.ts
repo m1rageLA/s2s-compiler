@@ -1,10 +1,10 @@
-function fib(n: number): number {
-    if (n <= 1) {
-        return n;
-    }
-    return fib(n - 1) + fib(n - 2);
-}
+const double = (x: number) => x * 2;
 
-const INPUT: number = 20;
+const add = (a: number, b: number) => {
+    const sum = a + b;
+    const msg = sum + sum;
+    console.log(msg);
+    return double(sum);
+};
 
-console.log(fib(INPUT));
+console.log(add(2, 3));

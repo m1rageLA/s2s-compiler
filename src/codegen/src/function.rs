@@ -30,20 +30,29 @@ impl Codegen for IrVariable {
 
     fn codegen(&self) -> TokenStream {
         let ident = format_ident!("{}", self.name);
-        let ty = render_type(&self.ty);
         let value = self
             .value
             .as_ref()
             .map(|expr| expr.codegen())
             .unwrap_or_else(|| default_value(&self.ty));
 
-        quote! {
-            let #ident: #ty = #value;
+        match &self.ty {
+            IrType::Any => {
+                quote! {
+                    let #ident = #value;
+                }
+            }
+            _ => {
+                let ty = render_type(&self.ty);
+                quote! {
+                    let #ident: #ty = #value;
+                }
+            }
         }
     }
 }
 
-fn render_type(ty: &IrType) -> TokenStream {
+pub(crate) fn render_type(ty: &IrType) -> TokenStream {
     match ty {
         IrType::Number => quote! { f64 },
         IrType::Str => quote! { ::std::string::String },

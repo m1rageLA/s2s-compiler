@@ -1,6 +1,6 @@
 // Re-export shared types and aliases for submodules
 pub(crate) use ir::{
-    IrBinOp, IrExpression, IrLiteral, IrTemplatePart, RuntimeNamespace,
+    IrArrowBody, IrBinOp, IrExpression, IrLiteral, IrTemplatePart, RuntimeNamespace,
 };
 pub(crate) use swc_ecma_ast as ast;
 
@@ -33,6 +33,7 @@ pub(crate) fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
         ast::Expr::Call(call) => call_to_ir(call),
         ast::Expr::Array(a) => array_expr_to_ir(a),
         ast::Expr::Tpl(tpl) => template_expr_to_ir(tpl),
+        ast::Expr::Arrow(arw) => arrow_expr_to_ir(arw),
 
         _ => IrExpression::Identifier("unsupported".to_string()),
     }
