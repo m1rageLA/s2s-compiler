@@ -17,3 +17,7 @@ pub(crate) fn template_to_ir(tpl: &ast::Tpl) -> Vec<IrTemplatePart> {
 
     parts
 }
+
+pub(crate) fn template_expr_to_ir(tpl: &ast::Tpl) -> IrExpression {
+    IrExpression::Template(template_to_ir(tpl))
+}

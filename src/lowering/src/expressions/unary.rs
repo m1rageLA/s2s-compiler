@@ -1,4 +1,5 @@
 use super::*;
+use super::expr_to_ir;
 
 pub fn unary_expr_to_ir(u: &ast::UnaryExpr) -> IrExpression {
     let inner = expr_to_ir(&u.arg);
@@ -16,4 +17,8 @@ pub fn unary_expr_to_ir(u: &ast::UnaryExpr) -> IrExpression {
         ast::UnaryOp::Plus => inner,
         _ => IrExpression::Identifier("unsupported_unary".to_string()),
     }
+}
+
+pub(crate) fn paren_to_ir(p: &ast::ParenExpr) -> IrExpression {
+    expr_to_ir(&p.expr)
 }
