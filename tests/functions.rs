@@ -25,13 +25,23 @@ fn fn_with_typed_params_and_return() {
     assert_eq!(f.name, "add");
     assert_eq!(f.params.len(), 2);
     assert_eq!(f.params[0].name, "x");
-    assert_eq!(f.params[0].ty, IrType::Int);
+    assert_eq!(f.params[0].ty, IrType::Number);
     assert_eq!(f.params[1].name, "y");
-    assert_eq!(f.params[1].ty, IrType::Int);
-    assert_eq!(f.ret, IrType::Int);
+    assert_eq!(f.params[1].ty, IrType::Number);
+    assert_eq!(f.ret, IrType::Number);
 
-    // body пока пустой в твоей реализации
-    assert!(f.body.is_empty());
+    match f.body.as_slice() {
+        [IrStmt::Return(Some(IrExpression::Binary { op: IrBinOp::Add, left, right }))] => {
+            match (&**left, &**right) {
+                (IrExpression::Identifier(l), IrExpression::Identifier(r)) => {
+                    assert_eq!(l, "x");
+                    assert_eq!(r, "y");
+                }
+                other => panic!("unexpected operands in return expression: {:?}", other),
+            }
+        }
+        other => panic!("unexpected function body: {:?}", other),
+    }
 }
 
 #[test]

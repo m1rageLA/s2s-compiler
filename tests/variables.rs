@@ -19,12 +19,12 @@ fn var_number_with_type_and_init_number() {
 
     let v = only_var(&ir);
     assert_eq!(v.name, "x");
-    assert_eq!(v.ty, IrType::Int);
+    assert_eq!(v.ty, IrType::Number);
 
     let init = v.value.as_ref().expect("init expected");
     match init {
-        IrExpression::Literal(IrLiteral::Int(n)) => assert_eq!(*n, 42),
-        _ => panic!("expected int literal"),
+        IrExpression::Literal(IrLiteral::Number(n)) => assert_eq!(*n, 42.0),
+        _ => panic!("expected number literal"),
     }
 }
 
@@ -63,13 +63,23 @@ fn var_without_type_becomes_any() {
 
 #[test]
 fn var_init_unsupported_expr_marks_identifier_unsupported() {
-    // Инициализация массивом — твой expr_to_ir вернет Identifier(\"unsupported\")
+    // Инициализация массивом — проверяем что элементы понижаются в литералы
     let m = parse_ts_module("let arr = [1,2,3];");
     let ir = ast_to_ir(&m);
     let v = only_var(&ir);
     match v.value.as_ref().unwrap() {
-        IrExpression::Identifier(s) => assert_eq!(s, "unsupported"),
-        _ => panic!("expected unsupported identifier"),
+        IrExpression::Array(items) => {
+            assert_eq!(items.len(), 3);
+            for (idx, item) in items.iter().enumerate() {
+                match item {
+                    IrExpression::Literal(IrLiteral::Number(n)) => {
+                        assert_eq!(*n, (idx as f64) + 1.0);
+                    }
+                    other => panic!("expected literal number, got {:?}", other),
+                }
+            }
+        }
+        other => panic!("expected array literal, got {:?}", other),
     }
 }
 

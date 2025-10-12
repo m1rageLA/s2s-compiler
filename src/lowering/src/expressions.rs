@@ -3,7 +3,7 @@ use swc_ecma_ast::{self as ast};
 
 pub(crate) fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
     match expr {
-        ast::Expr::Lit(ast::Lit::Num(n)) => IrExpression::Literal(IrLiteral::Int(n.value as i128)),
+        ast::Expr::Lit(ast::Lit::Num(n)) => IrExpression::Literal(IrLiteral::Number(n.value)),
         ast::Expr::Lit(ast::Lit::Str(s)) => {
             IrExpression::Literal(IrLiteral::Str(s.value.to_string()))
         }
@@ -15,6 +15,7 @@ pub(crate) fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
             left: Box::new(expr_to_ir(&b.left)),
             right: Box::new(expr_to_ir(&b.right)),
         },
+        ast::Expr::Unary(u) => unary_expr_to_ir(u),
         ast::Expr::Call(call) => call_to_ir(call),
         ast::Expr::Array(a) => IrExpression::Array(
             a.elems
@@ -30,6 +31,24 @@ pub(crate) fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
         ),
         ast::Expr::Tpl(tpl) => IrExpression::Template(template_to_ir(tpl)),
         _ => IrExpression::Identifier("unsupported".to_string()),
+    }
+}
+
+fn unary_expr_to_ir(u: &ast::UnaryExpr) -> IrExpression {
+    let inner = expr_to_ir(&u.arg);
+    match u.op {
+        ast::UnaryOp::Minus => match inner {
+            IrExpression::Literal(IrLiteral::Number(value)) => {
+                IrExpression::Literal(IrLiteral::Number(-value))
+            }
+            _ => IrExpression::Binary {
+                op: IrBinOp::Sub,
+                left: Box::new(IrExpression::Literal(IrLiteral::Number(0.0))),
+                right: Box::new(inner),
+            },
+        },
+        ast::UnaryOp::Plus => inner,
+        _ => IrExpression::Identifier("unsupported_unary".to_string()),
     }
 }
 

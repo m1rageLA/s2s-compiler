@@ -1,6 +1,6 @@
 #[derive(Debug, Clone)]
 pub enum Value {
-    Number(i128),
+    Number(f64),
     String(String),
     Bool(bool),
     Null,

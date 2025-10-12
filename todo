@@ -1,0 +1,59 @@
+# TODO: Unsupported features — prioritized
+
+High priority
+- ClassDeclaration
+  - Why: Core JS/TS feature, needed for most OOP code.
+  - Where: src/ir/, src/lowering/, src/codegen/
+  - Next action: Add IR node for class, lowering from SWC class AST, codegen -> Rust struct + impl, runtime prototype handling, add unit tests.
+
+- Functions: async / generator / arrow / closures
+  - Why: Async/generators are common; closures require environment capture.
+  - Where: src/ir/function.rs, src/lowering/, src/codegen/, src/runtime/
+  - Next action: Represent async/generator in IR, lower to appropriate runtime/future/iterator patterns, ensure closure environments are captured and tested.
+
+- Modules / Imports / Exports (ESM)
+  - Why: Module resolution and exports are necessary for multi-file projects.
+  - Where: src/lowering/, src/codegen/, out/
+  - Next action: Implement module graph, support default/named/namespace imports, output modularized Rust or runtime loader, add integration tests.
+
+- Runtime Value model (Object/Array/Function/Promise)
+  - Why: Accurate runtime semantics required for correct behavior.
+  - Where: src/runtime/
+  - Next action: Complete Value type, property lookup/prototype chain, arrays internals, promises scheduling; add tests.
+
+- Error handling: try/catch/finally / throw
+  - Why: Control-flow semantics and stack behavior.
+  - Where: src/ir/, src/codegen/, src/runtime/
+  - Next action: Lower try/catch to error propagation model (anyhow/runtime errors), implement catch binding and finally semantics, add tests.
+
+Medium priority
+- TypeScript types: generics / unions / intersections
+  - Where: src/lowering/, src/ir/types.rs
+  - Next action: Add lightweight IR for generics/union shapes; focus on runtime shape checks needed by codegen.
+
+- Destructuring / Spread / Rest
+  - Where: src/lowering/, src/codegen/
+  - Next action: Implement lowering patterns that create temps and correct copy/assign semantics.
+
+- Iteration constructs: for..of, for..in, switch
+  - Where: src/lowering/, src/codegen/
+  - Next action: Map to iterator protocols and property enumeration helpers in runtime.
+
+- Template literals / tagged templates
+  - Where: src/lowering/, src/codegen/
+  - Next action: Support interpolation and tag function call lowering.
+
+Low priority
+- Enums (TS and const enums)
+  - Next action: Map to Rust enums or const values; optimize when const.
+
+- Decorators / Metadata
+  - Next action: Implement decorator application order and metadata storage in runtime.
+
+- JSX/TSX (optional)
+  - Next action: If required, transform to runtime calls or React-compatible output in GUI path.
+
+General recommendations
+- Start with ClassDeclaration and Functions (async/generator) — they unblock most real-world code.
+- For each feature: add tests under tests/, create small TS examples in tests/fixtures/, and ensure build -> rustc flow still works.
+- Mark each implemented feature with a short CHANGELOG entry and add TODO comments linking failing tests to tasks.

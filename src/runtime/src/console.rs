@@ -70,17 +70,29 @@ impl ConsoleArg for bool {
 
 impl ConsoleArg for i32 {
     fn to_value(&self) -> Value {
-        Value::Number(*self as i128)
+        Value::Number(*self as f64)
     }
 }
 
 impl ConsoleArg for i64 {
     fn to_value(&self) -> Value {
-        Value::Number(*self as i128)
+        Value::Number(*self as f64)
     }
 }
 
 impl ConsoleArg for i128 {
+    fn to_value(&self) -> Value {
+        Value::Number(*self as f64)
+    }
+}
+
+impl ConsoleArg for f32 {
+    fn to_value(&self) -> Value {
+        Value::Number(*self as f64)
+    }
+}
+
+impl ConsoleArg for f64 {
     fn to_value(&self) -> Value {
         Value::Number(*self)
     }

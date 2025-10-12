@@ -45,8 +45,8 @@ impl Codegen for IrLiteral {
 
     fn codegen(&self) -> TokenStream {
         match self {
-            IrLiteral::Int(value) => {
-                let lit = Literal::i128_unsuffixed(*value);
+            IrLiteral::Number(value) => {
+                let lit = Literal::f64_unsuffixed(*value);
                 quote! { #lit }
             }
             IrLiteral::Str(value) => {

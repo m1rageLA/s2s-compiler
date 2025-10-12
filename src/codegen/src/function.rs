@@ -45,7 +45,7 @@ impl Codegen for IrVariable {
 
 fn render_type(ty: &IrType) -> TokenStream {
     match ty {
-        IrType::Int => quote! { i128 },
+        IrType::Number => quote! { f64 },
         IrType::Str => quote! { ::std::string::String },
         IrType::Bool => quote! { bool },
         IrType::Unit => quote! { () },
@@ -55,7 +55,7 @@ fn render_type(ty: &IrType) -> TokenStream {
 
 fn default_value(ty: &IrType) -> TokenStream {
     match ty {
-        IrType::Int => quote! { 0i128 },
+        IrType::Number => quote! { 0.0f64 },
         IrType::Str => quote! { ::std::string::String::new() },
         IrType::Bool => quote! { false },
         IrType::Unit => quote! { () },
