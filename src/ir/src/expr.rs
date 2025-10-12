@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{IrParam, IrStmt};
+use crate::{IrParam, IrStmt, IrType};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum IrExpression {
@@ -29,6 +29,11 @@ pub enum IrExpression {
     SuperCall {
         args: Vec<IrExpression>,
     },
+    Conditional {
+        test: Box<IrExpression>,
+        consequent: Box<IrExpression>,
+        alternate: Box<IrExpression>,
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

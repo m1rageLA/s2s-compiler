@@ -1,0 +1,55 @@
+use ir::{IrExpression, RuntimeNamespace};
+use proc_macro2::TokenStream;
+
+use crate::Codegen;
+
+mod arrow;
+mod binary;
+mod call;
+mod identifier;
+mod literal;
+mod member;
+mod runtime;
+mod template;
+mod unsupported;
+
+use arrow::arrow_tokens;
+use binary::binary_op_tokens;
+use call::call_tokens;
+use identifier::identifier_tokens;
+use member::member_tokens;
+use runtime::runtime_call_tokens;
+use template::template_literal_tokens;
+use unsupported::unsupported_expr;
+
+impl Codegen for IrExpression {
+    type Output = TokenStream;
+
+    fn codegen(&self) -> TokenStream {
+        match self {
+            IrExpression::Identifier(name) => identifier_tokens(name),
+            IrExpression::Literal(literal) => literal.codegen(),
+            IrExpression::Binary { op, left, right } => {
+                let left_tokens = left.codegen();
+                let right_tokens = right.codegen();
+                binary_op_tokens(*op, left_tokens, right_tokens)
+            }
+            IrExpression::Template(parts) => template_literal_tokens(parts),
+            IrExpression::RuntimeCall(namespace) => runtime_call_tokens(namespace),
+            IrExpression::Call { callee, args } => call_tokens(callee, args),
+            IrExpression::Array(_) => unsupported_expr("array expression"),
+            IrExpression::Member { object, property } => member_tokens(object, property),
+            IrExpression::SuperCall { .. } => unsupported_expr("super call"),
+            IrExpression::Arrow { params, body } => arrow_tokens(params, body),
+            IrExpression::Conditional { .. } => unsupported_expr("expression"),
+        }
+    }
+}
+
+impl Codegen for RuntimeNamespace {
+    type Output = TokenStream;
+
+    fn codegen(&self) -> TokenStream {
+        runtime_call_tokens(self)
+    }
+}

@@ -16,8 +16,7 @@ fn main() {
                 run_ast();
                 return;
             }
-            _ => 
-            { 
+            _ => {
                 run_pipeline();
                 return;
             }

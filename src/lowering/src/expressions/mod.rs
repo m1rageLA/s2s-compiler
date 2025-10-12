@@ -11,12 +11,14 @@ mod arrow;
 mod literal;
 mod template;
 mod array;
+mod conditional;
 // helpers removed; we colocate simple helpers in existing modules
 
 pub use binary::*;
 pub use unary::*;
 pub use call::*;
 pub use arrow::*;
+pub use conditional::*;
 pub use literal::*;
 pub use template::*;
 pub use array::*;
@@ -34,6 +36,7 @@ pub(crate) fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
         ast::Expr::Array(a) => array_expr_to_ir(a),
         ast::Expr::Tpl(tpl) => template_expr_to_ir(tpl),
         ast::Expr::Arrow(arw) => arrow_expr_to_ir(arw),
+        ast::Expr::Cond(cond) => cond_expr_to_ir(cond),
 
         _ => IrExpression::Identifier("unsupported".to_string()),
     }

@@ -31,15 +31,19 @@ fn fn_with_typed_params_and_return() {
     assert_eq!(f.ret, IrType::Number);
 
     match f.body.as_slice() {
-        [IrStmt::Return(Some(IrExpression::Binary { op: IrBinOp::Add, left, right }))] => {
-            match (&**left, &**right) {
-                (IrExpression::Identifier(l), IrExpression::Identifier(r)) => {
-                    assert_eq!(l, "x");
-                    assert_eq!(r, "y");
-                }
-                other => panic!("unexpected operands in return expression: {:?}", other),
+        [
+            IrStmt::Return(Some(IrExpression::Binary {
+                op: IrBinOp::Add,
+                left,
+                right,
+            })),
+        ] => match (&**left, &**right) {
+            (IrExpression::Identifier(l), IrExpression::Identifier(r)) => {
+                assert_eq!(l, "x");
+                assert_eq!(r, "y");
             }
-        }
+            other => panic!("unexpected operands in return expression: {:?}", other),
+        },
         other => panic!("unexpected function body: {:?}", other),
     }
 }
