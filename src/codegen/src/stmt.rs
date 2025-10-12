@@ -23,6 +23,20 @@ impl Codegen for IrStmt {
                 let stmt_tokens = stmts.iter().map(|stmt| stmt.codegen());
                 quote! { { #(#stmt_tokens)* } }
             }
+            IrStmt::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                let condition_tokens = condition.codegen();
+                let then_tokens = then_branch.iter().map(|stmt| stmt.codegen());
+                if let Some(else_branch) = else_branch {
+                    let else_tokens = else_branch.iter().map(|stmt| stmt.codegen());
+                    quote! { if #condition_tokens { #(#then_tokens)* } else { #(#else_tokens)* } }
+                } else {
+                    quote! { if #condition_tokens { #(#then_tokens)* } }
+                }
+            }
             IrStmt::While(_, _) => unsupported_stmt("while statement"),
             IrStmt::VarDecl(vars) => {
                 let decls = vars.iter().map(|var| var.codegen());

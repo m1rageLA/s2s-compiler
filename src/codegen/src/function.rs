@@ -8,8 +8,20 @@ impl Codegen for IrFunction {
     type Output = TokenStream;
 
     fn codegen(&self) -> TokenStream {
-        // TODO: generate Rust function definitions once function lowering is ready.
-        TokenStream::new()
+        let name = format_ident!("{}", self.name);
+        let params = self.params.iter().map(|param| {
+            let ident = format_ident!("{}", param.name);
+            let ty = render_type(&param.ty);
+            quote! { #ident: #ty }
+        });
+        let return_ty = render_type(&self.ret);
+        let body = self.body.iter().map(|stmt| stmt.codegen());
+
+        quote! {
+            fn #name( #( #params ),* ) -> #return_ty {
+                #( #body )*
+            }
+        }
     }
 }
 
@@ -33,7 +45,7 @@ impl Codegen for IrVariable {
 
 fn render_type(ty: &IrType) -> TokenStream {
     match ty {
-        IrType::Int => quote! { i32 },
+        IrType::Int => quote! { i128 },
         IrType::Str => quote! { ::std::string::String },
         IrType::Bool => quote! { bool },
         IrType::Unit => quote! { () },
@@ -43,7 +55,7 @@ fn render_type(ty: &IrType) -> TokenStream {
 
 fn default_value(ty: &IrType) -> TokenStream {
     match ty {
-        IrType::Int => quote! { 0 },
+        IrType::Int => quote! { 0i128 },
         IrType::Str => quote! { ::std::string::String::new() },
         IrType::Bool => quote! { false },
         IrType::Unit => quote! { () },

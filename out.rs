@@ -1,6 +1,5 @@
-//! Generated Rust output is now written to `out/src/main.rs`.
-//! This stub stays checked in so you can keep the repo clean.
+fn fib (n : i128) -> i128 { if (n) <= (1) { return n ; } return ((fib) ((n) - (1))) + ((fib) ((n) - (2))) ; }
+let input : i128 = 50 ;
+runtime :: console :: log (vec ! [runtime :: console :: stringify (& (format ! ("{}" , runtime :: console :: stringify (& ((fib) (input))))))]) ;
 
-fn main() {
-    println!("Generated Rust code lives in out/src/main.rs");
-}
+let tymur = "tymur";

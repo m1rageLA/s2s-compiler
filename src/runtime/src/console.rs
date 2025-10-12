@@ -1,4 +1,3 @@
-
 use crate::value::Value;
 
 pub fn log(args: Vec<String>) {
@@ -71,17 +70,17 @@ impl ConsoleArg for bool {
 
 impl ConsoleArg for i32 {
     fn to_value(&self) -> Value {
-        Value::Number(*self as f64)
+        Value::Number(*self as i128)
     }
 }
 
 impl ConsoleArg for i64 {
     fn to_value(&self) -> Value {
-        Value::Number(*self as f64)
+        Value::Number(*self as i128)
     }
 }
 
-impl ConsoleArg for f64 {
+impl ConsoleArg for i128 {
     fn to_value(&self) -> Value {
         Value::Number(*self)
     }

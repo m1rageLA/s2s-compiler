@@ -3,7 +3,7 @@ use swc_ecma_ast::{self as ast};
 
 pub(crate) fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
     match expr {
-        ast::Expr::Lit(ast::Lit::Num(n)) => IrExpression::Literal(IrLiteral::Int(n.value as i32)),
+        ast::Expr::Lit(ast::Lit::Num(n)) => IrExpression::Literal(IrLiteral::Int(n.value as i128)),
         ast::Expr::Lit(ast::Lit::Str(s)) => {
             IrExpression::Literal(IrLiteral::Str(s.value.to_string()))
         }

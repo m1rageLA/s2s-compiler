@@ -8,6 +8,11 @@ pub enum IrStmt {
     Expression(IrExpression),
     Return(Option<IrExpression>),
     Block(Vec<IrStmt>),
+    If {
+        condition: IrExpression,
+        then_branch: Vec<IrStmt>,
+        else_branch: Option<Vec<IrStmt>>,
+    },
     While(IrExpression, Vec<IrStmt>),
     VarDecl(Vec<IrVariable>),
     Unsupported(String),

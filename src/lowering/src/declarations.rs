@@ -2,6 +2,7 @@ use ir::{IrFunction, IrParam, IrType, IrVariable};
 use swc_ecma_ast::{self as ast};
 
 use crate::expressions::expr_to_ir;
+use crate::statements::block_to_ir;
 use crate::types::ts_type_ann_to_ir;
 
 pub(crate) fn var_decl_to_ir(decl: &ast::VarDeclarator) -> Option<IrVariable> {
@@ -52,10 +53,17 @@ pub(crate) fn fn_decl_to_ir(fn_decl: &ast::FnDecl) -> Option<IrFunction> {
         .map(|ann| ts_type_ann_to_ir(ann))
         .unwrap_or(IrType::Any);
 
+    let body = fn_decl
+        .function
+        .body
+        .as_ref()
+        .map(|block| block_to_ir(block))
+        .unwrap_or_default();
+
     Some(IrFunction {
         name,
         params,
         ret: ret_ty,
-        body: Vec::new(),
+        body,
     })
 }

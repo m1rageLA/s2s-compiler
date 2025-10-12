@@ -19,9 +19,6 @@ impl Codegen for IrExpression {
                 let right_tokens = right.codegen();
                 binary_op_tokens(*op, left_tokens, right_tokens)
             }
-            IrExpression::Call { .. } => unsupported_expr("call expression"),
-            IrExpression::Array(_) => unsupported_expr("array expression"),
-
             IrExpression::Template(parts) => template_literal_tokens(parts),
 
             IrExpression::RuntimeCall(RuntimeNamespace::Console(ConsoleCall::Log(args))) => {
@@ -35,7 +32,9 @@ impl Codegen for IrExpression {
                 quote! { runtime::console::log(vec![ #( #arg_tokens ),* ]) }
             }
 
-            IrExpression::Member { .. } => unsupported_expr("member expression"),
+            IrExpression::Call { callee, args } => call_tokens(callee, args),
+            IrExpression::Array(_) => unsupported_expr("array expression"),
+            IrExpression::Member { object, property } => member_tokens(object, property),
             IrExpression::SuperCall { .. } => unsupported_expr("super call"),
         }
     }
@@ -47,7 +46,7 @@ impl Codegen for IrLiteral {
     fn codegen(&self) -> TokenStream {
         match self {
             IrLiteral::Int(value) => {
-                let lit = Literal::i32_unsuffixed(*value);
+                let lit = Literal::i128_unsuffixed(*value);
                 quote! { #lit }
             }
             IrLiteral::Str(value) => {
@@ -87,6 +86,18 @@ fn template_literal_tokens(parts: &[IrTemplatePart]) -> TokenStream {
     } else {
         quote! { format!(#fmt_literal #(, #expr_tokens)*) }
     }
+}
+
+fn call_tokens(callee: &IrExpression, args: &[IrExpression]) -> TokenStream {
+    let callee_tokens = callee.codegen();
+    let arg_tokens: Vec<TokenStream> = args.iter().map(|arg| arg.codegen()).collect();
+    quote! { (#callee_tokens)( #( #arg_tokens ),* ) }
+}
+
+fn member_tokens(object: &IrExpression, property: &str) -> TokenStream {
+    let object_tokens = object.codegen();
+    let property_ident = format_ident!("{}", property);
+    quote! { (#object_tokens).#property_ident }
 }
 
 fn escape_format_text(text: &str) -> String {

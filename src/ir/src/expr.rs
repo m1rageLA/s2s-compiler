@@ -27,7 +27,7 @@ pub enum IrExpression {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum IrLiteral {
-    Int(i32),
+    Int(i128),
     Str(String),
     Bool(bool),
 }
