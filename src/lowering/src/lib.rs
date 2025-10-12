@@ -1,5 +1,6 @@
 mod declarations;
 mod expressions;
+mod infer;
 mod module;
 mod statements;
 mod types;

@@ -1,4 +1,4 @@
-use ir::{IrExpression, IrStmt};
+use ir::IrStmt;
 use swc_ecma_ast::{self as ast};
 
 use crate::declarations::var_decl_to_ir;
@@ -11,12 +11,8 @@ pub(crate) fn stmt_to_ir(stmt: &ast::Stmt) -> IrStmt {
             IrStmt::Expression(ir_expr)
         }
         ast::Stmt::Return(ret_stmt) => {
-            let value = ret_stmt
-                .arg
-                .as_ref()
-                .map(|expr| expr_to_ir(expr))
-                .unwrap_or_else(|| IrExpression::Identifier("undefined".to_string()));
-            IrStmt::Return(Some(value))
+            let value = ret_stmt.arg.as_ref().map(|expr| expr_to_ir(expr));
+            IrStmt::Return(value)
         }
         ast::Stmt::Decl(ast::Decl::Var(var_decl)) => {
             let vars = var_decl

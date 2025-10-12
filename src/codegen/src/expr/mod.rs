@@ -6,16 +6,17 @@ use crate::Codegen;
 mod arrow;
 mod binary;
 mod call;
+mod conditional;
 mod identifier;
 mod literal;
 mod member;
 mod runtime;
 mod template;
 mod unsupported;
-
 use arrow::arrow_tokens;
 use binary::binary_op_tokens;
 use call::call_tokens;
+use conditional::conditional_tokens;
 use identifier::identifier_tokens;
 use member::member_tokens;
 use runtime::runtime_call_tokens;
@@ -24,6 +25,7 @@ use unsupported::unsupported_expr;
 
 impl Codegen for IrExpression {
     type Output = TokenStream;
+
 
     fn codegen(&self) -> TokenStream {
         match self {
@@ -37,11 +39,15 @@ impl Codegen for IrExpression {
             IrExpression::Template(parts) => template_literal_tokens(parts),
             IrExpression::RuntimeCall(namespace) => runtime_call_tokens(namespace),
             IrExpression::Call { callee, args } => call_tokens(callee, args),
+            IrExpression::Conditional {
+                test,
+                consequent,
+                alternate,
+            } => conditional_tokens(test, consequent, alternate),
             IrExpression::Array(_) => unsupported_expr("array expression"),
             IrExpression::Member { object, property } => member_tokens(object, property),
             IrExpression::SuperCall { .. } => unsupported_expr("super call"),
             IrExpression::Arrow { params, body } => arrow_tokens(params, body),
-            IrExpression::Conditional { .. } => unsupported_expr("expression"),
         }
     }
 }
