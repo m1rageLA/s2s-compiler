@@ -1,2 +1,2 @@
-const x = [1, 2, 3];
-console.log(x);
+let y: number = 1; 
+let x: number = y++;

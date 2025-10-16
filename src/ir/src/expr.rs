@@ -35,6 +35,10 @@ pub enum IrExpression {
         alternate: Box<IrExpression>,
     },
     ArrayExpr(Vec<IrExpression>),
+    PostfixUnary {
+        left: Box<IrExpression>,
+        op: IrPostfixOp,
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -43,6 +47,11 @@ pub enum IrArrowBody {
     Block(Vec<IrStmt>),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IrPostfixOp {
+    Increment,
+    Decrement
+}
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum IrLiteral {
     Number(f64),

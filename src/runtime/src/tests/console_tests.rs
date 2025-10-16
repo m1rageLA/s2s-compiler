@@ -16,4 +16,4 @@ fn runtime_stringify_converts_console_args_into_values() {
    assert_eq!(console::stringify(&numbers), "123");
    assert_eq!(console::stringify(&true), "true");
    assert_eq!(console::stringify(&"hello"), "hello");
-}
+} 
