@@ -1,11 +1,21 @@
 use codegen::{Codegen, ModuleGenerator};
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Instant;
 
 const DEFAULT_TS_PATH: &str = "ts/program.ts";
+const GENERATED_CARGO_MANIFEST: &str = r#"[package]
+name = "generated"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+runtime = { path = "../src/runtime" }
+
+[workspace]
+"#;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -162,6 +172,7 @@ fn load_typescript_source() -> Result<(PathBuf, String), String> {
 
 fn run_generated(rust: &str) -> Result<String, String> {
     // println!("    -> Writing generated Rust to out/src/main.rs");
+    ensure_generated_manifest().map_err(|e| format!("failed to prepare out/Cargo.toml: {e}"))?;
     fs::create_dir_all("out/src").map_err(|e| format!("create out dir failed: {e}"))?;
     fs::write("out/src/main.rs", rust).map_err(|e| format!("write out/src/main.rs failed: {e}"))?;
 
@@ -180,6 +191,18 @@ fn run_generated(rust: &str) -> Result<String, String> {
     }
 
     Ok(String::from_utf8_lossy(&run.stdout).into_owned())
+}
+
+fn ensure_generated_manifest() -> std::io::Result<()> {
+    fs::create_dir_all("out")?;
+    let manifest_path = Path::new("out/Cargo.toml");
+    if manifest_path.exists() {
+        let current = fs::read_to_string(manifest_path)?;
+        if current == GENERATED_CARGO_MANIFEST {
+            return Ok(());
+        }
+    }
+    fs::write(manifest_path, GENERATED_CARGO_MANIFEST)
 }
 
 fn launch_release_run() -> std::io::Result<std::process::ExitStatus> {

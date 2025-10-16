@@ -20,6 +20,7 @@ default-members = [
     "src/lowering",
     "src/runtime",
 ]
+exclude = ["out"]
 
 [dependencies]
 lowering = { path = "src/lowering" }
