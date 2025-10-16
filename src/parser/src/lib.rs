@@ -31,3 +31,6 @@ pub fn ast(sourcecode: &str) -> Module {
         .expect("failed to parser module");
     _module
 }
+
+#[cfg(test)]
+mod tests;

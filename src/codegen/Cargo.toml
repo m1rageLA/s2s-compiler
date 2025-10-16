@@ -11,6 +11,9 @@ quote = "1"
 ir = { path = "../ir" }
 runtime = { path = "../runtime"}
 
+[dev-dependencies]
+syn = { version = "2", features = ["full"] }
+
 [lib]
 name = "codegen"
 path = "src/lib.rs"

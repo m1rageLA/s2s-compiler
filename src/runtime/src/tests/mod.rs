@@ -1,0 +1,2 @@
+mod console_tests;
+

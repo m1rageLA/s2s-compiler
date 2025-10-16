@@ -3,6 +3,24 @@ name = "TS2RUST"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+members = [
+    ".",
+    "src/parser",
+    "src/ir",
+    "src/codegen",
+    "src/lowering",
+    "src/runtime",
+]
+default-members = [
+    ".",
+    "src/parser",
+    "src/ir",
+    "src/codegen",
+    "src/lowering",
+    "src/runtime",
+]
+
 [dependencies]
 lowering = { path = "src/lowering" }
 parser = { path = "src/parser" }

@@ -9,3 +9,6 @@ pub use expr::*;
 pub use item::*;
 pub use stmt::*;
 pub use types::*;
+
+#[cfg(test)]
+mod tests;

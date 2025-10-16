@@ -107,3 +107,6 @@ impl Codegen for IrItem {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

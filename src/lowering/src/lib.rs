@@ -7,3 +7,6 @@ mod types;
 mod params;
 
 pub use module::ast_to_ir;
+
+#[cfg(test)]
+mod tests;

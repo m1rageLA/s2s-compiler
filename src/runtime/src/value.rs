@@ -5,6 +5,8 @@ pub enum Value {
     Bool(bool),
     Null,
     Undefined,
+    //array
+    Array(Vec<Value>),
 }
 
 impl ToString for Value {
@@ -15,6 +17,7 @@ impl ToString for Value {
             Value::Bool(b) => b.to_string(),
             Value::Null => "null".into(),
             Value::Undefined => "undefined".into(),
+            Value::Array(a) => a.iter().map(|v| v.to_string()).collect(),           
         }
     }
 }

@@ -115,3 +115,23 @@ impl ConsoleArg for () {
         Value::Undefined
     }
 }
+
+impl<T, const N: usize> ConsoleArg for [T; N]
+where
+    T: ConsoleArg + Clone,
+{
+    fn to_value(&self) -> Value {
+        let elements = self.iter().map(|v| v.to_value()).collect::<Vec<_>>();
+        Value::Array(elements)
+    }
+}
+
+impl<T> ConsoleArg for Vec<T>
+where
+    T: ConsoleArg + Clone,
+{
+    fn to_value(&self) -> Value {
+        let elements = self.iter().map(|v| v.to_value()).collect::<Vec<_>>();
+        Value::Array(elements)
+    }
+}  
