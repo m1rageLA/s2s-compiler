@@ -346,6 +346,7 @@ version = "0.1.0"
 dependencies = [
  "ir",
  "parser",
+ "swc_common",
  "swc_ecma_ast",
 ]
 
