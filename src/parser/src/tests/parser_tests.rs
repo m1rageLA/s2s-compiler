@@ -18,4 +18,3 @@ fn parses_variable_declaration_into_ast_module() {
         other => panic!("expected variable declaration, got {other:?}"),
     }
 }
-
