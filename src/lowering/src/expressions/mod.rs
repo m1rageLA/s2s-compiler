@@ -12,7 +12,6 @@ mod literal;
 mod template;
 mod array;
 mod conditional;
-// helpers removed; we colocate simple helpers in existing modules
 
 pub use binary::*;
 pub use unary::*;

@@ -86,6 +86,7 @@ fn infer_expression_type(expr: &IrExpression) -> Option<IrType> {
         IrExpression::Literal(IrLiteral::Bool(_)) => Some(IrType::Bool),
         IrExpression::Identifier(name) if name == "undefined" => Some(IrType::Unit),
         IrExpression::Identifier(_) => None,
+        IrExpression::ArrayExpr(_) => None,
         IrExpression::Binary { op, left, right } => match op {
             IrBinOp::Add => {
                 let left_ty = infer_expression_type(left);
@@ -151,3 +152,4 @@ fn infer_expression_type(expr: &IrExpression) -> Option<IrType> {
         IrExpression::SuperCall { .. } => None,
     }
 }
+    

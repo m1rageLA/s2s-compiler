@@ -33,7 +33,8 @@ pub enum IrExpression {
         test: Box<IrExpression>,
         consequent: Box<IrExpression>,
         alternate: Box<IrExpression>,
-    }
+    },
+    ArrayExpr(Vec<IrExpression>),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

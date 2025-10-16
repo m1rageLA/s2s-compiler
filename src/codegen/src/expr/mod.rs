@@ -2,7 +2,7 @@ use ir::{IrExpression, RuntimeNamespace};
 use proc_macro2::TokenStream;
 
 use crate::Codegen;
-
+mod array;
 mod arrow;
 mod binary;
 mod call;
@@ -13,6 +13,8 @@ mod member;
 mod runtime;
 mod template;
 mod unsupported;
+
+use array::array_tokens;
 use arrow::arrow_tokens;
 use binary::binary_op_tokens;
 use call::call_tokens;
@@ -44,10 +46,11 @@ impl Codegen for IrExpression {
                 consequent,
                 alternate,
             } => conditional_tokens(test, consequent, alternate),
-            IrExpression::Array(_) => unsupported_expr("array expression"),
+            IrExpression::Array(items) => array_tokens(items), 
             IrExpression::Member { object, property } => member_tokens(object, property),
             IrExpression::SuperCall { .. } => unsupported_expr("super call"),
             IrExpression::Arrow { params, body } => arrow_tokens(params, body),
+            _ => unsupported_expr("unsupported expression"),
         }
     }
 }
