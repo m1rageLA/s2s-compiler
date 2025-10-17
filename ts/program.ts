@@ -1,5 +1,4 @@
-let y: number = 1; 
-let x: number = y++;
-
-console.log(x);
-console.log(y);
+const array = [1, 2, 3, 4, 5];
+for (let i = 0; i < 5; i++) {
+    console.log(i);
+}

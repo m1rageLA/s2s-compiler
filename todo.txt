@@ -1,0 +1,8 @@
+[DONE] --- increment operator (++) --- [DONE] 
+
+array.length
+
+class
+
+console.log(123, "String", true); - "mix args  is not supported yet"
+

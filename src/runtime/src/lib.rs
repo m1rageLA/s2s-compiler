@@ -7,6 +7,3 @@ pub mod prelude {
     pub use crate::console::*;
     pub use crate::value::*;
 }
-
-#[cfg(test)]
-mod tests;

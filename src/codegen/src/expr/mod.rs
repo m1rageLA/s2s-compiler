@@ -1,4 +1,4 @@
-use ir::{IrExpression, RuntimeNamespace};
+use ir::IrExpression;
 use proc_macro2::TokenStream;
 
 use crate::Codegen;
@@ -57,5 +57,4 @@ impl Codegen for IrExpression {
         }
     }
 }
-
 

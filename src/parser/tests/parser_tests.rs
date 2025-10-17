@@ -1,4 +1,4 @@
-use crate::ast;
+use parser::ast;
 use swc_ecma_ast::{Decl, ModuleItem, Pat, Stmt};
 
 #[test]

@@ -1,4 +1,4 @@
-use crate::Codegen;
+use codegen::Codegen;
 use ir::{IrExpression, IrFunction, IrItem, IrModule, IrStmt, IrType};
 
 #[test]

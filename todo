@@ -1,3 +1,0 @@
-increment operator (++)
-
-console.log(123, "String", true); - "mix args  is not supported yet"

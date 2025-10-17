@@ -64,6 +64,16 @@ fn collect_return_types(
                     return false;
                 }
             }
+            IrStmt::DoWhile(body, _) => {
+                if !collect_return_types(body, inferred, saw_return) {
+                    return false;
+                }
+            }
+            IrStmt::For { body, .. } => {
+                if !collect_return_types(body, inferred, saw_return) {
+                    return false;
+                }
+            }
             _ => {}
         }
     }
