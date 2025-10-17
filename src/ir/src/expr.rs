@@ -35,6 +35,7 @@ pub enum IrExpression {
         alternate: Box<IrExpression>,
     },
     ArrayExpr(Vec<IrExpression>),
+    Function(Box<IrFunctionExpr>),
     PostfixUnary {
         left: Box<IrExpression>,
         op: IrPostfixOp,
@@ -51,6 +52,14 @@ pub enum IrArrowBody {
 pub enum IrPostfixOp {
     Increment,
     Decrement
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct IrFunctionExpr {
+    pub name: Option<String>,
+    pub params: Vec<IrParam>,
+    pub ret: IrType,
+    pub body: Vec<IrStmt>,
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum IrLiteral {

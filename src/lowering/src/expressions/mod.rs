@@ -13,16 +13,25 @@ mod template;
 mod array;
 mod conditional;
 mod update;
+mod function;
 
+#[allow(unused_imports)]
 pub use update::*;
+#[allow(unused_imports)]
 pub use binary::*;
+#[allow(unused_imports)]
 pub use unary::*;
 pub use call::*;
 pub use arrow::*;
+#[allow(unused_imports)]
 pub use conditional::*;
+#[allow(unused_imports)]
 pub use literal::*;
+#[allow(unused_imports)]
 pub use template::*;
+#[allow(unused_imports)]
 pub use array::*;
+pub use function::*;
 
 pub(crate) fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
     match expr {
@@ -39,8 +48,7 @@ pub(crate) fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
         ast::Expr::Arrow(arw) => arrow_expr_to_ir(arw),
         ast::Expr::Cond(cond) => cond_expr_to_ir(cond),
         ast::Expr::Update(u) => update_expr_to_ir(u),
+        ast::Expr::Fn(fn_expr) => function_expr_to_ir(fn_expr),
         _ => IrExpression::Identifier("unsupported".to_string()),
     }
 }
-
-

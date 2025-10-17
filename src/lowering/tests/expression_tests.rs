@@ -2,7 +2,7 @@ mod helpers;
 use helpers::{
     assert_identifier, assert_number_literal, expect_variable, lower,
 };
-use ir::{IrExpression, IrItem};
+use ir::{IrBinOp, IrExpression, IrItem, IrStmt, IrType};
 
 #[test]
 fn covers_arrays_conditionals_and_member_calls() {
@@ -60,5 +60,41 @@ fn covers_arrays_conditionals_and_member_calls() {
             other => panic!("expected call expression, got {other:?}"),
         },
         other => panic!("expected expression item, got {other:?}"),
+    }
+}
+
+#[test]
+fn lowers_function_expression_into_ir_variant() {
+    let ir_module = lower(
+        r#"
+        const handler = function (value: number) {
+            return value + 1;
+        };
+    "#,
+    );
+
+    assert_eq!(ir_module.items.len(), 1);
+    let handler = expect_variable(&ir_module.items[0], "handler");
+    assert!(!handler.mutable);
+
+    let function = match handler.value.as_ref() {
+        Some(IrExpression::Function(function)) => function,
+        other => panic!("expected function expression initializer, got {other:?}"),
+    };
+
+    assert!(function.name.is_none());
+    assert_eq!(function.params.len(), 1);
+    assert_eq!(function.params[0].name, "value");
+    assert_eq!(function.params[0].ty, IrType::Number);
+
+    assert_eq!(function.ret, IrType::Number);
+    assert_eq!(function.body.len(), 1);
+
+    match &function.body[0] {
+        IrStmt::Return(Some(expr)) => match expr {
+            IrExpression::Binary { op, .. } => assert_eq!(*op, IrBinOp::Add),
+            other => panic!("expected binary addition in return, got {other:?}"),
+        },
+        other => panic!("expected return statement, got {other:?}"),
     }
 }

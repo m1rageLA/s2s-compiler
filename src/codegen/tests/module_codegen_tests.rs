@@ -1,5 +1,5 @@
 use codegen::Codegen;
-use ir::{IrExpression, IrFunction, IrItem, IrModule, IrStmt, IrType};
+use ir::{IrExpression, IrFunction, IrFunctionExpr, IrItem, IrModule, IrParam, IrStmt, IrType};
 
 #[test]
 fn module_codegen_emits_main_and_function_items() {
@@ -76,5 +76,57 @@ fn extract_ident(expr: &syn::Expr) -> Option<&syn::Ident> {
         syn::Expr::Paren(paren) => extract_ident(&paren.expr),
         syn::Expr::Group(group) => extract_ident(&group.expr),
         _ => None,
+    }
+}
+
+#[test]
+fn function_expression_codegen_emits_closure_literal() {
+    let function_expr = IrExpression::Function(Box::new(IrFunctionExpr {
+        name: None,
+        params: vec![IrParam {
+            name: "value".into(),
+            ty: IrType::Number,
+        }],
+        ret: IrType::Number,
+        body: vec![IrStmt::Return(Some(IrExpression::Identifier("value".into())))],
+    }));
+
+    let module = IrModule {
+        items: vec![IrItem::Expression(function_expr)],
+    };
+
+    let tokens = module.codegen();
+    let file: syn::File = syn::parse2(tokens).expect("generated Rust should parse");
+
+    let main_fn = file.items.iter().find_map(|item| match item {
+        syn::Item::Fn(func) if func.sig.ident == "main" => Some(func),
+        _ => None,
+    })
+    .expect("expected generated main function");
+
+    let stmt = main_fn
+        .block
+        .stmts
+        .first()
+        .expect("main should contain closure expression");
+
+    match stmt {
+        syn::Stmt::Expr(expr, _) => match expr {
+            syn::Expr::Closure(closure) => {
+                assert_eq!(closure.inputs.len(), 1);
+                match &closure.inputs[0] {
+                    syn::Pat::Type(pat_type) => match pat_type.ty.as_ref() {
+                        syn::Type::Path(path) => {
+                            let ty_ident = path.path.get_ident().expect("type ident");
+                            assert_eq!(ty_ident, "f64");
+                        }
+                        _ => panic!("expected closure arg type to be f64"),
+                    },
+                    _ => panic!("expected typed closure argument"),
+                }
+            }
+            _ => panic!("expected closure expression"),
+        },
+        _ => panic!("expected closure statement"),
     }
 }

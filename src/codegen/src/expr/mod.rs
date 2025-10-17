@@ -14,6 +14,7 @@ mod runtime;
 mod template;
 mod unsupported;
 mod unary;
+mod function;
 
 use unary::postfixunary_tokens; 
 use array::array_tokens;
@@ -26,6 +27,7 @@ use member::member_tokens;
 use runtime::runtime_call_tokens;
 use template::template_literal_tokens;
 use unsupported::unsupported_expr;
+use function::function_expr_tokens;
 
 impl Codegen for IrExpression {
     type Output = TokenStream;
@@ -53,8 +55,8 @@ impl Codegen for IrExpression {
             IrExpression::SuperCall { .. } => unsupported_expr("super call"),
             IrExpression::Arrow { params, body } => arrow_tokens(params, body),
             IrExpression::PostfixUnary { left, op } => postfixunary_tokens(left.clone(), op.clone()),
+            IrExpression::Function(function) => function_expr_tokens(function),
             _ => unsupported_expr("unsupported expression"),
         }
     }
 }
-
