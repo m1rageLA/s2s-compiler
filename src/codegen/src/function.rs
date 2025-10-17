@@ -36,16 +36,18 @@ impl Codegen for IrVariable {
             .map(|expr| expr.codegen())
             .unwrap_or_else(|| default_value(&self.ty));
 
+        let mutability = self.mutable.then(|| quote! { mut });
+
         match &self.ty {
             IrType::Any => {
                 quote! {
-                    let #ident = #value;
+                    let #mutability #ident = #value;
                 }
             }
             _ => {
                 let ty = render_type(&self.ty);
                 quote! {
-                    let #ident: #ty = #value;
+                    let #mutability #ident: #ty = #value;
                 }
             }
         }

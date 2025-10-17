@@ -11,8 +11,9 @@ pub fn ast_to_ir(module: &ast::Module) -> IrModule {
     for statement in &module.body {
         match statement {
             ast::ModuleItem::Stmt(ast::Stmt::Decl(ast::Decl::Var(var_decl))) => {
+                let kind = var_decl.kind;
                 for decl in &var_decl.decls {
-                    if let Some(ir_var) = var_decl_to_ir(decl) {
+                    if let Some(ir_var) = var_decl_to_ir(decl, kind) {
                         items.push(IrItem::Variable(ir_var));
                     }
                 }

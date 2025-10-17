@@ -18,6 +18,7 @@ pub enum IrItem {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct IrVariable {
     pub name: String,
+    pub mutable: bool,
     pub ty: IrType,
     pub value: Option<IrExpression>,
 }

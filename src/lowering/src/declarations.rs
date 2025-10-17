@@ -7,7 +7,10 @@ use crate::params::params_to_ir;
 use crate::statements::block_to_ir;
 use crate::types::ts_type_ann_to_ir;
 
-pub(crate) fn var_decl_to_ir(decl: &ast::VarDeclarator) -> Option<IrVariable> {
+pub(crate) fn var_decl_to_ir(
+    decl: &ast::VarDeclarator,
+    kind: ast::VarDeclKind,
+) -> Option<IrVariable> {
     let name = match &decl.name {
         ast::Pat::Ident(ident) => ident.id.sym.to_string(),
         _ => return None,
@@ -23,8 +26,14 @@ pub(crate) fn var_decl_to_ir(decl: &ast::VarDeclarator) -> Option<IrVariable> {
     };
 
     let value = decl.init.as_ref().map(|expr| expr_to_ir(expr));
+    let mutable = !matches!(kind, ast::VarDeclKind::Const);
 
-    Some(IrVariable { name, ty, value })
+    Some(IrVariable {
+        name,
+        mutable,
+        ty,
+        value,
+    })
 }
 
 pub(crate) fn fn_decl_to_ir(fn_decl: &ast::FnDecl) -> Option<IrFunction> {

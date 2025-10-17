@@ -15,10 +15,11 @@ pub(crate) fn stmt_to_ir(stmt: &ast::Stmt) -> IrStmt {
             IrStmt::Return(value)
         }
         ast::Stmt::Decl(ast::Decl::Var(var_decl)) => {
+            let kind = var_decl.kind;
             let vars = var_decl
                 .decls
                 .iter()
-                .filter_map(|decl| var_decl_to_ir(decl))
+                .filter_map(|decl| var_decl_to_ir(decl, kind))
                 .collect::<Vec<_>>();
             IrStmt::VarDecl(vars)
         }

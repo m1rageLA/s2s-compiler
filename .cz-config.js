@@ -4,6 +4,7 @@ module.exports = {
     { value: '[fix]', name: '[fix]:      Исправление бага' },
     { value: '[docs]', name: '[docs]:     Документация' },
     { value: '[style]', name: '[style]:    Форматирование кода' },
+    { value: '[wip],', name: '[wip]:      Работа в процессе' },
     { value: '[refactor]', name: '[refactor]: Рефакторинг' },
     { value: '[test]', name: '[test]:     Тесты' },
     { value: '[chore]', name: '[chore]:    Прочее' }

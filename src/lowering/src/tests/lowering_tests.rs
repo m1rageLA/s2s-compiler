@@ -27,14 +27,17 @@ fn lowers_variable_declarations_with_literal_initializers() {
     assert_eq!(ir_module.items.len(), 4);
 
     let greeting = expect_variable(&ir_module.items[0], "greeting");
+    assert!(greeting.mutable);
     assert_eq!(greeting.ty, IrType::Str);
     assert_string_literal(greeting.value.as_ref(), "hello");
 
     let flag = expect_variable(&ir_module.items[1], "flag");
+    assert!(flag.mutable);
     assert_eq!(flag.ty, IrType::Bool);
     assert_bool_literal(flag.value.as_ref(), true);
 
     let total = expect_variable(&ir_module.items[2], "total");
+    assert!(total.mutable);
     assert_eq!(total.ty, IrType::Any);
     let expr = total.value.as_ref().expect("total should have initializer");
     match expr {
@@ -47,6 +50,7 @@ fn lowers_variable_declarations_with_literal_initializers() {
     }
 
     let negative = expect_variable(&ir_module.items[3], "negative");
+    assert!(negative.mutable);
     assert_number_literal(negative.value.as_ref(), -42.0);
 }
 
@@ -84,6 +88,7 @@ fn lowers_function_with_control_flow_and_inferred_return() {
             assert_eq!(vars.len(), 1);
             let var = &vars[0];
             assert_eq!(var.name, "label");
+            assert!(!var.mutable);
             assert_eq!(var.ty, IrType::Str);
             assert_string_literal(var.value.as_ref(), "maybe");
         }
@@ -161,6 +166,7 @@ fn lowers_block_statement_into_ir_block() {
             assert_eq!(vars.len(), 1);
             let var = &vars[0];
             assert_eq!(var.name, "value");
+            assert!(var.mutable);
             assert_eq!(var.ty, IrType::Number);
             assert_number_literal(var.value.as_ref(), 5.0);
         }
@@ -187,6 +193,7 @@ fn lowers_arrow_functions_with_expression_and_block_bodies() {
     assert_eq!(ir_module.items.len(), 2);
 
     let double = expect_variable(&ir_module.items[0], "double");
+    assert!(!double.mutable);
     let arrow = match double.value.as_ref().expect("double should have initializer") {
         IrExpression::Arrow { params, body } => {
             assert_eq!(params, &vec![IrParam { name: "value".into(), ty: IrType::Number }]);
@@ -203,6 +210,7 @@ fn lowers_arrow_functions_with_expression_and_block_bodies() {
     }
 
     let format = expect_variable(&ir_module.items[1], "format");
+    assert!(!format.mutable);
     let arrow = match format.value.as_ref().expect("format should have initializer") {
         IrExpression::Arrow { params, body } => {
             assert_eq!(params.len(), 2);
@@ -250,6 +258,7 @@ fn lowers_arrays_conditionals_and_member_expressions() {
     assert_eq!(ir_module.items.len(), 3);
 
     let numbers = expect_variable(&ir_module.items[0], "numbers");
+    assert!(!numbers.mutable);
     let array = match numbers.value.as_ref().expect("numbers should have initializer") {
         IrExpression::Array(elements) => elements,
         other => panic!("expected array literal, got {other:?}"),
@@ -260,6 +269,7 @@ fn lowers_arrays_conditionals_and_member_expressions() {
     assert_number_literal(Some(&array[2]), 3.0);
 
     let result = expect_variable(&ir_module.items[1], "result");
+    assert!(result.mutable);
     match result.value.as_ref().expect("result should have initializer") {
         IrExpression::Conditional { test, consequent, alternate } => {
             assert_identifier(test, "flag");
