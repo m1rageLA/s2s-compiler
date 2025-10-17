@@ -13,7 +13,9 @@ mod member;
 mod runtime;
 mod template;
 mod unsupported;
+mod unary;
 
+use unary::postfixunary_tokens; 
 use array::array_tokens;
 use arrow::arrow_tokens;
 use binary::binary_op_tokens;
@@ -50,15 +52,10 @@ impl Codegen for IrExpression {
             IrExpression::Member { object, property } => member_tokens(object, property),
             IrExpression::SuperCall { .. } => unsupported_expr("super call"),
             IrExpression::Arrow { params, body } => arrow_tokens(params, body),
+            IrExpression::PostfixUnary { left, op } => postfixunary_tokens(left.clone(), op.clone()),
             _ => unsupported_expr("unsupported expression"),
         }
     }
 }
 
-impl Codegen for RuntimeNamespace {
-    type Output = TokenStream;
 
-    fn codegen(&self) -> TokenStream {
-        runtime_call_tokens(self)
-    }
-}

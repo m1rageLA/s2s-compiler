@@ -1,5 +1,5 @@
 use ir::{
-    ConsoleCall, IrBinOp, IrExpression, IrLiteral, IrStmt, IrType, RuntimeNamespace,
+    ConsoleCall, IrBinOp, IrExpression, IrLiteral, IrPostfixOp, IrStmt, IrType, RuntimeNamespace
 };
 
 pub(crate) fn infer_function_return_type(body: &[IrStmt]) -> Option<IrType> {
@@ -87,6 +87,7 @@ fn infer_expression_type(expr: &IrExpression) -> Option<IrType> {
         IrExpression::Identifier(name) if name == "undefined" => Some(IrType::Unit),
         IrExpression::Identifier(_) => None,
         IrExpression::ArrayExpr(_) => None,
+        IrExpression::PostfixUnary { left, op } => None, 
         IrExpression::Binary { op, left, right } => match op {
             IrBinOp::Add => {
                 let left_ty = infer_expression_type(left);

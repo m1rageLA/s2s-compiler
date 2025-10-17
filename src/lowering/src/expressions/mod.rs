@@ -12,7 +12,9 @@ mod literal;
 mod template;
 mod array;
 mod conditional;
+mod update;
 
+pub use update::*;
 pub use binary::*;
 pub use unary::*;
 pub use call::*;
@@ -36,7 +38,9 @@ pub(crate) fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
         ast::Expr::Tpl(tpl) => template_expr_to_ir(tpl),
         ast::Expr::Arrow(arw) => arrow_expr_to_ir(arw),
         ast::Expr::Cond(cond) => cond_expr_to_ir(cond),
-
+        ast::Expr::Update(u) => update_expr_to_ir(u),
         _ => IrExpression::Identifier("unsupported".to_string()),
     }
 }
+
+
