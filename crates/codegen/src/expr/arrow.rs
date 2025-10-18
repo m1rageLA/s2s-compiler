@@ -1,4 +1,4 @@
-use ir::{IrArrowBody, IrParam};
+use ir::{IrArrowBody, IrParam, IrStmt};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
@@ -26,4 +26,32 @@ pub(crate) fn arrow_tokens(params: &[IrParam], body: &IrArrowBody) -> TokenStrea
             quote! { move | #( #params ),* | { #( #stmt_tokens )* } }
         }
     }
+}
+
+#[test]
+fn test_arrow_tokens() {
+    let params = vec![IrParam {
+        name: "a".to_string(),
+        ty: ir::IrType::Str,
+    }];
+
+    let body_block = IrArrowBody::Block(vec![IrStmt::Return(Some(ir::IrExpression::Binary {
+        left: Box::new(ir::IrExpression::Literal(ir::IrLiteral::Number(1.0))),
+        right: Box::new(ir::IrExpression::Literal(ir::IrLiteral::Number(2.0))),
+        op: ir::IrBinOp::Add,
+    }))]);
+
+    let body_expr = IrArrowBody::Expr(Box::new(ir::IrExpression::Literal(ir::IrLiteral::Number(1.0))));
+
+    let tokens_block = arrow_tokens(&params, &body_block);
+    let tokens_expr = arrow_tokens(&params, &body_expr);
+
+    assert_eq!(
+        tokens_block.to_string(),
+        "move | a : :: std :: string :: String | { return (1.0) + (2.0) ; }",
+    );
+    assert_eq!(
+        tokens_expr.to_string(),
+        "move | a : :: std :: string :: String | { 1.0 }",
+    );
 }
