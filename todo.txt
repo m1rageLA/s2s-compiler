@@ -6,3 +6,4 @@ class
 
 console.log(123, "String", true); - "mix args  is not supported yet"
 
+работа только с функциями с маркерами 

@@ -1,0 +1,13 @@
+[package]
+name = "ts2rust-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+codegen = { path = "../codegen" }
+lowering = { path = "../lowering" }
+parser = { path = "../parser" }
+ir = { path = "../ir" }
+runtime = { path = "../runtime" }
+proc-macro2 = "1"
+swc_ecma_ast = "15.0.0"

@@ -1,0 +1,7 @@
+[package]
+name = "ts2rust-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ts2rust-core = { path = "../crates/core" }

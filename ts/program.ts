@@ -1,5 +1,4 @@
 const x = function (a: number, b: number) {
+    console.log(1,2);
     return a + b;
 }
-
-console.log(x(2, 3));
