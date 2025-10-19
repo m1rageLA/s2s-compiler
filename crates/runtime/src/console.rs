@@ -1,13 +1,29 @@
+use std::io::{self, Write};
+
 use crate::value::Value;
 
 pub fn log(args: Vec<String>) {
-    if args.is_empty() {
-        println!();
-        return;
-    }
+    let mut stdout = io::stdout();
+    log_with_writer(args, &mut stdout);
+}
 
+pub fn log_with_writer<W>(args: Vec<String>, writer: &mut W)
+where
+    W: Write,
+{
+    match format_log_message(args) {
+        Some(message) => {
+            let _ = writeln!(writer, "{}", message);
+        }
+        None => {
+            let _ = writeln!(writer);
+        }
+    }
+}
+
+fn format_log_message(args: Vec<String>) -> Option<String> {
     let mut iter = args.into_iter();
-    let first = iter.next().unwrap();
+    let first = iter.next()?;
 
     if first.contains("${}") {
         let mut formatted = String::new();
@@ -36,12 +52,12 @@ pub fn log(args: Vec<String>) {
             formatted.push_str(&remaining.join(" "));
         }
 
-        println!("{}", formatted);
+        Some(formatted)
     } else {
         let mut parts = Vec::new();
         parts.push(first);
         parts.extend(iter);
-        println!("{}", parts.join(" "));
+        Some(parts.join(" "))
     }
 }
 
@@ -123,6 +139,62 @@ where
     fn to_value(&self) -> Value {
         let elements = self.iter().map(|v| v.to_value()).collect::<Vec<_>>();
         Value::Array(elements)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn capture_log(args: Vec<&str>) -> String {
+        let mut buffer = Vec::new();
+        log_with_writer(
+            args.into_iter().map(|s| s.to_string()).collect(),
+            &mut buffer,
+        );
+        String::from_utf8(buffer).expect("stdout must stay valid UTF-8")
+    }
+
+    #[test]
+    fn log_prints_empty_line_when_no_arguments() {
+        let output = capture_log(Vec::new());
+        assert_eq!(output, "\n");
+    }
+
+    #[test]
+    fn log_prints_simple_space_separated_arguments() {
+        let output = capture_log(vec!["hello", "world", "42"]);
+        assert_eq!(output, "hello world 42\n");
+    }
+
+    #[test]
+    fn log_interpolates_placeholders_with_arguments() {
+        let output = capture_log(vec!["value: ${}", "42"]);
+        assert_eq!(output, "value: 42\n");
+    }
+
+    #[test]
+    fn log_leaves_placeholder_when_argument_missing() {
+        let output = capture_log(vec!["a ${} b ${}", "X"]);
+        assert_eq!(output, "a X b ${}\n");
+    }
+
+    #[test]
+    fn log_appends_extra_arguments_after_template() {
+        let output = capture_log(vec!["x ${}", "1", "tail", "42"]);
+        assert_eq!(output, "x 1 tail 42\n");
+    }
+
+    #[test]
+    fn log_preserves_literal_dollar_braces_without_placeholder() {
+        let output = capture_log(vec!["price ${10}"]);
+        assert_eq!(output, "price ${10}\n");
+    }
+
+    #[test]
+    fn log_allows_empty_template_and_trailing_arguments() {
+        let output = capture_log(vec!["${}${}", "a", "b", "c"]);
+        assert_eq!(output, "ab c\n");
     }
 }
 

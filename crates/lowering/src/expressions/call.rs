@@ -80,7 +80,7 @@ fn callee_to_ir(expr: &ast::Expr) -> IrExpression {
 mod tests {
     use super::*;
     use crate::test_utils::{assert_number_literal, lower};
-    use ir::{IrExpression, IrItem};
+    use ir::{IrExpression, IrItem, RuntimeNamespace};
     use swc_common::DUMMY_SP;
     use swc_ecma_ast as swc_ast;
 
@@ -135,6 +135,48 @@ mod tests {
                     assert_number_literal(Some(&args[0]), 1.0);
                 }
                 other => panic!("expected call expression, got {other:?}"),
+            },
+            other => panic!("expected expression item, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lowers_console_log_to_runtime_call() {
+        let ir_module = lower(
+            r#"
+            console.log("debug", 1);
+        "#,
+        );
+
+        assert_eq!(ir_module.items.len(), 1);
+        match &ir_module.items[0] {
+            IrItem::Expression(expr) => match expr {
+                IrExpression::RuntimeCall(RuntimeNamespace::Console(console_call)) => match console_call {
+                    ir::ConsoleCall::Log(args) => {
+                        assert_eq!(args.len(), 2);
+                        crate::test_utils::assert_string_literal(Some(&args[0]), "debug");
+                        assert_number_literal(Some(&args[1]), 1.0);
+                    }
+                },
+                other => panic!("expected console runtime call, got {other:?}"),
+            },
+            other => panic!("expected expression item, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn marks_dynamic_import_calls_as_unsupported() {
+        let ir_module = lower(
+            r#"
+            import("mod");
+        "#,
+        );
+
+        assert_eq!(ir_module.items.len(), 1);
+        match &ir_module.items[0] {
+            IrItem::Expression(expr) => match expr {
+                IrExpression::Identifier(name) => assert_eq!(name, "import_call_not_supported"),
+                other => panic!("expected unsupported identifier, got {other:?}"),
             },
             other => panic!("expected expression item, got {other:?}"),
         }

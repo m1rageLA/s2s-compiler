@@ -10,6 +10,7 @@ ir = { path = "../ir" }
 
 [dev-dependencies]
 swc_common = "14.0.3"
+swc_atoms = "7.0.0"
 
 [lib]
 name = "lowering"

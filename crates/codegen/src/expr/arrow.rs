@@ -1,4 +1,4 @@
-use ir::{IrArrowBody, IrParam, IrStmt};
+use ir::{IrArrowBody, IrParam};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
@@ -30,6 +30,8 @@ pub(crate) fn arrow_tokens(params: &[IrParam], body: &IrArrowBody) -> TokenStrea
 
 #[test]
 fn test_arrow_tokens() {
+    use ir::IrStmt;
+
     let params = vec![IrParam {
         name: "a".to_string(),
         ty: ir::IrType::Str,

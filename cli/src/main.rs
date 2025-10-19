@@ -89,7 +89,7 @@ fn run_pipeline() {
             }
         }
     }
-    let rust_code = compilation.tokens.to_string();
+    let rust_code = compilation.rust_string();
     match run_generated(&rust_code) {
         Ok(stdout) => {
             let trimmed = stdout.trim();

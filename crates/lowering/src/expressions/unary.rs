@@ -22,3 +22,90 @@ pub fn unary_expr_to_ir(u: &ast::UnaryExpr) -> IrExpression {
 pub(crate) fn paren_to_ir(p: &ast::ParenExpr) -> IrExpression {
     expr_to_ir(&p.expr)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::test_utils::{assert_identifier, expect_variable, lower};
+    use ir::{IrBinOp, IrExpression, IrLiteral};
+
+    #[test]
+    fn lowers_unary_minus_and_plus() {
+        let ir_module = lower(
+            r#"
+            const literal = -1;
+            const computed = -value;
+            const positive = +value;
+            const unsupported = typeof value;
+        "#,
+        );
+
+        assert_eq!(ir_module.items.len(), 4);
+
+        let literal = expect_variable(&ir_module.items[0], "literal");
+        match literal
+            .value
+            .as_ref()
+            .expect("literal should have initializer")
+        {
+            IrExpression::Literal(IrLiteral::Number(value)) => assert_eq!(*value, -1.0),
+            other => panic!("expected folded numeric literal, got {other:?}"),
+        }
+
+        let computed = expect_variable(&ir_module.items[1], "computed");
+        match computed
+            .value
+            .as_ref()
+            .expect("computed should have initializer")
+        {
+            IrExpression::Binary { op, left, right } => {
+                assert_eq!(*op, IrBinOp::Sub);
+                match left.as_ref() {
+                    IrExpression::Literal(IrLiteral::Number(value)) => assert_eq!(*value, 0.0),
+                    other => panic!("expected zero literal on left side, got {other:?}"),
+                }
+                assert_identifier(right, "value");
+            }
+            other => panic!("expected binary subtraction expansion, got {other:?}"),
+        }
+
+        let positive = expect_variable(&ir_module.items[2], "positive");
+        match positive
+            .value
+            .as_ref()
+            .expect("positive should have initializer")
+        {
+            IrExpression::Identifier(name) => assert_eq!(name, "value"),
+            other => panic!("expected identity for unary plus, got {other:?}"),
+        }
+
+        let unsupported = expect_variable(&ir_module.items[3], "unsupported");
+        match unsupported
+            .value
+            .as_ref()
+            .expect("unsupported should have initializer")
+        {
+            IrExpression::Identifier(name) => assert_eq!(name, "unsupported_unary"),
+            other => panic!("expected unsupported sentinel, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lowers_parenthesized_expressions() {
+        let ir_module = lower(
+            r#"
+            const result = (value);
+        "#,
+        );
+
+        assert_eq!(ir_module.items.len(), 1);
+        let variable = expect_variable(&ir_module.items[0], "result");
+        match variable
+            .value
+            .as_ref()
+            .expect("result should have initializer")
+        {
+            IrExpression::Identifier(name) => assert_eq!(name, "value"),
+            other => panic!("expected identifier after removing parentheses, got {other:?}"),
+        }
+    }
+}

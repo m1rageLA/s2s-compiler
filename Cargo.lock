@@ -107,6 +107,7 @@ name = "codegen"
 version = "0.1.0"
 dependencies = [
  "ir",
+ "prettyplease",
  "proc-macro2",
  "quote",
  "runtime",
@@ -352,6 +353,7 @@ version = "0.1.0"
 dependencies = [
  "ir",
  "parser",
+ "swc_atoms",
  "swc_common",
  "swc_ecma_ast",
 ]
@@ -476,6 +478,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "84df19adbe5b5a0782edcab45899906947ab039ccf4573713735ee7de1e6b08a"
 dependencies = [
  "zerovec",
+]
+
+[[package]]
+name = "prettyplease"
+version = "0.2.37"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "479ca8adacdd7ce8f1fb39ce9ecccbfe93a3f1344b3d0d97f20bc0196208f62b"
+dependencies = [
+ "proc-macro2",
+ "syn",
 ]
 
 [[package]]
@@ -886,9 +898,11 @@ dependencies = [
  "ir",
  "lowering",
  "parser",
+ "prettyplease",
  "proc-macro2",
  "runtime",
  "swc_ecma_ast",
+ "syn",
 ]
 
 [[package]]

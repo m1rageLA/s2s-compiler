@@ -39,3 +39,65 @@ fn escape_format_text(text: &str) -> String {
     }
     escaped
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ir::{IrExpression, IrLiteral, IrTemplatePart};
+    use quote::ToTokens;
+    use syn::{parse::Parser, Expr};
+
+    #[test]
+    fn template_without_expressions_returns_string_literal() {
+        let parts = vec![IrTemplatePart::String("plain".into())];
+        let tokens = template_literal_tokens(&parts);
+
+        match syn::parse2::<Expr>(tokens).expect("string template should parse") {
+            Expr::MethodCall(method) => {
+                assert_eq!(method.method.to_string(), "to_string");
+                assert_eq!(method.args.len(), 0);
+            }
+            _ => panic!("unexpected expression"),
+        }
+    }
+
+    #[test]
+    fn template_with_expressions_uses_format_macro() {
+        let parts = vec![
+            IrTemplatePart::String("count: {".into()),
+            IrTemplatePart::Expr(Box::new(IrExpression::Identifier("value".into()))),
+            IrTemplatePart::String("}; total: ".into()),
+            IrTemplatePart::Expr(Box::new(IrExpression::Literal(IrLiteral::Number(2.0)))),
+        ];
+
+        let tokens = template_literal_tokens(&parts);
+        match syn::parse2::<Expr>(tokens).expect("format macro should parse") {
+            Expr::Macro(mac) => {
+                assert_eq!(mac.mac.path.segments[0].ident.to_string(), "format");
+                let parser =
+                    syn::punctuated::Punctuated::<Expr, syn::Token![,]>::parse_terminated;
+                let args = parser
+                    .parse2(mac.mac.tokens.clone())
+                    .expect("format macro arguments should parse");
+                let mut elems = args.iter();
+                let format_literal = match elems.next().expect("format string literal") {
+                    Expr::Lit(lit) => match &lit.lit {
+                        syn::Lit::Str(lit_str) => lit_str.value(),
+                        _ => panic!("expected string literal for format!"),
+                    },
+                    _ => panic!("expected literal expression"),
+                };
+                assert_eq!(format_literal, "count: {{{}}}; total: {}");
+
+                for expr in elems {
+                    let tokens = expr.to_token_stream().to_string();
+                    assert!(
+                        tokens.contains("runtime :: console :: stringify"),
+                        "unexpected argument tokens: {tokens}"
+                    );
+                }
+            }
+            _ => panic!("unexpected expression"),
+        }
+    }
+}

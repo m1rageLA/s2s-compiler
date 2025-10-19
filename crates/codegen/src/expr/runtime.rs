@@ -24,3 +24,29 @@ fn console_call_tokens(call: &ConsoleCall) -> TokenStream {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ir::{ConsoleCall, IrExpression, IrLiteral, RuntimeNamespace};
+
+    #[test]
+    fn console_log_wraps_arguments_with_stringify() {
+        let namespace = RuntimeNamespace::Console(ConsoleCall::Log(vec![
+            IrExpression::Literal(IrLiteral::Number(1.0)),
+            IrExpression::Identifier("value".into()),
+        ]));
+
+        let tokens = runtime_call_tokens(&namespace);
+        assert_eq!(
+            tokens.to_string(),
+            quote::quote! {
+                runtime::console::log(vec![
+                    runtime::console::stringify(&(1.0)),
+                    runtime::console::stringify(&(value))
+                ])
+            }
+            .to_string()
+        );
+    }
+}

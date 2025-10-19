@@ -5,3 +5,14 @@ pub(crate) fn identifier_tokens(name: &str) -> TokenStream {
     let ident = format_ident!("{}", name);
     quote! { #ident }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn identifier_tokens_emits_identifier() {
+        let tokens = identifier_tokens("value");
+        assert_eq!(tokens.to_string(), quote::quote! { value }.to_string());
+    }
+}

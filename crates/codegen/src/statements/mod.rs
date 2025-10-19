@@ -56,3 +56,74 @@ impl Codegen for IrStmt {
 fn collect_stmt_tokens(stmts: &[IrStmt]) -> Vec<TokenStream> {
     stmts.iter().map(|stmt| stmt.codegen()).collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ir::{IrExpression, IrLiteral, IrStmt, IrType, IrVariable};
+
+    #[test]
+    fn leteral_statement_delegates_to_variable_codegen() {
+        let variable = IrVariable {
+            name: "value".into(),
+            mutable: false,
+            ty: IrType::Number,
+            value: Some(IrExpression::Literal(IrLiteral::Number(5.0))),
+        };
+
+        let stmt = IrStmt::Leteral(variable.clone());
+        assert_eq!(stmt.codegen().to_string(), variable.codegen().to_string());
+    }
+
+    #[test]
+    fn collect_stmt_tokens_preserves_statement_order() {
+        let stmts = vec![
+            IrStmt::Expression(IrExpression::Identifier("first".into())),
+            IrStmt::Return(Some(IrExpression::Literal(IrLiteral::Bool(true)))),
+        ];
+
+        let tokens = collect_stmt_tokens(&stmts);
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0].to_string(), quote::quote! { first; }.to_string());
+        assert_eq!(
+            tokens[1].to_string(),
+            quote::quote! { return true; }.to_string()
+        );
+    }
+
+    #[test]
+    fn unsupported_statement_emits_panic_with_reason() {
+        let stmt = IrStmt::Unsupported("not yet".into());
+        assert_eq!(
+            stmt.codegen().to_string(),
+            quote::quote! { panic!("unsupported statement: not yet") }.to_string()
+        );
+    }
+
+    #[test]
+    fn var_decl_statement_batches_variable_declarations() {
+        let vars = vec![
+            IrVariable {
+                name: "a".into(),
+                mutable: false,
+                ty: IrType::Number,
+                value: Some(IrExpression::Literal(IrLiteral::Number(1.0))),
+            },
+            IrVariable {
+                name: "b".into(),
+                mutable: true,
+                ty: IrType::Bool,
+                value: None,
+            },
+        ];
+
+        let stmt = IrStmt::VarDecl(vars.clone());
+        let tokens = stmt.codegen();
+        let expected = quote::quote! {
+            let a: f64 = 1.0;
+            let mut b: bool = false;
+        };
+
+        assert_eq!(tokens.to_string(), expected.to_string());
+    }
+}

@@ -61,3 +61,52 @@ impl Codegen for IrExpression {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ir::{IrExpression, IrLiteral};
+
+    #[test]
+    fn identifier_expression_delegates_to_identifier_tokens() {
+        let expr = IrExpression::Identifier("value".into());
+        assert_eq!(
+            expr.codegen().to_string(),
+            identifier_tokens("value").to_string()
+        );
+    }
+
+    #[test]
+    fn array_expression_leverages_array_tokens() {
+        let expr = IrExpression::Array(vec![
+            IrExpression::Literal(IrLiteral::Number(1.0)),
+            IrExpression::Literal(IrLiteral::Number(2.0)),
+        ]);
+        assert_eq!(
+            expr.codegen().to_string(),
+            array_tokens(&[
+                IrExpression::Literal(IrLiteral::Number(1.0)),
+                IrExpression::Literal(IrLiteral::Number(2.0))
+            ])
+            .to_string()
+        );
+    }
+
+    #[test]
+    fn super_call_is_reported_as_unsupported() {
+        let expr = IrExpression::SuperCall { args: vec![] };
+        assert_eq!(
+            expr.codegen().to_string(),
+            unsupported_expr("super call").to_string()
+        );
+    }
+
+    #[test]
+    fn unknown_expression_routes_to_generic_unsupported_handler() {
+        let expr = IrExpression::ArrayExpr(Vec::new());
+        assert_eq!(
+            expr.codegen().to_string(),
+            unsupported_expr("unsupported expression").to_string()
+        );
+    }
+}
