@@ -1,4 +1,5 @@
-use runtime::console::{self, ConsoleArg};
+use runtime::console::{self};
+use runtime::prelude::log::ConsoleArg;
 use runtime::value::Value;
 
 #[test]
@@ -14,9 +15,9 @@ fn runtime_stringify_converts_console_args_into_values() {
         other => panic!("expected array value, got {other:?}"),
     }
 
-    assert_eq!(console::stringify(&numbers), "123");
-    assert_eq!(console::stringify(&true), "true");
-    assert_eq!(console::stringify(&"hello"), "hello");
+    assert_eq!(console::log::stringify(&numbers), "123");
+    assert_eq!(console::log::stringify(&true), "true");
+    assert_eq!(console::log::stringify(&"hello"), "hello");
 }
 
 #[test]
@@ -58,14 +59,14 @@ fn console_arg_converts_collections_recursively() {
 
 #[test]
 fn stringify_formats_special_values_consistently() {
-    assert_eq!(console::stringify(&()), "undefined");
-    assert_eq!(console::stringify(&Value::Null), "null");
-    assert_eq!(console::stringify(&Value::String("".into())), "");
-    assert_eq!(console::stringify(&Value::Array(vec![])), "");
+    assert_eq!(console::log::stringify(&()), "undefined");
+    assert_eq!(console::log::stringify(&Value::Null), "null");
+    assert_eq!(console::log::stringify(&Value::String("".into())), "");
+    assert_eq!(console::log::stringify(&Value::Array(vec![])), "");
 
     let nested = Value::Array(vec![
         Value::String("foo".into()),
         Value::Array(vec![Value::Number(1.0), Value::Bool(false)]),
     ]);
-    assert_eq!(console::stringify(&nested), "foo1false");
+    assert_eq!(console::log::stringify(&nested), "foo1false");
 }

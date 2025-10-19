@@ -1,1 +1,0 @@
-let x: number = 1 + 2; console.log(x);
