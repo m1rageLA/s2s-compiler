@@ -33,7 +33,7 @@ pub(crate) fn stmt_to_ir(stmt: &ast::Stmt) -> IrStmt {
 mod tests {
     use super::*;
     use crate::test_utils::{assert_identifier, assert_number_literal};
-    use ir::{IrExpression, IrForInit, IrStmt};
+    use ir::{IrAssignOp, IrExpression, IrForInit, IrStmt};
     use swc_ecma_ast::ModuleItem;
 
     fn lower_first_stmt(source: &str) -> IrStmt {
@@ -218,8 +218,15 @@ mod tests {
                 }
                 assert!(matches!(condition, Some(IrExpression::Binary { .. })));
                 match update.expect("update should exist") {
-                    IrExpression::Identifier(name) => assert_eq!(name, "unsupported"),
-                    other => panic!("expected unsupported assignment sentinel, got {other:?}"),
+                    IrExpression::Assignment { op, left, right } => {
+                        assert_eq!(op, IrAssignOp::Assign);
+                        assert_identifier(left.as_ref(), "i");
+                        match right.as_ref() {
+                            IrExpression::Binary { .. } => {}
+                            other => panic!("expected binary expression on rhs, got {other:?}"),
+                        }
+                    }
+                    other => panic!("expected assignment expression, got {other:?}"),
                 }
                 assert_eq!(body.len(), 1);
                 assert!(matches!(body[0], IrStmt::Expression(_)));
@@ -239,17 +246,26 @@ mod tests {
             } => {
                 match init.expect("init should be present") {
                     IrForInit::Expr(expr) => match expr {
-                        IrExpression::Identifier(name) => {
-                            assert_eq!(name, "unsupported");
+                        IrExpression::Assignment { op, left, right } => {
+                            assert_eq!(op, IrAssignOp::Assign);
+                            assert_identifier(left.as_ref(), "i");
+                            assert_number_literal(Some(right.as_ref()), 0.0);
                         }
-                        other => panic!("expected unsupported initializer sentinel, got {other:?}"),
+                        other => panic!("expected assignment initializer, got {other:?}"),
                     },
                     IrForInit::VarDecl(_) => panic!("expected expression initializer"),
                 }
                 assert!(matches!(condition, Some(IrExpression::Binary { .. })));
                 match update.expect("update should exist") {
-                    IrExpression::Identifier(name) => assert_eq!(name, "unsupported"),
-                    other => panic!("expected unsupported assignment sentinel, got {other:?}"),
+                    IrExpression::Assignment { op, left, right } => {
+                        assert_eq!(op, IrAssignOp::Assign);
+                        assert_identifier(left.as_ref(), "i");
+                        match right.as_ref() {
+                            IrExpression::Binary { .. } => {}
+                            other => panic!("expected binary expression on rhs, got {other:?}"),
+                        }
+                    }
+                    other => panic!("expected assignment expression, got {other:?}"),
                 }
                 assert_eq!(body.len(), 1);
                 assert!(matches!(body[0], IrStmt::Expression(_)));

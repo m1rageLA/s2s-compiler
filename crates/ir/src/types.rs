@@ -7,6 +7,7 @@ pub enum IrType {
     Bool,
     Unit,
     Any,
+    Value,
 }
 
 #[derive(Debug, Clone)]

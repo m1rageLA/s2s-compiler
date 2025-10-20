@@ -11,6 +11,13 @@ pub(crate) fn unsupported_bin_op(name: &str) -> TokenStream {
     quote! { panic!(#msg) }
 }
 
+pub(crate) fn unsupported_assign_op(name: &str) -> TokenStream {
+    let msg = Literal::string(&format!(
+        "codegen for assignment op `{name}` not implemented"
+    ));
+    quote! { panic!(#msg) }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -30,6 +37,16 @@ mod tests {
         assert_eq!(
             tokens.to_string(),
             quote::quote! { panic!("codegen for binary op `instanceof` not implemented") }
+                .to_string()
+        );
+    }
+
+    #[test]
+    fn unsupported_assignment_mentions_operator() {
+        let tokens = unsupported_assign_op("logical or");
+        assert_eq!(
+            tokens.to_string(),
+            quote::quote! { panic!("codegen for assignment op `logical or` not implemented") }
                 .to_string()
         );
     }

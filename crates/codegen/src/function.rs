@@ -61,6 +61,7 @@ pub(crate) fn render_type(ty: &IrType) -> TokenStream {
         IrType::Bool => quote! { bool },
         IrType::Unit => quote! { () },
         IrType::Any => quote! { ::std::boxed::Box<dyn ::std::any::Any> },
+        IrType::Value => quote! { runtime::value::Value },
     }
 }
 
@@ -74,6 +75,7 @@ fn default_value(ty: &IrType) -> TokenStream {
             let msg = Literal::string("uninitialized value for `any` type");
             quote! { panic!(#msg) }
         }
+        IrType::Value => quote! { runtime::value::Value::Undefined },
     }
 }
 
@@ -245,6 +247,7 @@ mod tests {
                 IrType::Any,
                 quote! { ::std::boxed::Box<dyn ::std::any::Any> },
             ),
+            (IrType::Value, quote! { runtime::value::Value }),
         ];
 
         for (ty, expected) in cases {

@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Number(f64),
@@ -7,6 +9,7 @@ pub enum Value {
     Undefined,
     //array
     Array(Vec<Value>),
+    Object(BTreeMap<String, Value>),
 }
 
 impl ToString for Value {
@@ -18,6 +21,13 @@ impl ToString for Value {
             Value::Null => "null".into(),
             Value::Undefined => "undefined".into(),
             Value::Array(a) => a.iter().map(|v| v.to_string()).collect(),
+            Value::Object(map) => {
+                let mut parts = Vec::new();
+                for (key, value) in map.iter() {
+                    parts.push(format!("{key}: {}", value.to_string()));
+                }
+                format!("{{{}}}", parts.join(", "))
+            }
         }
     }
 }
@@ -76,6 +86,12 @@ impl From<Vec<Value>> for Value {
     }
 }
 
+impl From<BTreeMap<String, Value>> for Value {
+    fn from(value: BTreeMap<String, Value>) -> Self {
+        Value::Object(value)
+    }
+}
+
 impl From<()> for Value {
     fn from(_: ()) -> Self {
         Value::Undefined
@@ -87,4 +103,19 @@ where
     T: Into<Value>,
 {
     value.into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn object_to_string_formats_key_value_pairs() {
+        let mut map = BTreeMap::new();
+        map.insert("a".into(), Value::Number(1.0));
+        map.insert("b".into(), Value::Bool(true));
+
+        let value = Value::Object(map);
+        assert_eq!(value.to_string(), "{a: 1, b: true}");
+    }
 }

@@ -27,6 +27,7 @@ pub(crate) fn infer_expression_type(expr: &IrExpression) -> Option<IrType> {
             alternate,
             ..
         } => expression_conditional::infer_conditional(consequent, alternate),
+        IrExpression::Object(_) => Some(IrType::Value),
         IrExpression::Template(parts) => expression_template::infer_template(parts),
         IrExpression::RuntimeCall(call) => expression_runtime::infer_runtime(call),
         _ => expression_trivial::infer_default(expr),
@@ -125,6 +126,12 @@ mod tests {
             IrTemplatePart::Expr(Box::new(ident("name"))),
         ]);
         assert_eq!(infer_expression_type(&template), Some(IrType::Str));
+
+        let object = IrExpression::Object(vec![ir::IrObjectProperty {
+            key: "value".into(),
+            value: IrExpression::Literal(IrLiteral::Number(1.0)),
+        }]);
+        assert_eq!(infer_expression_type(&object), Some(IrType::Value));
 
         let runtime =
             IrExpression::RuntimeCall(RuntimeNamespace::Console(ConsoleCall::Log(vec![number(

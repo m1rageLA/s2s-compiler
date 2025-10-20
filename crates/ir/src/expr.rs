@@ -11,6 +11,11 @@ pub enum IrExpression {
         left: Box<IrExpression>,
         right: Box<IrExpression>,
     },
+    Assignment {
+        op: IrAssignOp,
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
     Call {
         callee: Box<IrExpression>,
         args: Vec<IrExpression>,
@@ -40,6 +45,7 @@ pub enum IrExpression {
         left: Box<IrExpression>,
         op: IrPostfixOp,
     },
+    Object(Vec<IrObjectProperty>),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -60,6 +66,12 @@ pub struct IrFunctionExpr {
     pub params: Vec<IrParam>,
     pub ret: IrType,
     pub body: Vec<IrStmt>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct IrObjectProperty {
+    pub key: String,
+    pub value: IrExpression,
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum IrLiteral {
@@ -164,4 +176,24 @@ pub enum BinaryOp {
     In,
     InstanceOf,
     Exp,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IrAssignOp {
+    Assign,
+    AddAssign,
+    SubAssign,
+    MulAssign,
+    DivAssign,
+    ModAssign,
+    ExpAssign,
+    LeftShiftAssign,
+    RightShiftAssign,
+    UnsignedRightShiftAssign,
+    BitwiseOrAssign,
+    BitwiseXorAssign,
+    BitwiseAndAssign,
+    LogicalOrAssign,
+    LogicalAndAssign,
+    NullishCoalesceAssign,
 }
