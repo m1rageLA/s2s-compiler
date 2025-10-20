@@ -82,6 +82,10 @@ pub enum ConsoleCall {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ArrayCall {
     Length(Box<IrExpression>),
+    Index {
+        target: Box<IrExpression>,
+        index: Box<IrExpression>,
+    },
     Push {
         target: Box<IrExpression>,
         args: Vec<IrExpression>,

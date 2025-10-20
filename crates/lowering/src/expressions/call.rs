@@ -172,6 +172,7 @@ mod tests {
                         }
                         //todo
                         ir::ArrayCall::Length(_ir_expression) => todo!(),
+                        ir::ArrayCall::Index { .. } => todo!(),
                     }
                 }
                 other => panic!("expected array runtime call, got {other:?}"),

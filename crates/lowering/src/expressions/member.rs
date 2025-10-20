@@ -3,15 +3,17 @@ use ir::{ArrayCall, ConsoleCall, IrExpression, RuntimeNamespace};
 
 pub(crate) fn lower_member_expr(member: &ast::MemberExpr) -> IrExpression {
     let object = expr_to_ir(member.obj.as_ref());
-    let property = match &member.prop {
-        ast::MemberProp::Ident(ident) => ident.sym.to_string(),
-        ast::MemberProp::PrivateName(_) => "private_not_supported".to_string(),
-        ast::MemberProp::Computed(_) => "computed_not_supported".to_string(),
-    };
 
-    IrExpression::Member {
-        object: Box::new(object),
-        property,
+    match &member.prop {
+        ast::MemberProp::Ident(ident) => IrExpression::Member {
+            object: Box::new(object),
+            property: ident.sym.to_string(),
+        },
+        ast::MemberProp::PrivateName(_) => IrExpression::Member {
+            object: Box::new(object),
+            property: "private_not_supported".to_string(),
+        },
+        ast::MemberProp::Computed(expr) => lower_computed_member(object, expr.expr.as_ref()),
     }
 }
 
@@ -54,6 +56,22 @@ pub(crate) fn runtime_value_for_member(member: &IrExpression) -> Option<IrExpres
         )),
         _ => None,
     }
+}
+
+fn lower_computed_member(object: IrExpression, property: &ast::Expr) -> IrExpression {
+    let property_ir = expr_to_ir(property);
+
+    if let IrExpression::Literal(IrLiteral::Str(name)) = property_ir.clone() {
+        return IrExpression::Member {
+            object: Box::new(object),
+            property: name,
+        };
+    }
+
+    IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Index {
+        target: Box::new(object),
+        index: Box::new(property_ir),
+    }))
 }
 
 #[cfg(test)]
@@ -162,6 +180,65 @@ mod tests {
                     IrExpression::Identifier(name) => assert_eq!(name, "values"),
                     other => panic!("expected identifier target, got {other:?}"),
                 }
+            }
+            other => panic!("expected runtime length call, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lowers_array_index_with_numeric_literal() {
+        let ir_expr = lower_expression("values[0]");
+
+        match ir_expr {
+            IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Index {
+                target,
+                index,
+            })) => {
+                assert!(matches!(
+                    target.as_ref(),
+                    IrExpression::Identifier(name) if name == "values"
+                ));
+                assert!(matches!(
+                    index.as_ref(),
+                    IrExpression::Literal(IrLiteral::Number(value)) if (*value - 0.0).abs() < f64::EPSILON
+                ));
+            }
+            other => panic!("expected runtime index call, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lowers_array_index_with_identifier_expression() {
+        let ir_expr = lower_expression("values[i]");
+
+        match ir_expr {
+            IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Index {
+                target,
+                index,
+            })) => {
+                assert!(matches!(
+                    target.as_ref(),
+                    IrExpression::Identifier(name) if name == "values"
+                ));
+                assert!(matches!(
+                    index.as_ref(),
+                    IrExpression::Identifier(name) if name == "i"
+                ));
+            }
+            other => panic!("expected runtime index call, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn computed_string_literal_maps_to_named_property() {
+        let ir_expr = lower_expression(r#"values["length"]"#);
+
+        match ir_expr {
+            IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Length(target))) => {
+                assert!(matches!(
+                    target.as_ref(),
+                    IrExpression::Identifier(name) if name == "values"
+                ));
             }
             other => panic!("expected runtime length call, got {other:?}"),
         }

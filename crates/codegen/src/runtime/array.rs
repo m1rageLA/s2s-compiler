@@ -21,6 +21,11 @@ pub(crate) fn array_call_tokens(call: &ArrayCall) -> TokenStream {
             let target_tokens = target.codegen();
             quote! { runtime::array::length(&#target_tokens) }
         }
+        ArrayCall::Index { target, index } => {
+            let target_tokens = target.codegen();
+            let index_tokens = index.codegen();
+            quote! { runtime::array::index(&#target_tokens, #index_tokens) }
+        }
     }
 }
 
@@ -52,6 +57,20 @@ mod tests {
         assert_eq!(
             tokens.to_string(),
             quote! { runtime::array::length(&values) }.to_string()
+        );
+    }
+
+    #[test]
+    fn array_index_generates_runtime_call() {
+        let call = ArrayCall::Index {
+            target: Box::new(IrExpression::Identifier("values".into())),
+            index: Box::new(IrExpression::Literal(IrLiteral::Number(1.0))),
+        };
+
+        let tokens = array_call_tokens(&call);
+        assert_eq!(
+            tokens.to_string(),
+            quote! { runtime::array::index(&values, 1.0) }.to_string()
         );
     }
 }
