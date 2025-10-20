@@ -5,8 +5,6 @@ use quote::{format_ident, quote};
 use crate::Codegen;
 
 pub(crate) fn member_tokens(object: &IrExpression, property: &str) -> TokenStream {
-
-
     let object_tokens = object.codegen();
     let property_ident = format_ident!("{}", property);
     quote! { (#object_tokens).#property_ident }
@@ -30,10 +28,9 @@ mod tests {
     fn base_ident(field: &ExprField) -> String {
         match field.base.as_ref() {
             Expr::Paren(ExprParen { expr, .. }) => match expr.as_ref() {
-                Expr::Path(ExprPath { path, .. }) => path
-                    .get_ident()
-                    .expect("base identifier")
-                    .to_string(),
+                Expr::Path(ExprPath { path, .. }) => {
+                    path.get_ident().expect("base identifier").to_string()
+                }
                 _ => panic!("unexpected base expression"),
             },
             _ => panic!("expected parenthesized base expression"),

@@ -43,7 +43,9 @@ fn test_arrow_tokens() {
         op: ir::IrBinOp::Add,
     }))]);
 
-    let body_expr = IrArrowBody::Expr(Box::new(ir::IrExpression::Literal(ir::IrLiteral::Number(1.0))));
+    let body_expr = IrArrowBody::Expr(Box::new(ir::IrExpression::Literal(ir::IrLiteral::Number(
+        1.0,
+    ))));
 
     let tokens_block = arrow_tokens(&params, &body_block);
     let tokens_expr = arrow_tokens(&params, &body_expr);

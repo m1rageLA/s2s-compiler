@@ -82,7 +82,9 @@ mod tests {
     use super::*;
     use ir::{IrBinOp, IrExpression, IrFunction, IrParam, IrStmt, IrType, IrVariable};
     use quote::quote;
-    use syn::{BinOp, Expr, ExprBinary, ExprParen, ExprPath, FnArg, Item, ItemFn, ReturnType, Stmt, Type};
+    use syn::{
+        BinOp, Expr, ExprBinary, ExprParen, ExprPath, FnArg, Item, ItemFn, ReturnType, Stmt, Type,
+    };
 
     fn parse_function(tokens: TokenStream) -> ItemFn {
         match syn::parse2::<Item>(tokens).expect("function should parse") {
@@ -168,7 +170,9 @@ mod tests {
             .as_ref();
 
         match value_expr {
-            Expr::Binary(ExprBinary { left, op, right, .. }) => {
+            Expr::Binary(ExprBinary {
+                left, op, right, ..
+            }) => {
                 assert!(matches!(op, BinOp::Add(_)));
 
                 let left_ident = match left.as_ref() {
@@ -226,8 +230,7 @@ mod tests {
         let tokens = variable.codegen();
         assert_eq!(
             tokens.to_string(),
-            quote! { let mut payload = panic!("uninitialized value for `any` type"); }
-                .to_string()
+            quote! { let mut payload = panic!("uninitialized value for `any` type"); }.to_string()
         );
     }
 

@@ -73,7 +73,10 @@ mod tests {
             .body
             .as_ref()
             .expect("wrapper body should exist");
-        let stmt = block.stmts.first().expect("expected statement in wrapper body");
+        let stmt = block
+            .stmts
+            .first()
+            .expect("expected statement in wrapper body");
         super::stmt_to_ir(stmt)
     }
 

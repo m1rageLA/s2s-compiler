@@ -9,10 +9,10 @@ mod call;
 mod conditional;
 mod function;
 mod literal;
+mod member;
 mod template;
 mod unary;
 mod update;
-mod member;
 
 #[allow(unused_imports)]
 pub use array::*;
@@ -26,13 +26,13 @@ pub use function::*;
 #[allow(unused_imports)]
 pub use literal::*;
 #[allow(unused_imports)]
+pub use member::*;
+#[allow(unused_imports)]
 pub use template::*;
 #[allow(unused_imports)]
 pub use unary::*;
 #[allow(unused_imports)]
 pub use update::*;
-#[allow(unused_imports)]
-pub use member::*;
 
 pub(crate) fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
     match expr {
@@ -50,7 +50,10 @@ pub(crate) fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
         ast::Expr::Cond(cond) => cond_expr_to_ir(cond),
         ast::Expr::Update(u) => update_expr_to_ir(u),
         ast::Expr::Fn(fn_expr) => function_expr_to_ir(fn_expr),
-        ast::Expr::Member(member) => lower_member_expr(member).into_expression(),
+        ast::Expr::Member(member) => {
+            let member_expr = lower_member_expr(member);
+            runtime_value_for_member(&member_expr).unwrap_or(member_expr)
+        }
         _ => IrExpression::Identifier("unsupported".to_string()),
     }
 }

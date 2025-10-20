@@ -1,4 +1,4 @@
-use crate::test_utils::{e2e_guard, get_last_line, TsFixture};
+use crate::test_utils::{TsFixture, e2e_guard, get_last_line};
 use std::process::Command;
 
 #[test]

@@ -38,7 +38,7 @@ mod tests {
     use super::*;
     use ir::{
         ConsoleCall, IrBinOp, IrExpression, IrForInit, IrLiteral, IrStmt, IrTemplatePart, IrType,
-        RuntimeNamespace, IrVariable,
+        IrVariable, RuntimeNamespace,
     };
 
     fn number(value: f64) -> IrExpression {
@@ -101,7 +101,10 @@ mod tests {
             consequent: Box::new(number(1.0)),
             alternate: Box::new(number(2.0)),
         };
-        assert_eq!(infer_expression_type(&conditional_same), Some(IrType::Number));
+        assert_eq!(
+            infer_expression_type(&conditional_same),
+            Some(IrType::Number)
+        );
 
         let conditional_diff = IrExpression::Conditional {
             test: Box::new(ident("cond")),
@@ -123,9 +126,10 @@ mod tests {
         ]);
         assert_eq!(infer_expression_type(&template), Some(IrType::Str));
 
-        let runtime = IrExpression::RuntimeCall(RuntimeNamespace::Console(ConsoleCall::Log(vec![
-            number(1.0),
-        ])));
+        let runtime =
+            IrExpression::RuntimeCall(RuntimeNamespace::Console(ConsoleCall::Log(vec![number(
+                1.0,
+            )])));
         assert_eq!(infer_expression_type(&runtime), Some(IrType::Unit));
 
         let call = IrExpression::Call {
@@ -201,10 +205,7 @@ mod tests {
 
     #[test]
     fn fails_inference_when_return_types_conflict_with_unit() {
-        let body = vec![
-            IrStmt::Return(Some(number(1.0))),
-            IrStmt::Return(None),
-        ];
+        let body = vec![IrStmt::Return(Some(number(1.0))), IrStmt::Return(None)];
         assert_eq!(infer_function_return_type(&body), None);
     }
 

@@ -30,7 +30,9 @@ fn console_arg_converts_numeric_types_to_numbers() {
 
     assert!(matches!(value_i32, Value::Number(n) if (n + 7.0).abs() < f64::EPSILON));
     assert!(matches!(value_i64, Value::Number(n) if (n - 123.0).abs() < f64::EPSILON));
-    assert!(matches!(value_i128, Value::Number(n) if (n - 9_223_372_036_854_775_807_f64).abs() < 1.0));
+    assert!(
+        matches!(value_i128, Value::Number(n) if (n - 9_223_372_036_854_775_807_f64).abs() < 1.0)
+    );
     assert!(matches!(value_f32, Value::Number(n) if (n - 3.5).abs() < f64::EPSILON));
     assert!(matches!(value_f64, Value::Number(n) if (n + 0.125).abs() < f64::EPSILON));
 }

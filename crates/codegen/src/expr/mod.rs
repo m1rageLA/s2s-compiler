@@ -1,6 +1,6 @@
+use crate::runtime::runtime_call_tokens;
 use ir::IrExpression;
 use proc_macro2::TokenStream;
-use crate::runtime::runtime_call_tokens;
 
 use crate::Codegen;
 mod array;

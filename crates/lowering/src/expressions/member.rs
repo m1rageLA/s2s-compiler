@@ -1,50 +1,7 @@
 use super::*;
-use ir::{ArrayCall, ConsoleCall, RuntimeNamespace};
+use ir::{ArrayCall, ConsoleCall, IrExpression, RuntimeNamespace};
 
-#[derive(Debug)]
-pub(crate) struct LoweredMember {
-    expression: IrExpression,
-    runtime: Option<MemberRuntime>,
-}
-
-impl LoweredMember {
-    pub(crate) fn into_expression(self) -> IrExpression {
-        self.expression
-    }
-
-    pub(crate) fn into_callee(self) -> MemberCallee {
-        match self.runtime {
-            Some(runtime) => MemberCallee::Runtime(runtime),
-            None => MemberCallee::Expr(self.expression),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub(crate) enum MemberCallee {
-    Runtime(MemberRuntime),
-    Expr(IrExpression),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) enum MemberRuntime {
-    ConsoleLog,
-    ArrayPush { target: IrExpression },
-}
-
-impl MemberRuntime {
-    pub(crate) fn into_runtime_call(self, args: Vec<IrExpression>) -> RuntimeNamespace {
-        match self {
-            MemberRuntime::ConsoleLog => RuntimeNamespace::Console(ConsoleCall::Log(args)),
-            MemberRuntime::ArrayPush { target } => RuntimeNamespace::Array(ArrayCall::Push {
-                target: Box::new(target),
-                args,
-            }),
-        }
-    }
-}
-
-pub(crate) fn lower_member_expr(member: &ast::MemberExpr) -> LoweredMember {
+pub(crate) fn lower_member_expr(member: &ast::MemberExpr) -> IrExpression {
     let object = expr_to_ir(member.obj.as_ref());
     let property = match &member.prop {
         ast::MemberProp::Ident(ident) => ident.sym.to_string(),
@@ -52,27 +9,49 @@ pub(crate) fn lower_member_expr(member: &ast::MemberExpr) -> LoweredMember {
         ast::MemberProp::Computed(_) => "computed_not_supported".to_string(),
     };
 
-    let runtime = detect_runtime_member(&object, &property);
-
-    LoweredMember {
-        expression: IrExpression::Member {
-            object: Box::new(object),
-            property,
-        },
-        runtime,
+    IrExpression::Member {
+        object: Box::new(object),
+        property,
     }
 }
 
-fn detect_runtime_member(object: &IrExpression, property: &str) -> Option<MemberRuntime> {
+pub(crate) fn runtime_call_for_member(
+    callee: &IrExpression,
+    args: &[IrExpression],
+) -> Option<RuntimeNamespace> {
+    let IrExpression::Member { object, property } = callee else {
+        return None;
+    };
+
+    detect_runtime_call(object.as_ref(), property, args)
+}
+
+fn detect_runtime_call(
+    object: &IrExpression,
+    property: &str,
+    args: &[IrExpression],
+) -> Option<RuntimeNamespace> {
     match (object, property) {
         (IrExpression::Identifier(name), "log") if name == "console" => {
-            Some(MemberRuntime::ConsoleLog)
+            Some(RuntimeNamespace::Console(ConsoleCall::Log(args.to_vec())))
         }
-        (IrExpression::Identifier(_), "push") => {
-            Some(MemberRuntime::ArrayPush {
-                target: object.clone(),
-            })
-        }
+        (IrExpression::Identifier(_), "push") => Some(RuntimeNamespace::Array(ArrayCall::Push {
+            target: Box::new(object.clone()),
+            args: args.to_vec(),
+        })),
+        _ => None,
+    }
+}
+
+pub(crate) fn runtime_value_for_member(member: &IrExpression) -> Option<IrExpression> {
+    let IrExpression::Member { object, property } = member else {
+        return None;
+    };
+
+    match (object.as_ref(), property.as_str()) {
+        (IrExpression::Identifier(_), "length") => Some(IrExpression::RuntimeCall(
+            RuntimeNamespace::Array(ArrayCall::Length(Box::new(object.as_ref().clone()))),
+        )),
         _ => None,
     }
 }
@@ -82,7 +61,7 @@ mod tests {
     use super::*;
     use crate::test_utils::lower;
     use ir::{IrExpression, IrItem};
-    use swc_common::{SyntaxContext, DUMMY_SP};
+    use swc_common::{DUMMY_SP, SyntaxContext};
     use swc_ecma_ast as swc_ast;
 
     fn lower_expression(source: &str) -> IrExpression {
@@ -91,6 +70,22 @@ mod tests {
         match ir_module.items.into_iter().next().expect("expression item") {
             IrItem::Expression(expr) => expr,
             other => panic!("expected expression item, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lowers_member_expression() {
+        let ir_expr = lower_expression("foo.bar");
+
+        match ir_expr {
+            IrExpression::Member { object, property } => {
+                assert!(matches!(
+                    object.as_ref(),
+                    IrExpression::Identifier(name) if name == "foo"
+                ));
+                assert_eq!(property, "bar");
+            }
+            other => panic!("expected member expression, got {other:?}"),
         }
     }
 
@@ -109,20 +104,23 @@ mod tests {
         };
 
         let lowered = lower_member_expr(&member);
-        match lowered.runtime {
-            Some(MemberRuntime::ConsoleLog) => {}
-            other => panic!("expected console.log runtime, got {other:?}"),
-        }
 
-        match lowered.into_expression() {
-            IrExpression::Member { object, property } => {
-                assert!(matches!(
-                    object.as_ref(),
-                    IrExpression::Identifier(name) if name == "console"
-                ));
+        match lowered {
+            IrExpression::Member {
+                ref object,
+                ref property,
+            } => {
+                assert!(
+                    matches!(object.as_ref(), IrExpression::Identifier(name) if name == "console")
+                );
                 assert_eq!(property, "log");
             }
             other => panic!("expected member expression, got {other:?}"),
+        }
+
+        match runtime_call_for_member(&lowered, &[]) {
+            Some(RuntimeNamespace::Console(ConsoleCall::Log(args))) => assert!(args.is_empty()),
+            other => panic!("expected console.log runtime, got {other:?}"),
         }
     }
 
@@ -141,28 +139,31 @@ mod tests {
         };
 
         let lowered = lower_member_expr(&member);
-        match lowered.runtime {
-            Some(MemberRuntime::ArrayPush { target }) => match target {
-                IrExpression::Identifier(name) => assert_eq!(name, "values"),
-                other => panic!("expected identifier target, got {other:?}"),
-            },
+
+        match runtime_call_for_member(&lowered, &[]) {
+            Some(RuntimeNamespace::Array(ArrayCall::Push { target, args })) => {
+                match target.as_ref() {
+                    IrExpression::Identifier(name) => assert_eq!(name, "values"),
+                    other => panic!("expected identifier target, got {other:?}"),
+                }
+                assert!(args.is_empty());
+            }
             other => panic!("expected array.push runtime, got {other:?}"),
         }
     }
 
     #[test]
-    fn lowers_plain_member_expression() {
-        let ir_expr = lower_expression("foo.bar");
+    fn lowers_array_length_to_runtime_call() {
+        let ir_expr = lower_expression("values.length");
 
         match ir_expr {
-            IrExpression::Member { object, property } => {
-                assert!(matches!(
-                    object.as_ref(),
-                    IrExpression::Identifier(name) if name == "foo"
-                ));
-                assert_eq!(property, "bar");
+            IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Length(target))) => {
+                match target.as_ref() {
+                    IrExpression::Identifier(name) => assert_eq!(name, "values"),
+                    other => panic!("expected identifier target, got {other:?}"),
+                }
             }
-            other => panic!("expected member expression, got {other:?}"),
+            other => panic!("expected runtime length call, got {other:?}"),
         }
     }
 }

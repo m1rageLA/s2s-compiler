@@ -1,4 +1,4 @@
-use crate::test_utils::{e2e_guard, get_last_line, TsFixture};
+use crate::test_utils::{TsFixture, e2e_guard, get_last_line};
 use std::process::Command;
 
 #[test]
@@ -21,10 +21,5 @@ fn simple_math() {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    assert_eq!(
-        get_last_line(&stdout),
-        "3",
-        "expected 3, got {}",
-        stdout
-    );
+    assert_eq!(get_last_line(&stdout), "3", "expected 3, got {}", stdout);
 }

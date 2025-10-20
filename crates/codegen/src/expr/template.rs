@@ -45,7 +45,7 @@ mod tests {
     use super::*;
     use ir::{IrExpression, IrLiteral, IrTemplatePart};
     use quote::ToTokens;
-    use syn::{parse::Parser, Expr};
+    use syn::{Expr, parse::Parser};
 
     #[test]
     fn template_without_expressions_returns_string_literal() {
@@ -74,8 +74,7 @@ mod tests {
         match syn::parse2::<Expr>(tokens).expect("format macro should parse") {
             Expr::Macro(mac) => {
                 assert_eq!(mac.mac.path.segments[0].ident.to_string(), "format");
-                let parser =
-                    syn::punctuated::Punctuated::<Expr, syn::Token![,]>::parse_terminated;
+                let parser = syn::punctuated::Punctuated::<Expr, syn::Token![,]>::parse_terminated;
                 let args = parser
                     .parse2(mac.mac.tokens.clone())
                     .expect("format macro arguments should parse");

@@ -1,4 +1,4 @@
-use super::member::{self, MemberCallee};
+use super::member;
 use super::*;
 
 pub fn call_to_ir(c: &ast::CallExpr) -> IrExpression {
@@ -14,12 +14,10 @@ pub fn call_to_ir(c: &ast::CallExpr) -> IrExpression {
                 })
                 .collect::<Vec<_>>();
 
-            match callee {
-                MemberCallee::Runtime(runtime) => {
-                    IrExpression::RuntimeCall(runtime.into_runtime_call(args))
-                }
-                MemberCallee::Expr(callee_expr) => IrExpression::Call {
-                    callee: Box::new(callee_expr),
+            match member::runtime_call_for_member(&callee, &args) {
+                Some(runtime) => IrExpression::RuntimeCall(runtime),
+                None => IrExpression::Call {
+                    callee: Box::new(callee),
                     args,
                 },
             }
@@ -42,21 +40,21 @@ pub fn call_to_ir(c: &ast::CallExpr) -> IrExpression {
     }
 }
 
-fn callee_to_ir(expr: &ast::Expr) -> MemberCallee {
+fn callee_to_ir(expr: &ast::Expr) -> IrExpression {
     match expr {
-        ast::Expr::Ident(i) => MemberCallee::Expr(IrExpression::Identifier(i.sym.to_string())),
-        ast::Expr::Member(m) => member::lower_member_expr(m).into_callee(),
+        ast::Expr::Ident(i) => IrExpression::Identifier(i.sym.to_string()),
+        ast::Expr::Member(m) => member::lower_member_expr(m),
         ast::Expr::SuperProp(prop) => {
             let property = match &prop.prop {
                 ast::SuperProp::Ident(id) => id.sym.to_string(),
                 ast::SuperProp::Computed(_) => "computed_not_supported".to_string(),
             };
-            MemberCallee::Expr(IrExpression::Member {
+            IrExpression::Member {
                 object: Box::new(IrExpression::Identifier("super".to_string())),
                 property,
-            })
+            }
         }
-        _ => MemberCallee::Expr(IrExpression::Identifier("unsupported".to_string())),
+        _ => IrExpression::Identifier("unsupported".to_string()),
     }
 }
 
@@ -173,7 +171,7 @@ mod tests {
                             assert_number_literal(Some(&args[0]), 2.0);
                         }
                         //todo
-                        ir::ArrayCall::Length(ir_expression) => todo!(),
+                        ir::ArrayCall::Length(_ir_expression) => todo!(),
                     }
                 }
                 other => panic!("expected array runtime call, got {other:?}"),

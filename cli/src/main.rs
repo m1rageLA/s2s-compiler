@@ -2,6 +2,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use ts2rust_core::lower_ast;
 use ts2rust_core::prelude::Codegen;
 use ts2rust_core::{compile_typescript, parse_typescript};
 
@@ -24,6 +25,10 @@ fn main() {
         match args[1].as_str() {
             "ast" => {
                 run_ast();
+                return;
+            }
+            "ir" => {
+                run_ir();
                 return;
             }
             _ => {
@@ -64,6 +69,18 @@ fn run_ast() {
     };
     let ast = parse_typescript(&ts_source);
     println!("{:#?}", ast);
+}
+
+fn run_ir() {
+    let ts_source = match load_typescript_source() {
+        Ok(result) => result,
+        Err(err) => {
+            eprintln!("    [error] {err}");
+            std::process::exit(1);
+        }
+    };
+    let ir = lower_ast(&parse_typescript(&ts_source));
+    println!("{:#?}", ir);
 }
 fn run_pipeline() {
     let ts_source = match load_typescript_source() {

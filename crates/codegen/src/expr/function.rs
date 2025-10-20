@@ -59,9 +59,9 @@ mod tests {
                 ty: IrType::Str,
             }],
             ret: IrType::Bool,
-            body: vec![IrStmt::Return(Some(IrExpression::Literal(IrLiteral::Bool(
-                true,
-            ))))],
+            body: vec![IrStmt::Return(Some(IrExpression::Literal(
+                IrLiteral::Bool(true),
+            )))],
         };
 
         let closure = parse_closure(function_expr_tokens(&func));
@@ -114,7 +114,9 @@ mod tests {
                 ty: IrType::Number,
             }],
             ret: IrType::Any,
-            body: vec![IrStmt::Return(Some(IrExpression::Identifier("value".into())))],
+            body: vec![IrStmt::Return(Some(IrExpression::Identifier(
+                "value".into(),
+            )))],
         };
 
         let closure = parse_closure(function_expr_tokens(&func));

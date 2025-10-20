@@ -53,6 +53,9 @@ mod tests {
         let tokens_false = IrLiteral::Bool(false).codegen();
 
         assert_eq!(tokens_true.to_string(), quote::quote! { true }.to_string());
-        assert_eq!(tokens_false.to_string(), quote::quote! { false }.to_string());
+        assert_eq!(
+            tokens_false.to_string(),
+            quote::quote! { false }.to_string()
+        );
     }
 }

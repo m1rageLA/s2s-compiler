@@ -72,7 +72,7 @@ pub fn format_tokens(tokens: &TokenStream) -> String {
 /// Commonly used exports for consumers who need more granular control.
 pub mod prelude {
     pub use super::{
-        format_tokens, Compilation, compile_typescript, generate_rust_module, lower_ast,
+        Compilation, compile_typescript, format_tokens, generate_rust_module, lower_ast,
         parse_typescript,
     };
     pub use crate::runtime;

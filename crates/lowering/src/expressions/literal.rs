@@ -20,7 +20,7 @@ pub(crate) fn ident_to_ir(i: &ast::Ident) -> IrExpression {
 mod tests {
     use super::*;
     use swc_atoms::Atom;
-    use swc_common::{SyntaxContext, DUMMY_SP};
+    use swc_common::{DUMMY_SP, SyntaxContext};
 
     #[test]
     fn converts_numeric_literals() {

@@ -85,10 +85,7 @@ mod tests {
                 IrBinOp::UnsignedRightShift,
                 "codegen for binary op `unsigned right shift` not implemented",
             ),
-            (
-                IrBinOp::In,
-                "codegen for binary op `in` not implemented",
-            ),
+            (IrBinOp::In, "codegen for binary op `in` not implemented"),
             (
                 IrBinOp::InstanceOf,
                 "codegen for binary op `instanceof` not implemented",

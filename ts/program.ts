@@ -1,8 +1,4 @@
-let array = [1, 2, 3];
-let result = array.push();
+const x = [1, 2, "asd"];
 
-function addOne(value: number) {
-    return value + 1
-}
-console.log(result);
-console.log(array);
+const ln = x.length;
+console.log(ln);
