@@ -1,3 +1,4 @@
+use super::member::{self, MemberCallee};
 use super::*;
 
 pub fn call_to_ir(c: &ast::CallExpr) -> IrExpression {
@@ -13,20 +14,14 @@ pub fn call_to_ir(c: &ast::CallExpr) -> IrExpression {
                 })
                 .collect::<Vec<_>>();
 
-            // Спец-случай: console.log(...)
-            if let IrExpression::Member { object, property } = &callee {
-                if matches!(**object, IrExpression::Identifier(ref s) if s == "console")
-                    && property == "log"
-                {
-                    return IrExpression::RuntimeCall(RuntimeNamespace::Console(
-                        ir::ConsoleCall::Log(args),
-                    ));
+            match callee {
+                MemberCallee::Runtime(runtime) => {
+                    IrExpression::RuntimeCall(runtime.into_runtime_call(args))
                 }
-            }
-
-            IrExpression::Call {
-                callee: Box::new(callee),
-                args,
+                MemberCallee::Expr(callee_expr) => IrExpression::Call {
+                    callee: Box::new(callee_expr),
+                    args,
+                },
             }
         }
 
@@ -47,32 +42,21 @@ pub fn call_to_ir(c: &ast::CallExpr) -> IrExpression {
     }
 }
 
-fn callee_to_ir(expr: &ast::Expr) -> IrExpression {
+fn callee_to_ir(expr: &ast::Expr) -> MemberCallee {
     match expr {
-        ast::Expr::Ident(i) => IrExpression::Identifier(i.sym.to_string()),
-        ast::Expr::Member(m) => {
-            let object = callee_to_ir(&m.obj);
-            let property = match &m.prop {
-                ast::MemberProp::Ident(ident) => ident.sym.to_string(),
-                ast::MemberProp::PrivateName(_) => "private_not_supported".to_string(),
-                ast::MemberProp::Computed(_) => "computed_not_supported".to_string(),
-            };
-            IrExpression::Member {
-                object: Box::new(object),
-                property,
-            }
-        }
+        ast::Expr::Ident(i) => MemberCallee::Expr(IrExpression::Identifier(i.sym.to_string())),
+        ast::Expr::Member(m) => member::lower_member_expr(m).into_callee(),
         ast::Expr::SuperProp(prop) => {
             let property = match &prop.prop {
                 ast::SuperProp::Ident(id) => id.sym.to_string(),
                 ast::SuperProp::Computed(_) => "computed_not_supported".to_string(),
             };
-            IrExpression::Member {
+            MemberCallee::Expr(IrExpression::Member {
                 object: Box::new(IrExpression::Identifier("super".to_string())),
                 property,
-            }
+            })
         }
-        _ => IrExpression::Identifier("unsupported".to_string()),
+        _ => MemberCallee::Expr(IrExpression::Identifier("unsupported".to_string())),
     }
 }
 
@@ -159,6 +143,34 @@ mod tests {
                     }
                 },
                 other => panic!("expected console runtime call, got {other:?}"),
+            },
+            other => panic!("expected expression item, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lowers_array_push_to_runtime_call() {
+        let ir_module = lower(
+            r#"
+            let array = [1];
+            array.push(2);
+        "#,
+        );
+
+        assert_eq!(ir_module.items.len(), 2);
+        match &ir_module.items[1] {
+            IrItem::Expression(expr) => match expr {
+                IrExpression::RuntimeCall(RuntimeNamespace::Array(array_call)) => match array_call {
+                    ir::ArrayCall::Push { target, args } => {
+                        assert!(matches!(
+                            target.as_ref(),
+                            IrExpression::Identifier(name) if name == "array"
+                        ));
+                        assert_eq!(args.len(), 1);
+                        assert_number_literal(Some(&args[0]), 2.0);
+                    }
+                },
+                other => panic!("expected array runtime call, got {other:?}"),
             },
             other => panic!("expected expression item, got {other:?}"),
         }

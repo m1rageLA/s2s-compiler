@@ -1,5 +1,6 @@
 use ir::IrExpression;
 use proc_macro2::TokenStream;
+use crate::runtime::runtime_call_tokens;
 
 use crate::Codegen;
 mod array;
@@ -11,7 +12,6 @@ mod function;
 mod identifier;
 mod literal;
 mod member;
-mod runtime;
 mod template;
 mod unary;
 mod unsupported;
@@ -24,7 +24,6 @@ use conditional::conditional_tokens;
 use function::function_expr_tokens;
 use identifier::identifier_tokens;
 use member::member_tokens;
-use runtime::runtime_call_tokens;
 use template::template_literal_tokens;
 use unary::postfixunary_tokens;
 use unsupported::unsupported_expr;

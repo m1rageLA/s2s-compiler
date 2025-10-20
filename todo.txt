@@ -7,3 +7,73 @@ class
 console.log(123, "String", true); - "mix args  is not supported yet"
 
 работа только с функциями с маркерами 
+
+try/catch
+
+===========
+Строковые операции
+===========
+length
+toUpperCase
+toLowerCase
+split
+replace
+includes
+concat
+slice
+substr
+
+
+
+===========
+===Array===
+===========
+push()
+pop()
+map()
+filter()
+forEach()
+slice()
+splice()
+some()
+every()
+includes()
+find()
+findIndex()
+concat()
+reduce()
+
+
+
+===========
+====Math===
+===========
+Math.round(x)
+Math.floor(x)
+Math.ceil(x)
+Math.abs(x)
+Math.max(...values) и Math.min(...values)
+Math.pow(x, y)
+Math.sqrt(x)
+Math.random()
+
+
+
+===========
+====Date===
+===========
+Date.now()
+new Date()
+setTimeout(fn, ms)
+setInterval(fn, ms)
+Date.prototype.getTime()
+Date.prototype.toISOString()
+Date.prototype.toLocaleString()
+Date.parse()
+performance.now()
+Date.UTC()
+
+
+
+Map 
+Hash Table

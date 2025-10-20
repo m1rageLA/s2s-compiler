@@ -2,6 +2,7 @@ pub mod expr;
 pub mod function;
 pub mod statements;
 pub use statements as stmt;
+pub mod runtime;
 
 use std::fmt;
 

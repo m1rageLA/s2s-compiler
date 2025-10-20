@@ -71,11 +71,20 @@ pub enum IrLiteral {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum RuntimeNamespace {
     Console(ConsoleCall),
+    Array(ArrayCall),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ConsoleCall {
     Log(Vec<IrExpression>),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ArrayCall {
+    Push {
+        target: Box<IrExpression>,
+        args: Vec<IrExpression>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -5,7 +5,7 @@ use quote::quote;
 
 pub(crate) fn array_tokens(items: &[IrExpression]) -> TokenStream {
     let item_tokens: Vec<TokenStream> = items.iter().map(|item| item.codegen()).collect();
-    quote! { [ #( #item_tokens ),* ] }
+    quote! { vec![ #( #item_tokens ),* ] }
 }
 
 #[cfg(test)]
@@ -37,15 +37,15 @@ mod tests {
 
         let expr = syn::parse2::<Expr>(tokens.clone()).expect("array expression should parse");
         match expr {
-            Expr::Array(array) => {
-                assert_eq!(array.elems.len(), 3);
+            Expr::Macro(m) => {
+                assert_eq!(m.mac.path.segments.last().unwrap().ident.to_string(), "vec");
             }
-            _ => panic!("expected array expression"),
+            _ => panic!("expected vec! macro expression"),
         }
 
         let rendered = render_expr(tokens);
         assert!(
-            rendered.contains("let value = [1.0, 2.0, 3.0];"),
+            rendered.contains("let value = vec![1.0, 2.0, 3.0];"),
             "formatted output:\n{rendered}"
         );
     }

@@ -134,7 +134,17 @@ impl ConsoleArg for () {
 
 impl<T, const N: usize> ConsoleArg for [T; N]
 where
-    T: ConsoleArg + Clone,
+    T: ConsoleArg,
+{
+    fn to_value(&self) -> Value {
+        let elements = self.iter().map(|v| v.to_value()).collect::<Vec<_>>();
+        Value::Array(elements)
+    }
+}
+
+impl<T> ConsoleArg for Vec<T>
+where
+    T: ConsoleArg,
 {
     fn to_value(&self) -> Value {
         let elements = self.iter().map(|v| v.to_value()).collect::<Vec<_>>();
@@ -195,15 +205,5 @@ mod tests {
     fn log_allows_empty_template_and_trailing_arguments() {
         let output = capture_log(vec!["${}${}", "a", "b", "c"]);
         assert_eq!(output, "ab c\n");
-    }
-}
-
-impl<T> ConsoleArg for Vec<T>
-where
-    T: ConsoleArg + Clone,
-{
-    fn to_value(&self) -> Value {
-        let elements = self.iter().map(|v| v.to_value()).collect::<Vec<_>>();
-        Value::Array(elements)
     }
 }
