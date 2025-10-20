@@ -4,7 +4,13 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 pub(crate) fn array_tokens(items: &[IrExpression]) -> TokenStream {
-    let item_tokens: Vec<TokenStream> = items.iter().map(|item| item.codegen()).collect();
+    let item_tokens: Vec<TokenStream> = items
+        .iter()
+        .map(|item| {
+            let expr = item.codegen();
+            quote! { runtime::value::into_value(#expr) }
+        })
+        .collect();
     quote! { vec![ #( #item_tokens ),* ] }
 }
 
@@ -45,7 +51,15 @@ mod tests {
 
         let rendered = render_expr(tokens);
         assert!(
-            rendered.contains("let value = vec![1.0, 2.0, 3.0];"),
+            rendered.contains("runtime::value::into_value(1.0)"),
+            "formatted output:\n{rendered}"
+        );
+        assert!(
+            rendered.contains("runtime::value::into_value(2.0)"),
+            "formatted output:\n{rendered}"
+        );
+        assert!(
+            rendered.contains("runtime::value::into_value(3.0)"),
             "formatted output:\n{rendered}"
         );
     }

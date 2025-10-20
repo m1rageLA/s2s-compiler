@@ -48,7 +48,10 @@ mod tests {
 
         assert_eq!(
             tokens.to_string(),
-            quote::quote! { runtime::array::push(&mut values, vec![4.0]) }.to_string()
+            quote::quote! {
+                runtime::array::push(&mut values, vec![runtime::value::into_value(4.0)])
+            }
+            .to_string()
         );
     }
 }

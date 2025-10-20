@@ -7,7 +7,13 @@ pub(crate) fn array_call_tokens(call: &ArrayCall) -> TokenStream {
     match call {
         ArrayCall::Push { target, args } => {
             let target_tokens = target.codegen();
-            let value_tokens: Vec<TokenStream> = args.iter().map(|arg| arg.codegen()).collect();
+            let value_tokens: Vec<TokenStream> = args
+                .iter()
+                .map(|arg| {
+                    let expr = arg.codegen();
+                    quote! { runtime::value::into_value(#expr) }
+                })
+                .collect();
 
             quote! { runtime::array::push(&mut #target_tokens, vec![ #( #value_tokens ),* ]) }
         }
@@ -29,7 +35,8 @@ mod tests {
         let tokens = array_call_tokens(&call);
         assert_eq!(
             tokens.to_string(),
-            quote! { runtime::array::push(&mut values, vec![4.0]) }.to_string()
+            quote! { runtime::array::push(&mut values, vec![runtime::value::into_value(4.0)]) }
+                .to_string()
         );
     }
 }
