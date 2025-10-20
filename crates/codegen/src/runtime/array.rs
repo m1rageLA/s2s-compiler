@@ -16,6 +16,9 @@ pub(crate) fn array_call_tokens(call: &ArrayCall) -> TokenStream {
                 .collect();
 
             quote! { runtime::array::push(&mut #target_tokens, vec![ #( #value_tokens ),* ]) }
+        }, 
+        ArrayCall::Length(_) => {
+            quote! { runtime::array::length() }
         }
     }
 }

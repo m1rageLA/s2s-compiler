@@ -135,13 +135,15 @@ mod tests {
         assert_eq!(ir_module.items.len(), 1);
         match &ir_module.items[0] {
             IrItem::Expression(expr) => match expr {
-                IrExpression::RuntimeCall(RuntimeNamespace::Console(console_call)) => match console_call {
-                    ir::ConsoleCall::Log(args) => {
-                        assert_eq!(args.len(), 2);
-                        crate::test_utils::assert_string_literal(Some(&args[0]), "debug");
-                        assert_number_literal(Some(&args[1]), 1.0);
+                IrExpression::RuntimeCall(RuntimeNamespace::Console(console_call)) => {
+                    match console_call {
+                        ir::ConsoleCall::Log(args) => {
+                            assert_eq!(args.len(), 2);
+                            crate::test_utils::assert_string_literal(Some(&args[0]), "debug");
+                            assert_number_literal(Some(&args[1]), 1.0);
+                        }
                     }
-                },
+                }
                 other => panic!("expected console runtime call, got {other:?}"),
             },
             other => panic!("expected expression item, got {other:?}"),
@@ -160,16 +162,20 @@ mod tests {
         assert_eq!(ir_module.items.len(), 2);
         match &ir_module.items[1] {
             IrItem::Expression(expr) => match expr {
-                IrExpression::RuntimeCall(RuntimeNamespace::Array(array_call)) => match array_call {
-                    ir::ArrayCall::Push { target, args } => {
-                        assert!(matches!(
-                            target.as_ref(),
-                            IrExpression::Identifier(name) if name == "array"
-                        ));
-                        assert_eq!(args.len(), 1);
-                        assert_number_literal(Some(&args[0]), 2.0);
+                IrExpression::RuntimeCall(RuntimeNamespace::Array(array_call)) => {
+                    match array_call {
+                        ir::ArrayCall::Push { target, args } => {
+                            assert!(matches!(
+                                target.as_ref(),
+                                IrExpression::Identifier(name) if name == "array"
+                            ));
+                            assert_eq!(args.len(), 1);
+                            assert_number_literal(Some(&args[0]), 2.0);
+                        }
+                        //todo
+                        ir::ArrayCall::Length(ir_expression) => todo!(),
                     }
-                },
+                }
                 other => panic!("expected array runtime call, got {other:?}"),
             },
             other => panic!("expected expression item, got {other:?}"),
