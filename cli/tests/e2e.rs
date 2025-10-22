@@ -8,3 +8,28 @@ mod simple_math;
 #[allow(unused)]
 #[path = "e2e/console_log.rs"]
 mod console_log;
+
+#[cfg(test)]
+#[allow(unused)]
+#[path = "e2e/functions.rs"]
+mod functions;
+
+#[cfg(test)]
+#[allow(unused)]
+#[path = "e2e/control_flow.rs"]
+mod control_flow;
+
+#[cfg(test)]
+#[allow(unused)]
+#[path = "e2e/arrays.rs"]
+mod arrays;
+
+#[cfg(test)]
+#[allow(unused)]
+#[path = "e2e/conditionals.rs"]
+mod conditionals;
+
+#[cfg(test)]
+#[allow(unused)]
+#[path = "e2e/arrow_functions.rs"]
+mod arrow_functions;

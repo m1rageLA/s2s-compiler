@@ -2,6 +2,7 @@ use once_cell::sync::Lazy;
 use std::{
     fs,
     path::{Path, PathBuf},
+    process::Command,
     sync::{Mutex, MutexGuard},
 };
 
@@ -23,13 +24,46 @@ pub(crate) fn workspace_root() -> PathBuf {
 }
 
 pub(crate) fn get_last_line(stdout: &str) -> String {
-    let last_line = stdout
+    get_last_lines(stdout, 1).into_iter().next().unwrap_or_default()
+}
+
+pub(crate) fn get_output_lines(stdout: &str) -> Vec<String> {
+    stdout
         .lines()
         .map(|line| line.trim())
         .filter(|line| !line.is_empty())
-        .last();
+        .map(|line| line.to_string())
+        .collect()
+}
 
-    last_line.unwrap_or_default().to_string()
+pub(crate) fn get_last_lines(stdout: &str, count: usize) -> Vec<String> {
+    if count == 0 {
+        return Vec::new();
+    }
+
+    let lines = get_output_lines(stdout);
+    let start = lines.len().saturating_sub(count);
+    lines[start..].to_vec()
+}
+
+pub(crate) fn run_ts_program(source: &str) -> String {
+    let _lock = e2e_guard();
+    let fixture =
+        TsFixture::new(source).expect("failed to write test TypeScript program");
+
+    let output = Command::new("cargo")
+        .args(["run", "--release"])
+        .current_dir(fixture.root())
+        .output()
+        .expect("failed to run compiler");
+
+    assert!(
+        output.status.success(),
+        "compilation failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    String::from_utf8_lossy(&output.stdout).into_owned()
 }
 
 static E2E_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
