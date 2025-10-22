@@ -1,38 +1,25 @@
-// Простейшая линейная регрессия: y = a * x + b
-// Учимся подгонять a и b по данным с помощью градиентного спуска
+class Point {
+    x: number;
+    y: number;
 
-function trainLinearModel(xs: number[], ys: number[], lr: number, steps: number) {
-  let a = 0
-  let b = 0
-
-  for (let step = 0; step < steps; step++) {
-    let da = 0
-    let db = 0
-    let n = xs.length
-
-    for (let i = 0; i < n; i++) {
-      const x = xs[i]
-      const y = ys[i]
-      const y_pred = a * x + b
-      const error = y_pred - y
-
-      da += (2 / n) * error * x
-      db += (2 / n) * error
+    constructor(x: number, y: number) {
+        this.x = x;
+        this.y = y;
     }
 
-    a = a - lr * da
-    b = b - lr * db
-
-    if (step % 100 === 0) {
-      console.log("step", step, "loss", da * da + db * db)
+    move(dx: number) {
+        this.x += dx;
     }
-  }
 
-  return { a, b }
+    toString(): string {
+        return `(${this.x}, ${this.y})`;
+    }
 }
 
-// Демонстрация
-const xs = [1, 2, 3, 4, 5]
-const ys = [3, 5, 7, 9, 11] // фактически y = 2x + 1
-const result = trainLinearModel(xs, ys, 0.01, 1000)
-console.log("Результат:", result)
+// 🔹 создаём объект
+let p = new Point(10, 5);
+console.log("Начальная точка:", p.toString());
+
+// 🔹 двигаем на +3
+p.move(3);
+console.log("После move(3):", p.toString());

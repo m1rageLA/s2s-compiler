@@ -1,3 +1,4 @@
+use std::any::type_name;
 use std::io::{self, Write};
 
 use crate::value::Value;
@@ -152,6 +153,56 @@ where
     }
 }
 
+fn describe_function(name: &str) -> String {
+    format!("[Function {}]", name)
+}
+
+fn fallback_string<T: ?Sized>() -> String {
+    let name = type_name::<T>();
+    if name.contains("{{closure}}") || name.contains("fn(") {
+        describe_function(name)
+    } else {
+        format!("[{name}]")
+    }
+}
+
+pub fn stringify_any<T>(value: &T) -> String
+where
+    T: 'static,
+{
+    stringify_by_type::<T>(value)
+}
+
+fn stringify_by_type<T>(value: &T) -> String
+where
+    T: 'static,
+{
+    use std::any::Any;
+
+    let any = value as &dyn Any;
+
+    macro_rules! downcast {
+        ($ty:ty, $expr:expr) => {
+            if let Some(concrete) = any.downcast_ref::<$ty>() {
+                return ($expr)(concrete);
+            }
+        };
+    }
+
+    downcast!(Value, |v: &Value| v.to_string());
+    downcast!(bool, |v: &bool| v.to_string());
+    downcast!(i32, |v: &i32| (*v as f64).to_string());
+    downcast!(i64, |v: &i64| (*v as f64).to_string());
+    downcast!(i128, |v: &i128| (*v as f64).to_string());
+    downcast!(f32, |v: &f32| (*v as f64).to_string());
+    downcast!(f64, |v: &f64| v.to_string());
+    downcast!(String, |v: &String| v.clone());
+    downcast!(Vec<Value>, |v: &Vec<Value>| ConsoleArg::to_value(v)
+        .to_string());
+
+    fallback_string::<T>()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,5 +256,12 @@ mod tests {
     fn log_allows_empty_template_and_trailing_arguments() {
         let output = capture_log(vec!["${}${}", "a", "b", "c"]);
         assert_eq!(output, "ab c\n");
+    }
+
+    #[test]
+    fn function_arguments_render_as_placeholder() {
+        let func = |value: f64| value + 1.0;
+        let rendered = stringify_any(&func);
+        assert!(rendered.starts_with("[Function"));
     }
 }

@@ -111,10 +111,14 @@ mod tests {
         "#,
         );
 
-        let class_decl = match module.body.first().expect("expected class declaration") {
-            ModuleItem::Stmt(ast::Stmt::Decl(ast::Decl::Class(class_decl))) => class_decl,
-            other => panic!("expected class declaration, got {other:?}"),
-        };
+        let class_decl = module
+            .body
+            .iter()
+            .find_map(|item| match item {
+                ModuleItem::Stmt(ast::Stmt::Decl(ast::Decl::Class(class_decl))) => Some(class_decl),
+                _ => None,
+            })
+            .expect("expected class declaration");
 
         let ctor = class_decl
             .class
@@ -144,17 +148,17 @@ mod tests {
             other => panic!("expected variable declaration, got {other:?}"),
         };
 
-        let arrow = match binding
+        let fn_expr = match binding
             .init
             .as_ref()
             .expect("expected initializer")
             .as_ref()
         {
-            ast::Expr::Arrow(arrow) => arrow,
-            other => panic!("expected arrow expression, got {other:?}"),
+            ast::Expr::Fn(fn_expr) => fn_expr,
+            other => panic!("expected function expression, got {other:?}"),
         };
 
-        let params = params_to_ir(&arrow.params);
+        let params = params_to_ir(&fn_expr.function.params);
         assert_eq!(params.len(), 1);
         assert_eq!(params[0].name, "unsupported_param");
     }

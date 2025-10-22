@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{IrParam, IrStmt, IrType};
+use crate::{IrArrayKind, IrParam, IrStmt, IrType};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum IrExpression {
@@ -93,10 +93,13 @@ pub enum ConsoleCall {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ArrayCall {
-    Length(Box<IrExpression>),
+    Length {
+        target: Box<IrExpression>,
+    },
     Index {
         target: Box<IrExpression>,
         index: Box<IrExpression>,
+        element: Option<IrArrayKind>,
     },
     Push {
         target: Box<IrExpression>,

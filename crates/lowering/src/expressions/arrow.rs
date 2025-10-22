@@ -16,7 +16,7 @@ pub fn arrow_expr_to_ir(arrow: &ast::ArrowExpr) -> IrExpression {
 #[cfg(test)]
 mod tests {
     use crate::test_utils::{assert_identifier, expect_variable, lower};
-    use ir::{IrArrowBody, IrBinOp, IrExpression, IrParam, IrStmt, IrTemplatePart, IrType};
+    use ir::{IrBinOp, IrExpression, IrParam, IrStmt, IrTemplatePart, IrType};
 
     #[test]
     fn lowers_arrow_expression_bodies() {
@@ -33,61 +33,58 @@ mod tests {
 
         let double = expect_variable(&ir_module.items[0], "double");
         assert!(!double.mutable);
-        let arrow = match double
+        let function = match double
             .value
             .as_ref()
             .expect("double should have initializer")
         {
-            IrExpression::Arrow { params, body } => {
-                assert_eq!(
-                    params,
-                    &vec![IrParam {
-                        name: "value".into(),
-                        ty: IrType::Number
-                    }]
-                );
-                body
-            }
-            other => panic!("expected arrow expression for double, got {other:?}"),
+            IrExpression::Function(func) => func,
+            other => panic!("expected function expression for double, got {other:?}"),
         };
-        match arrow {
-            IrArrowBody::Expr(expr) => match expr.as_ref() {
-                IrExpression::Binary { op, .. } => assert_eq!(*op, IrBinOp::Mul),
-                other => panic!("expected multiplication in arrow body, got {other:?}"),
-            },
-            other => panic!("expected expression body, got {other:?}"),
-        }
+
+        assert_eq!(
+            function.params,
+            vec![IrParam {
+                name: "value".into(),
+                ty: IrType::Number
+            }]
+        );
+        assert!(
+            matches!(
+                function.body.as_slice(),
+                [IrStmt::Return(Some(IrExpression::Binary {
+                    op: IrBinOp::Mul,
+                    ..
+                }))]
+            ),
+            "expected multiplicative return, got {:?}",
+            function.body
+        );
 
         let format = expect_variable(&ir_module.items[1], "format");
         assert!(!format.mutable);
-        let arrow = match format
+        let function = match format
             .value
             .as_ref()
             .expect("format should have initializer")
         {
-            IrExpression::Arrow { params, body } => {
-                assert_eq!(params.len(), 2);
-                assert_eq!(
-                    params[0],
-                    IrParam {
-                        name: "value".into(),
-                        ty: IrType::Str
-                    }
-                );
-                assert_eq!(params[1].name, "rest");
-                assert_eq!(params[1].ty, IrType::Any);
-                body
+            IrExpression::Function(func) => func,
+            other => panic!("expected function expression for format, got {other:?}"),
+        };
+
+        assert_eq!(function.params.len(), 2);
+        assert_eq!(
+            function.params[0],
+            IrParam {
+                name: "value".into(),
+                ty: IrType::Str
             }
-            other => panic!("expected arrow expression for format, got {other:?}"),
-        };
+        );
+        assert_eq!(function.params[1].name, "rest");
+        assert_eq!(function.params[1].ty, IrType::Any);
 
-        let block = match arrow {
-            IrArrowBody::Block(stmts) => stmts,
-            other => panic!("expected block arrow body, got {other:?}"),
-        };
-
-        assert_eq!(block.len(), 1);
-        match &block[0] {
+        assert_eq!(function.body.len(), 1);
+        match &function.body[0] {
             IrStmt::Return(Some(expr)) => match expr {
                 IrExpression::Template(parts) => {
                     assert_eq!(parts.len(), 3);

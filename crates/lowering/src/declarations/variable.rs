@@ -1,6 +1,7 @@
 use ir::{IrType, IrVariable};
 use swc_ecma_ast::{self as ast};
 
+use crate::context;
 use crate::expressions::expr_to_ir;
 use crate::types::ts_type_ann_to_ir;
 
@@ -24,6 +25,8 @@ pub(crate) fn var_decl_to_ir(
 
     let value = decl.init.as_ref().map(|expr| expr_to_ir(expr));
     let mutable = !matches!(kind, ast::VarDeclKind::Const);
+
+    context::define(&name, ty);
 
     Some(IrVariable {
         name,

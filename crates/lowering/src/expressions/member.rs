@@ -1,5 +1,6 @@
 use super::*;
-use ir::{ArrayCall, ConsoleCall, IrExpression, RuntimeNamespace};
+use crate::context;
+use ir::{ArrayCall, ConsoleCall, IrArrayKind, IrExpression, IrType, RuntimeNamespace};
 
 pub(crate) fn lower_member_expr(member: &ast::MemberExpr) -> IrExpression {
     let object = expr_to_ir(member.obj.as_ref());
@@ -52,7 +53,9 @@ pub(crate) fn runtime_value_for_member(member: &IrExpression) -> Option<IrExpres
 
     match (object.as_ref(), property.as_str()) {
         (IrExpression::Identifier(_), "length") => Some(IrExpression::RuntimeCall(
-            RuntimeNamespace::Array(ArrayCall::Length(Box::new(object.as_ref().clone()))),
+            RuntimeNamespace::Array(ArrayCall::Length {
+                target: Box::new(object.as_ref().clone()),
+            }),
         )),
         _ => None,
     }
@@ -68,10 +71,23 @@ fn lower_computed_member(object: IrExpression, property: &ast::Expr) -> IrExpres
         };
     }
 
+    let element_kind = infer_array_kind(&object);
+
     IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Index {
         target: Box::new(object),
         index: Box::new(property_ir),
+        element: element_kind,
     }))
+}
+
+fn infer_array_kind(expr: &IrExpression) -> Option<IrArrayKind> {
+    match expr {
+        IrExpression::Identifier(name) => match context::lookup(name) {
+            Some(IrType::Array(kind)) => Some(kind),
+            _ => None,
+        },
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -175,7 +191,7 @@ mod tests {
         let ir_expr = lower_expression("values.length");
 
         match ir_expr {
-            IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Length(target))) => {
+            IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Length { target })) => {
                 match target.as_ref() {
                     IrExpression::Identifier(name) => assert_eq!(name, "values"),
                     other => panic!("expected identifier target, got {other:?}"),
@@ -193,6 +209,7 @@ mod tests {
             IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Index {
                 target,
                 index,
+                element,
             })) => {
                 assert!(matches!(
                     target.as_ref(),
@@ -202,6 +219,7 @@ mod tests {
                     index.as_ref(),
                     IrExpression::Literal(IrLiteral::Number(value)) if (*value - 0.0).abs() < f64::EPSILON
                 ));
+                assert!(element.is_none());
             }
             other => panic!("expected runtime index call, got {other:?}"),
         }
@@ -215,6 +233,7 @@ mod tests {
             IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Index {
                 target,
                 index,
+                element,
             })) => {
                 assert!(matches!(
                     target.as_ref(),
@@ -224,6 +243,7 @@ mod tests {
                     index.as_ref(),
                     IrExpression::Identifier(name) if name == "i"
                 ));
+                assert!(element.is_none());
             }
             other => panic!("expected runtime index call, got {other:?}"),
         }
@@ -234,7 +254,7 @@ mod tests {
         let ir_expr = lower_expression(r#"values["length"]"#);
 
         match ir_expr {
-            IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Length(target))) => {
+            IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Length { target })) => {
                 assert!(matches!(
                     target.as_ref(),
                     IrExpression::Identifier(name) if name == "values"

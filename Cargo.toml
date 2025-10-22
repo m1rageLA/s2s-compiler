@@ -9,4 +9,5 @@ members = [
     "crates/lowering",
     "crates/runtime"
 ]
+default-members = ["cli"]
 exclude = ["out"]

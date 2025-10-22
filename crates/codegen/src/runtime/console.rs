@@ -10,7 +10,7 @@ pub(crate) fn console_call_tokens(call: &ConsoleCall) -> TokenStream {
                 .iter()
                 .map(|arg| {
                     let expr = arg.codegen();
-                    quote! { runtime::console::stringify(&(#expr)) }
+                    quote! { runtime::console::stringify_any(&(#expr)) }
                 })
                 .collect();
 
@@ -36,8 +36,8 @@ mod tests {
             tokens.to_string(),
             quote! {
                 runtime::console::log(vec![
-                    runtime::console::stringify(&(1.0)),
-                    runtime::console::stringify(&(value))
+                    runtime::console::stringify_any(&(1.0)),
+                    runtime::console::stringify_any(&(value))
                 ])
             }
             .to_string()

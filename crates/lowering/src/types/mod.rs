@@ -1,12 +1,29 @@
-use ir::IrType;
+use ir::{IrArrayKind, IrType};
 use swc_ecma_ast::{self as ast};
 
 mod keyword;
 mod unknown;
 
 pub(crate) fn ts_type_ann_to_ir(ann: &ast::TsTypeAnn) -> IrType {
-    match &*ann.type_ann {
+    ts_type_to_ir(&ann.type_ann)
+}
+
+fn ts_type_to_ir(ty: &ast::TsType) -> IrType {
+    match ty {
         ast::TsType::TsKeywordType(keyword) => keyword::from_keyword(keyword),
+        ast::TsType::TsArrayType(array) => {
+            let element_ty = ts_type_to_ir(&array.elem_type);
+            let kind = match element_ty {
+                IrType::Number => IrArrayKind::Number,
+                IrType::Str => IrArrayKind::Str,
+                IrType::Bool => IrArrayKind::Bool,
+                IrType::Value => IrArrayKind::Value,
+                IrType::Any => IrArrayKind::Any,
+                _ => IrArrayKind::Unknown,
+            };
+            IrType::Array(kind)
+        }
+        ast::TsType::TsParenthesizedType(inner) => ts_type_to_ir(&inner.type_ann),
         _ => unknown::any(),
     }
 }
@@ -48,6 +65,15 @@ mod tests {
 
         let bool_ty = infer_type("const flag: boolean = true;");
         assert_eq!(bool_ty, IrType::Bool);
+    }
+
+    #[test]
+    fn maps_array_types() {
+        let number_array = infer_type("const values: number[] = [];");
+        assert_eq!(number_array, IrType::Array(IrArrayKind::Number));
+
+        let unknown_array = infer_type("const mixed: Array<string> = [];");
+        assert_eq!(unknown_array, IrType::Any);
     }
 
     #[test]

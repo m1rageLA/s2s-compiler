@@ -62,6 +62,7 @@ pub(crate) fn render_type(ty: &IrType) -> TokenStream {
         IrType::Unit => quote! { () },
         IrType::Any => quote! { ::std::boxed::Box<dyn ::std::any::Any> },
         IrType::Value => quote! { runtime::value::Value },
+        IrType::Array(_) => quote! { ::std::vec::Vec<runtime::value::Value> },
     }
 }
 
@@ -76,6 +77,7 @@ fn default_value(ty: &IrType) -> TokenStream {
             quote! { panic!(#msg) }
         }
         IrType::Value => quote! { runtime::value::Value::Undefined },
+        IrType::Array(_) => quote! { ::std::vec::Vec::<runtime::value::Value>::new() },
     }
 }
 

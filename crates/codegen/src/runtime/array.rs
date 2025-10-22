@@ -1,5 +1,5 @@
 use crate::Codegen;
-use ir::ArrayCall;
+use ir::{ArrayCall, IrArrayKind};
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -17,14 +17,23 @@ pub(crate) fn array_call_tokens(call: &ArrayCall) -> TokenStream {
 
             quote! { runtime::array::push(&mut #target_tokens, vec![ #( #value_tokens ),* ]) }
         }
-        ArrayCall::Length(target) => {
+        ArrayCall::Length { target } => {
             let target_tokens = target.codegen();
-            quote! { runtime::array::length(&#target_tokens) }
+            quote! { runtime::array::length_number(&#target_tokens) }
         }
-        ArrayCall::Index { target, index } => {
+        ArrayCall::Index {
+            target,
+            index,
+            element,
+        } => {
             let target_tokens = target.codegen();
             let index_tokens = index.codegen();
-            quote! { runtime::array::index(&#target_tokens, #index_tokens) }
+            match element {
+                Some(IrArrayKind::Number) => {
+                    quote! { runtime::array::index_number(&#target_tokens, #index_tokens) }
+                }
+                _ => quote! { runtime::array::index(&#target_tokens, #index_tokens) },
+            }
         }
     }
 }
@@ -51,12 +60,14 @@ mod tests {
 
     #[test]
     fn array_length_generates_runtime_call() {
-        let call = ArrayCall::Length(Box::new(IrExpression::Identifier("values".into())));
+        let call = ArrayCall::Length {
+            target: Box::new(IrExpression::Identifier("values".into())),
+        };
 
         let tokens = array_call_tokens(&call);
         assert_eq!(
             tokens.to_string(),
-            quote! { runtime::array::length(&values) }.to_string()
+            quote! { runtime::array::length_number(&values) }.to_string()
         );
     }
 
@@ -65,12 +76,28 @@ mod tests {
         let call = ArrayCall::Index {
             target: Box::new(IrExpression::Identifier("values".into())),
             index: Box::new(IrExpression::Literal(IrLiteral::Number(1.0))),
+            element: None,
         };
 
         let tokens = array_call_tokens(&call);
         assert_eq!(
             tokens.to_string(),
             quote! { runtime::array::index(&values, 1.0) }.to_string()
+        );
+    }
+
+    #[test]
+    fn array_index_for_numeric_arrays_uses_number_helper() {
+        let call = ArrayCall::Index {
+            target: Box::new(IrExpression::Identifier("values".into())),
+            index: Box::new(IrExpression::Identifier("i".into())),
+            element: Some(IrArrayKind::Number),
+        };
+
+        let tokens = array_call_tokens(&call);
+        assert_eq!(
+            tokens.to_string(),
+            quote! { runtime::array::index_number(&values, i) }.to_string()
         );
     }
 }

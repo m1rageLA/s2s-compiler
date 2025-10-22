@@ -8,6 +8,17 @@ pub enum IrType {
     Unit,
     Any,
     Value,
+    Array(IrArrayKind),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IrArrayKind {
+    Unknown,
+    Any,
+    Value,
+    Number,
+    Str,
+    Bool,
 }
 
 #[derive(Debug, Clone)]

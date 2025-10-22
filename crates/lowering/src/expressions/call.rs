@@ -171,7 +171,7 @@ mod tests {
                             assert_number_literal(Some(&args[0]), 2.0);
                         }
                         //todo
-                        ir::ArrayCall::Length(_ir_expression) => todo!(),
+                        ir::ArrayCall::Length { .. } => todo!(),
                         ir::ArrayCall::Index { .. } => todo!(),
                     }
                 }

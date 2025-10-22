@@ -29,8 +29,8 @@ mod tests {
             tokens.to_string(),
             quote::quote! {
                 runtime::console::log(vec![
-                    runtime::console::stringify(&(1.0)),
-                    runtime::console::stringify(&(value))
+                    runtime::console::stringify_any(&(1.0)),
+                    runtime::console::stringify_any(&(value))
                 ])
             }
             .to_string()

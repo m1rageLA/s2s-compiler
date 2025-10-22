@@ -1,3 +1,3 @@
 pub mod log;
 
-pub use log::{ConsoleArg, log, stringify};
+pub use log::{ConsoleArg, log, stringify, stringify_any};

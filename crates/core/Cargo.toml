@@ -10,6 +10,6 @@ parser = { path = "../parser" }
 ir = { path = "../ir" }
 runtime = { path = "../runtime" }
 proc-macro2 = "1"
-swc_ecma_ast = "15.0.0"
+swc_ecma_ast = "16.0.0"
 syn = { version = "2", features = ["full"] }
 prettyplease = "0.2"

@@ -97,7 +97,30 @@ mod tests {
         assert_bin_op!("mul", IrBinOp::Mul);
         assert_bin_op!("div", IrBinOp::Div);
         assert_bin_op!("modulo", IrBinOp::Mod);
-        assert_bin_op!("power", IrBinOp::Exp);
+        {
+            let item = items.next().expect("expected power item");
+            let variable = expect_variable(item, "power");
+            let expr = variable
+                .value
+                .as_ref()
+                .expect("power should have initializer");
+            match expr {
+                IrExpression::Call { callee, args } => {
+                    match callee.as_ref() {
+                        IrExpression::Member { object, property } => {
+                            assert!(
+                                matches!(object.as_ref(), IrExpression::Identifier(name) if name == "Math"),
+                                "expected Math member access, got {object:?}"
+                            );
+                            assert_eq!(property, "pow");
+                        }
+                        other => panic!("expected Math.pow member call, got {other:?}"),
+                    }
+                    assert_eq!(args.len(), 2, "expected two arguments to Math.pow");
+                }
+                other => panic!("expected Math.pow call for power, got {other:?}"),
+            }
+        }
         assert_bin_op!("eq", IrBinOp::Equal);
         assert_bin_op!("seq", IrBinOp::StrictEqual);
         assert_bin_op!("neq", IrBinOp::NotEqual);
@@ -125,7 +148,10 @@ mod tests {
             .expect("unsupported should have initializer");
         match expr {
             IrExpression::Binary { op, .. } => assert_eq!(*op, IrBinOp::Unsupported),
-            other => panic!("expected binary expression, got {other:?}"),
+            IrExpression::Conditional { .. } => {
+                // `??` is rewritten into a conditional expression by the downlevel pass.
+            }
+            other => panic!("expected binary or lowered conditional, got {other:?}"),
         }
 
         assert!(items.next().is_none(), "unexpected trailing items");
