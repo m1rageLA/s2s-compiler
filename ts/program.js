@@ -1,6 +1,8 @@
-var h = 1;
-function f() {
-    console.log(h);
-    console.log(f());
+function outer() {
+    return function inner() {
+        return function therd() {
+            return "hello";
+        };
+    };
 }
-console.log(h && f());
+console.log(outer());
