@@ -53,7 +53,8 @@ fn callee_to_ir(expr: &ast::Expr) -> IrExpression {
                 object: Box::new(IrExpression::Identifier("super".to_string())),
                 property,
             }
-        }
+        },
+        ast::Expr::Paren(p) => paren_to_ir(p),
         _ => IrExpression::Identifier("unsupported".to_string()),
     }
 }

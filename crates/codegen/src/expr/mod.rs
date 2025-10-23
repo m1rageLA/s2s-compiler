@@ -62,6 +62,7 @@ impl Codegen for IrExpression {
                 postfixunary_tokens(left.clone(), op.clone())
             }
             IrExpression::Function(function) => function_expr_tokens(function),
+            IrExpression::Paren(p) => p.codegen(),
             _ => unsupported_expr("unsupported expression"),
         }
     }

@@ -15,6 +15,7 @@ mod object;
 mod template;
 mod unary;
 mod update;
+mod paren;
 
 #[allow(unused_imports)]
 pub use array::*;
@@ -39,6 +40,10 @@ pub use template::*;
 pub use unary::*;
 #[allow(unused_imports)]
 pub use update::*;
+#[allow(unused_imports)]
+pub use paren::*;
+
+use crate::expressions::paren::paren_to_ir;
 
 pub(crate) fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
     match expr {
@@ -62,6 +67,7 @@ pub(crate) fn expr_to_ir(expr: &ast::Expr) -> IrExpression {
             runtime_value_for_member(&member_expr).unwrap_or(member_expr)
         }
         ast::Expr::Assign(assign) => assignment_expr_to_ir(assign),
+
         _ => IrExpression::Identifier("unsupported".to_string()),
     }
 }

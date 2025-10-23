@@ -46,6 +46,7 @@ pub enum IrExpression {
         op: IrPostfixOp,
     },
     Object(Vec<IrObjectProperty>),
+    Paren(Box<IrExpression>),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
