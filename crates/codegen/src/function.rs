@@ -1,5 +1,5 @@
 use ir::{IrFunction, IrType, IrVariable};
-use proc_macro2::{Literal, TokenStream};
+use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use crate::Codegen;
@@ -37,13 +37,10 @@ impl Codegen for IrVariable {
             .unwrap_or_else(|| default_value(&self.ty));
 
         let mutability = self.mutable.then(|| quote! { mut });
-
         match &self.ty {
-            IrType::Any => {
-                quote! {
-                    let #mutability #ident = #value;
-                }
-            }
+            IrType::Any => quote! {
+                let #mutability #ident = #value;
+            },
             _ => {
                 let ty = render_type(&self.ty);
                 quote! {
@@ -60,7 +57,7 @@ pub(crate) fn render_type(ty: &IrType) -> TokenStream {
         IrType::Str => quote! { ::std::string::String },
         IrType::Bool => quote! { bool },
         IrType::Unit => quote! { () },
-        IrType::Any => quote! { ::std::boxed::Box<dyn ::std::any::Any> },
+        IrType::Any => quote! { runtime::value::Value },
         IrType::Value => quote! { runtime::value::Value },
         IrType::Array(_) => quote! { ::std::vec::Vec<runtime::value::Value> },
     }
@@ -72,11 +69,7 @@ fn default_value(ty: &IrType) -> TokenStream {
         IrType::Str => quote! { ::std::string::String::new() },
         IrType::Bool => quote! { false },
         IrType::Unit => quote! { () },
-        IrType::Any => {
-            let msg = Literal::string("uninitialized value for `any` type");
-            quote! { panic!(#msg) }
-        }
-        IrType::Value => quote! { runtime::value::Value::Undefined },
+        IrType::Any | IrType::Value => quote! { runtime::value::Value::Undefined },
         IrType::Array(_) => quote! { ::std::vec::Vec::<runtime::value::Value>::new() },
     }
 }
@@ -223,7 +216,7 @@ mod tests {
     }
 
     #[test]
-    fn variable_codegen_for_any_omits_type_annotation() {
+    fn variable_codegen_for_any_uses_value_default() {
         let variable = IrVariable {
             name: "payload".into(),
             mutable: true,
@@ -234,7 +227,7 @@ mod tests {
         let tokens = variable.codegen();
         assert_eq!(
             tokens.to_string(),
-            quote! { let mut payload = panic!("uninitialized value for `any` type"); }.to_string()
+            quote! { let mut payload = runtime::value::Value::Undefined; }.to_string()
         );
     }
 
@@ -245,10 +238,7 @@ mod tests {
             (IrType::Str, quote! { ::std::string::String }),
             (IrType::Bool, quote! { bool }),
             (IrType::Unit, quote! { () }),
-            (
-                IrType::Any,
-                quote! { ::std::boxed::Box<dyn ::std::any::Any> },
-            ),
+            (IrType::Any, quote! { runtime::value::Value }),
             (IrType::Value, quote! { runtime::value::Value }),
         ];
 

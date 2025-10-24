@@ -1,10 +1,24 @@
 use super::*;
+use crate::infer;
+use ir::{IrType, ValueCall};
 
 pub(crate) fn binary_expr_to_ir(b: &ast::BinExpr) -> IrExpression {
+    let left = expr_to_ir(&b.left);
+    let right = expr_to_ir(&b.right);
+
+    let left_ty = infer::infer_expression_type(&left);
+    let right_ty = infer::infer_expression_type(&right);
+
+    if requires_value_runtime(left_ty, right_ty) {
+        if let Some(runtime_expr) = value_runtime_for_binary(&b.op, left.clone(), right.clone()) {
+            return runtime_expr;
+        }
+    }
+
     IrExpression::Binary {
         op: bin_op_to_ir(&b.op),
-        left: Box::new(expr_to_ir(&b.left)),
-        right: Box::new(expr_to_ir(&b.right)),
+        left: Box::new(left),
+        right: Box::new(right),
     }
 }
 
@@ -38,15 +52,91 @@ pub(crate) fn bin_op_to_ir(op: &ast::BinaryOp) -> IrBinOp {
     }
 }
 
+fn requires_value_runtime(left: Option<IrType>, right: Option<IrType>) -> bool {
+    matches!(left, Some(IrType::Any | IrType::Value))
+        || matches!(right, Some(IrType::Any | IrType::Value))
+        || left.is_none()
+        || right.is_none()
+}
+
+fn value_runtime_for_binary(
+    op: &ast::BinaryOp,
+    left: IrExpression,
+    right: IrExpression,
+) -> Option<IrExpression> {
+    use ast::BinaryOp;
+    let call = match op {
+        BinaryOp::Add => ValueCall::Add {
+            left: Box::new(left),
+            right: Box::new(right),
+        },
+        BinaryOp::Sub => ValueCall::Sub {
+            left: Box::new(left),
+            right: Box::new(right),
+        },
+        BinaryOp::Mul => ValueCall::Mul {
+            left: Box::new(left),
+            right: Box::new(right),
+        },
+        BinaryOp::Div => ValueCall::Div {
+            left: Box::new(left),
+            right: Box::new(right),
+        },
+        BinaryOp::Mod => ValueCall::Mod {
+            left: Box::new(left),
+            right: Box::new(right),
+        },
+        BinaryOp::EqEq => ValueCall::Equal {
+            left: Box::new(left),
+            right: Box::new(right),
+        },
+        BinaryOp::EqEqEq => ValueCall::StrictEqual {
+            left: Box::new(left),
+            right: Box::new(right),
+        },
+        BinaryOp::NotEq => ValueCall::NotEqual {
+            left: Box::new(left),
+            right: Box::new(right),
+        },
+        BinaryOp::NotEqEq => ValueCall::StrictNotEqual {
+            left: Box::new(left),
+            right: Box::new(right),
+        },
+        BinaryOp::Lt => ValueCall::LessThan {
+            left: Box::new(left),
+            right: Box::new(right),
+        },
+        BinaryOp::LtEq => ValueCall::LessThanOrEqual {
+            left: Box::new(left),
+            right: Box::new(right),
+        },
+        BinaryOp::Gt => ValueCall::GreaterThan {
+            left: Box::new(left),
+            right: Box::new(right),
+        },
+        BinaryOp::GtEq => ValueCall::GreaterThanOrEqual {
+            left: Box::new(left),
+            right: Box::new(right),
+        },
+        _ => return None,
+    };
+
+    Some(value_binary(call))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::test_utils::expect_variable;
-    use ir::{IrBinOp, IrExpression};
+    use ir::{IrBinOp, IrExpression, RuntimeNamespace, ValueCall};
 
     #[test]
     fn maps_all_binary_operators() {
         let ir_module = crate::test_utils::lower(
             r#"
+            const left: number = 1;
+            const right: number = 2;
+            const boolLeft: boolean = true;
+            const boolRight: boolean = false;
             const add = left + right;
             const sub = left - right;
             const mul = left * right;
@@ -67,15 +157,20 @@ mod tests {
             const bor = left | right;
             const bxor = left ^ right;
             const band = left & right;
-            const lor = left || right;
-            const land = left && right;
-            const inside = left in right;
-            const inst = left instanceof right;
+            const lor = boolLeft || boolRight;
+            const land = boolLeft && boolRight;
+            const inside = left in { value: right };
+            const inst = left instanceof Number;
             const unsupported = left ?? right;
         "#,
         );
 
         let mut items = ir_module.items.iter();
+        // Skip the helper variable declarations.
+        items.next();
+        items.next();
+        items.next();
+        items.next();
 
         macro_rules! assert_bin_op {
             ($name:expr, $expected:expr) => {{
@@ -155,5 +250,38 @@ mod tests {
         }
 
         assert!(items.next().is_none(), "unexpected trailing items");
+    }
+
+    #[test]
+    fn routes_any_operands_through_value_runtime() {
+        let ir_module = crate::test_utils::lower(
+            r#"
+            function demo(value: any) {
+                const result = value + 1;
+            }
+        "#,
+        );
+
+        let function = match &ir_module.items[0] {
+            ir::IrItem::Function(func) => func,
+            other => panic!("expected function item, got {other:?}"),
+        };
+
+        let decl = match &function.body[0] {
+            ir::IrStmt::VarDecl(vars) => vars,
+            other => panic!("expected variable declaration, got {other:?}"),
+        };
+
+        let result = &decl[0];
+        assert_eq!(result.name, "result");
+        let expr = result
+            .value
+            .as_ref()
+            .expect("result should have initializer");
+
+        match expr {
+            IrExpression::RuntimeCall(RuntimeNamespace::Value(ValueCall::Add { .. })) => {}
+            other => panic!("expected value runtime call for dynamic addition, got {other:?}"),
+        }
     }
 }

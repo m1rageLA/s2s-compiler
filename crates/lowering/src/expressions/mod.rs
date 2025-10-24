@@ -12,10 +12,11 @@ mod function;
 mod literal;
 mod member;
 mod object;
+mod paren;
 mod template;
 mod unary;
 mod update;
-mod paren;
+mod value;
 
 #[allow(unused_imports)]
 pub use array::*;
@@ -35,13 +36,15 @@ pub use member::*;
 #[allow(unused_imports)]
 pub use object::*;
 #[allow(unused_imports)]
+pub use paren::*;
+#[allow(unused_imports)]
 pub use template::*;
 #[allow(unused_imports)]
 pub use unary::*;
 #[allow(unused_imports)]
 pub use update::*;
 #[allow(unused_imports)]
-pub use paren::*;
+pub use value::*;
 
 use crate::expressions::paren::paren_to_ir;
 

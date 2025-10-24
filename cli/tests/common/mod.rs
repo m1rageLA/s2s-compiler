@@ -24,7 +24,10 @@ pub(crate) fn workspace_root() -> PathBuf {
 }
 
 pub(crate) fn get_last_line(stdout: &str) -> String {
-    get_last_lines(stdout, 1).into_iter().next().unwrap_or_default()
+    get_last_lines(stdout, 1)
+        .into_iter()
+        .next()
+        .unwrap_or_default()
 }
 
 pub(crate) fn get_output_lines(stdout: &str) -> Vec<String> {
@@ -48,8 +51,7 @@ pub(crate) fn get_last_lines(stdout: &str, count: usize) -> Vec<String> {
 
 pub(crate) fn run_ts_program(source: &str) -> String {
     let _lock = e2e_guard();
-    let fixture =
-        TsFixture::new(source).expect("failed to write test TypeScript program");
+    let fixture = TsFixture::new(source).expect("failed to write test TypeScript program");
 
     let output = Command::new("cargo")
         .args(["run", "--release"])

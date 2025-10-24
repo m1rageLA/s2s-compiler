@@ -19,9 +19,7 @@ pub fn unary_expr_to_ir(u: &ast::UnaryExpr) -> IrExpression {
     }
 }
 
-pub(crate) fn paren_to_ir(p: &ast::ParenExpr) -> IrExpression {
-    expr_to_ir(&p.expr)
-}
+
 
 #[cfg(test)]
 mod tests {

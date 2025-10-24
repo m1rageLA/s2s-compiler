@@ -4,7 +4,7 @@ pub mod push;
 
 pub use index::{index, index_number};
 pub use length::{length, length_number};
-pub use push::push;
+pub use push::{push, push_number};
 
 use crate::value::Value;
 use std::any::Any;

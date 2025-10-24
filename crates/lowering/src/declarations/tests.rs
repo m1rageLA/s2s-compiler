@@ -29,7 +29,7 @@ fn handles_literal_initializers() {
 
     let total = expect_variable(&ir_module.items[2], "total");
     assert!(total.mutable);
-    assert_eq!(total.ty, IrType::Any);
+    assert_eq!(total.ty, IrType::Number);
     let expr = total.value.as_ref().expect("total should have initializer");
     match expr {
         IrExpression::Binary { op, left, right } => {

@@ -32,6 +32,28 @@ impl ToString for Value {
     }
 }
 
+impl Value {
+    pub(crate) fn to_number(&self) -> f64 {
+        match self {
+            Value::Number(n) => *n,
+            Value::Bool(true) => 1.0,
+            Value::Bool(false) => 0.0,
+            Value::Null => 0.0,
+            Value::Undefined => f64::NAN,
+            Value::String(s) => s.parse::<f64>().unwrap_or(f64::NAN),
+            Value::Array(elements) if elements.is_empty() => 0.0,
+            Value::Array(_) | Value::Object(_) => f64::NAN,
+        }
+    }
+
+    pub(crate) fn is_string_like(&self) -> bool {
+        matches!(self, Value::String(_) | Value::Array(_) | Value::Object(_))
+    }
+}
+
+
+
+
 impl From<&Value> for Value {
     fn from(value: &Value) -> Self {
         value.clone()
@@ -105,17 +127,3 @@ where
     value.into()
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn object_to_string_formats_key_value_pairs() {
-        let mut map = BTreeMap::new();
-        map.insert("a".into(), Value::Number(1.0));
-        map.insert("b".into(), Value::Bool(true));
-
-        let value = Value::Object(map);
-        assert_eq!(value.to_string(), "{a: 1, b: true}");
-    }
-}

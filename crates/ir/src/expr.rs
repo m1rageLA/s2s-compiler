@@ -85,6 +85,7 @@ pub enum IrLiteral {
 pub enum RuntimeNamespace {
     Console(ConsoleCall),
     Array(ArrayCall),
+    Value(ValueCall),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -110,6 +111,65 @@ pub enum ArrayCall {
     //     target: Box<IrExpression>,
 
     // }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ValueCall {
+    Coerce {
+        expr: Box<IrExpression>,
+    },
+    Add {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    Sub {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    Mul {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    Div {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    Mod {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    Equal {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    StrictEqual {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    NotEqual {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    StrictNotEqual {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    LessThan {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    LessThanOrEqual {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    GreaterThan {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    GreaterThanOrEqual {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

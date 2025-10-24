@@ -296,7 +296,7 @@ mod tests {
             Some(syn::Stmt::Expr(expr, _)) => match expr {
                 syn::Expr::Closure(closure) => match &closure.output {
                     syn::ReturnType::Default => {}
-                    other => panic!("expected no return type, found return type annotation"),
+                    _ => panic!("expected no return type, found return type annotation"),
                 },
                 _ => panic!("expected closure expression"),
             },

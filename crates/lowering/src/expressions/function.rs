@@ -1,4 +1,5 @@
 use super::*;
+use crate::context;
 use crate::infer::infer_function_return_type;
 use crate::params::params_to_ir;
 use crate::statements::block_to_ir;
@@ -22,12 +23,19 @@ pub fn function_expr_to_ir(fn_expr: &ast::FnExpr) -> IrExpression {
         .as_ref()
         .map(|ann| ts_type_ann_to_ir(ann))
         .unwrap_or(IrType::Any);
+    context::push_scope();
+    for param in &params {
+        context::define(&param.name, param.ty);
+    }
+    context::push_function_return(ret);
     let body = fn_expr
         .function
         .body
         .as_ref()
         .map(block_to_ir)
         .unwrap_or_default();
+    context::pop_function_return();
+    context::pop_scope();
 
     let mut ir_fn_expr = IrFunctionExpr {
         name,

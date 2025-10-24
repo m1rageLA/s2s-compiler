@@ -1,5 +1,4 @@
 use super::*;
-
 pub(crate) fn assignment_expr_to_ir(assign: &ast::AssignExpr) -> IrExpression {
     let left = assignment_target_to_ir(&assign.left);
     let right = expr_to_ir(&assign.right);

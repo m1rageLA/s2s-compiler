@@ -12,17 +12,18 @@ pub(crate) fn fn_decl_to_ir(fn_decl: &ast::FnDecl) -> Option<IrFunction> {
 
     let params = params_to_ir(&fn_decl.function.params);
 
-    context::push_scope();
-    for param in &params {
-        context::define(&param.name, param.ty);
-    }
-
     let ret_ty = fn_decl
         .function
         .return_type
         .as_ref()
         .map(|ann| ts_type_ann_to_ir(ann))
         .unwrap_or(IrType::Any);
+
+    context::push_scope();
+    for param in &params {
+        context::define(&param.name, param.ty);
+    }
+    context::push_function_return(ret_ty);
 
     let body = fn_decl
         .function
@@ -31,6 +32,7 @@ pub(crate) fn fn_decl_to_ir(fn_decl: &ast::FnDecl) -> Option<IrFunction> {
         .map(|block| block_to_ir(block))
         .unwrap_or_default();
 
+    context::pop_function_return();
     context::pop_scope();
 
     let mut ir_function = IrFunction {

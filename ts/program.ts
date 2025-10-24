@@ -1,1 +1,1 @@
-const x = ((x) => x + 1)(2);
+const x = (() => "string" + "sad")();

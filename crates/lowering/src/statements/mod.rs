@@ -33,7 +33,7 @@ pub(crate) fn stmt_to_ir(stmt: &ast::Stmt) -> IrStmt {
 mod tests {
     use super::*;
     use crate::test_utils::{assert_identifier, assert_number_literal};
-    use ir::{IrAssignOp, IrExpression, IrForInit, IrStmt};
+    use ir::{IrAssignOp, IrExpression, IrForInit, IrStmt, RuntimeNamespace, ValueCall};
     use swc_ecma_ast::ModuleItem;
 
     fn lower_first_stmt(source: &str) -> IrStmt {
@@ -216,14 +216,23 @@ mod tests {
                     }
                     other => panic!("expected variable initializer, got {other:?}"),
                 }
-                assert!(matches!(condition, Some(IrExpression::Binary { .. })));
+                match condition {
+                    Some(IrExpression::Binary { .. }) => {}
+                    Some(IrExpression::RuntimeCall(RuntimeNamespace::Value(
+                        ValueCall::LessThan { .. } | ValueCall::LessThanOrEqual { .. },
+                    ))) => {}
+                    other => panic!("unexpected loop condition {other:?}"),
+                }
                 match update.expect("update should exist") {
                     IrExpression::Assignment { op, left, right } => {
                         assert_eq!(op, IrAssignOp::Assign);
                         assert_identifier(left.as_ref(), "i");
                         match right.as_ref() {
-                            IrExpression::Binary { .. } => {}
-                            other => panic!("expected binary expression on rhs, got {other:?}"),
+                            IrExpression::Binary { .. }
+                            | IrExpression::RuntimeCall(RuntimeNamespace::Value(
+                                ValueCall::Add { .. },
+                            )) => {}
+                            other => panic!("expected increment expression on rhs, got {other:?}"),
                         }
                     }
                     other => panic!("expected assignment expression, got {other:?}"),
@@ -255,14 +264,23 @@ mod tests {
                     },
                     IrForInit::VarDecl(_) => panic!("expected expression initializer"),
                 }
-                assert!(matches!(condition, Some(IrExpression::Binary { .. })));
+                match condition {
+                    Some(IrExpression::Binary { .. }) => {}
+                    Some(IrExpression::RuntimeCall(RuntimeNamespace::Value(
+                        ValueCall::LessThan { .. } | ValueCall::LessThanOrEqual { .. },
+                    ))) => {}
+                    other => panic!("unexpected loop condition {other:?}"),
+                }
                 match update.expect("update should exist") {
                     IrExpression::Assignment { op, left, right } => {
                         assert_eq!(op, IrAssignOp::Assign);
                         assert_identifier(left.as_ref(), "i");
                         match right.as_ref() {
-                            IrExpression::Binary { .. } => {}
-                            other => panic!("expected binary expression on rhs, got {other:?}"),
+                            IrExpression::Binary { .. }
+                            | IrExpression::RuntimeCall(RuntimeNamespace::Value(
+                                ValueCall::Add { .. },
+                            )) => {}
+                            other => panic!("expected increment expression on rhs, got {other:?}"),
                         }
                     }
                     other => panic!("expected assignment expression, got {other:?}"),

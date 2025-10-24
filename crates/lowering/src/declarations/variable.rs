@@ -3,6 +3,7 @@ use swc_ecma_ast::{self as ast};
 
 use crate::context;
 use crate::expressions::expr_to_ir;
+use crate::infer;
 use crate::types::ts_type_ann_to_ir;
 
 pub(crate) fn var_decl_to_ir(
@@ -14,7 +15,7 @@ pub(crate) fn var_decl_to_ir(
         _ => return None,
     };
 
-    let ty = match &decl.name {
+    let mut ty = match &decl.name {
         ast::Pat::Ident(ident) => ident
             .type_ann
             .as_ref()
@@ -24,6 +25,14 @@ pub(crate) fn var_decl_to_ir(
     };
 
     let value = decl.init.as_ref().map(|expr| expr_to_ir(expr));
+
+    if matches!(ty, IrType::Any) {
+        if let Some(expr) = value.as_ref() {
+            if let Some(inferred) = infer::infer_expression_type(expr) {
+                ty = inferred;
+            }
+        }
+    }
     let mutable = !matches!(kind, ast::VarDeclKind::Const);
 
     context::define(&name, ty);

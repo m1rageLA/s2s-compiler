@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 thread_local! {
     static TYPE_STACK: RefCell<Vec<HashMap<String, IrType>>> = RefCell::new(Vec::new());
+    static RETURN_STACK: RefCell<Vec<IrType>> = RefCell::new(Vec::new());
 }
 
 pub(crate) fn reset() {
@@ -12,6 +13,7 @@ pub(crate) fn reset() {
         stack.clear();
         stack.push(HashMap::new());
     });
+    RETURN_STACK.with(|stack| stack.borrow_mut().clear());
 }
 
 pub(crate) fn push_scope() {
@@ -47,4 +49,21 @@ pub(crate) fn lookup(name: &str) -> Option<IrType> {
         }
         None
     })
+}
+
+pub(crate) fn push_function_return(ty: IrType) {
+    RETURN_STACK.with(|stack| {
+        stack.borrow_mut().push(ty);
+    });
+}
+
+pub(crate) fn pop_function_return() {
+    RETURN_STACK.with(|stack| {
+        let mut stack = stack.borrow_mut();
+        stack.pop();
+    });
+}
+
+pub(crate) fn current_function_return() -> Option<IrType> {
+    RETURN_STACK.with(|stack| stack.borrow().last().copied())
 }

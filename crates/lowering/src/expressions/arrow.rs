@@ -1,14 +1,23 @@
 use super::*;
+use crate::context;
 use crate::params::params_to_ir;
 use crate::statements::block_to_ir;
+use ir::IrType;
 use swc_ecma_ast::BlockStmtOrExpr;
 
 pub fn arrow_expr_to_ir(arrow: &ast::ArrowExpr) -> IrExpression {
     let params = params_to_ir(&arrow.params);
+    context::push_scope();
+    for param in &params {
+        context::define(&param.name, param.ty);
+    }
+    context::push_function_return(IrType::Any);
     let body = match &*arrow.body {
         BlockStmtOrExpr::Expr(expr) => IrArrowBody::Expr(Box::new(expr_to_ir(expr))),
         BlockStmtOrExpr::BlockStmt(block) => IrArrowBody::Block(block_to_ir(block)),
     };
+    context::pop_function_return();
+    context::pop_scope();
 
     IrExpression::Arrow { params, body }
 }
