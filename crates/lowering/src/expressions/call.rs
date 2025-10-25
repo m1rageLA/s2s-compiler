@@ -55,7 +55,34 @@ fn callee_to_ir(expr: &ast::Expr) -> IrExpression {
             }
         }
         ast::Expr::Paren(p) => paren_to_ir(p),
-        _ => IrExpression::Identifier("unsupported".to_string()),
+        _ => IrExpression::Identifier(format!("unsupported callee: {:?}", expr_kind(expr))),
+    }
+}
+
+fn expr_kind(expr: &ast::Expr) -> &'static str {
+    match expr {
+        ast::Expr::Array(_) => "ArrayExpression",
+        ast::Expr::Arrow(_) => "ArrowFunction",
+        ast::Expr::Assign(_) => "AssignmentExpression",
+        ast::Expr::Await(_) => "AwaitExpression",
+        ast::Expr::Bin(_) => "BinaryExpression",
+        ast::Expr::Call(_) => "CallExpression",
+        ast::Expr::Class(_) => "ClassExpression",
+        ast::Expr::Cond(_) => "ConditionalExpression",
+        ast::Expr::Fn(_) => "FunctionExpression",
+        ast::Expr::Ident(_) => "Identifier",
+        ast::Expr::Lit(_) => "Literal",
+        ast::Expr::Member(_) => "MemberExpression",
+        ast::Expr::New(_) => "NewExpression",
+        ast::Expr::Object(_) => "ObjectExpression",
+        ast::Expr::Paren(_) => "ParenthesizedExpression",
+        ast::Expr::Seq(_) => "SequenceExpression",
+        ast::Expr::TaggedTpl(_) => "TaggedTemplateExpression",
+        ast::Expr::Tpl(_) => "TemplateLiteral",
+        ast::Expr::Unary(_) => "UnaryExpression",
+        ast::Expr::Update(_) => "UpdateExpression",
+        ast::Expr::Yield(_) => "YieldExpression",
+        _ => "UnknownExpression",
     }
 }
 

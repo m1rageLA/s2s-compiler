@@ -6,11 +6,13 @@ use super::unsupported::unsupported_bin_op;
 
 pub(crate) fn binary_op_tokens(op: IrBinOp, left: TokenStream, right: TokenStream) -> TokenStream {
     match op {
-        IrBinOp::Add => quote! { (#left) + (#right) },
-        IrBinOp::Sub => quote! { (#left) - (#right) },
-        IrBinOp::Mul => quote! { (#left) * (#right) },
-        IrBinOp::Div => quote! { (#left) / (#right) },
-        IrBinOp::Mod => quote! { (#left) % (#right) },
+        IrBinOp::Add => quote! { runtime::value::ops::add(#left, #right) },
+        IrBinOp::Sub => quote! { runtime::value::ops::sub(#left, #right) },
+        IrBinOp::Mul => quote! { runtime::value::ops::mul(#left, #right) },
+        IrBinOp::Div => quote! { runtime::value::ops::div(#left, #right) },
+        IrBinOp::Mod => quote! { runtime::value::ops::modulo(#left, #right) },
+
+        //not supported runtime
         IrBinOp::Equal | IrBinOp::StrictEqual => quote! { (#left) == (#right) },
         IrBinOp::NotEqual | IrBinOp::StrictNotEqual => quote! { (#left) != (#right) },
         IrBinOp::LessThan => quote! { (#left) < (#right) },

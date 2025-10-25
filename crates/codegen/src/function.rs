@@ -54,7 +54,7 @@ impl Codegen for IrVariable {
 pub(crate) fn render_type(ty: &IrType) -> TokenStream {
     match ty {
         IrType::Number => quote! { f64 },
-        IrType::Str => quote! { ::std::string::String },
+        IrType::Str => quote! { runtime::value::Value },
         IrType::Bool => quote! { bool },
         IrType::Unit => quote! { () },
         IrType::Any => quote! { runtime::value::Value },

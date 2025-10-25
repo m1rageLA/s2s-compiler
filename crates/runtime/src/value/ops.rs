@@ -14,6 +14,11 @@ where
     }
 }
 
+/// Subtracts two values. If either value is a string, it will be
+/// treated as a number (i.e. "5" will be treated as 5.0). If both values
+/// are strings, it will concatenate them. If one value is a string and
+/// the other is a number, it will treat the string as a number (i.e. "5"
+/// will be treated as 5.0).
 pub fn sub<L, R>(lhs: L, rhs: R) -> Value
 where
     L: Into<Value>,
