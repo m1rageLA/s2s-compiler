@@ -3,7 +3,9 @@ mod index;
 mod length;
 mod map;
 mod push;
+mod pop;
 
+use pop::pop_tokens;
 use filter::filter_tokens;
 use index::index_tokens;
 use ir::ArrayCall;
@@ -23,6 +25,7 @@ pub(crate) fn array_call_tokens(call: &ArrayCall) -> TokenStream {
         } => index_tokens(target, index, *element),
         ArrayCall::Map { target, callback } => map_tokens(target, callback),
         ArrayCall::Filter { target, callback } => filter_tokens(target, callback),
+        ArrayCall::Pop { target, args } => pop_tokens(target, args),
     }
 }
 

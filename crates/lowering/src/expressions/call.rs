@@ -210,6 +210,7 @@ mod tests {
                         | ir::ArrayCall::Index { .. }
                         | ir::ArrayCall::Map { .. }
                         | ir::ArrayCall::Filter { .. } => todo!(),
+                        | ir::ArrayCall::Pop { .. } => todo!(),
                     }
                 }
                 other => panic!("expected array runtime call, got {other:?}"),

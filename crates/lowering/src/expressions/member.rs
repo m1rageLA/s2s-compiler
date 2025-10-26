@@ -61,6 +61,10 @@ fn detect_runtime_call(
                 callback: Box::new(callback),
             })
         }),
+        (_, "pop") if args.is_empty() => Some(RuntimeNamespace::Array(ArrayCall::Pop {
+            target: Box::new(object.clone()),
+            args: vec![],
+        })),
         _ => None,
     }
 }

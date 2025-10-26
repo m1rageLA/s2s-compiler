@@ -11,6 +11,19 @@ pub(crate) fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
             Some(IrArrayKind::Number) => Some(IrType::Number),
             _ => Some(IrType::Any),
         },
+        RuntimeNamespace::Array(ArrayCall::Pop { target, .. }) => {
+            match infer_expression_type(target) {
+                Some(IrType::Array(kind)) => Some(match kind {
+                    IrArrayKind::Number => IrType::Number,
+                    IrArrayKind::Str => IrType::Str,
+                    IrArrayKind::Bool => IrType::Bool,
+                    IrArrayKind::Value => IrType::Value,
+                    IrArrayKind::Any | IrArrayKind::Unknown => IrType::Any,
+                }),
+                _ => Some(IrType::Value),
+            }
+        }
+
         RuntimeNamespace::Array(ArrayCall::Map { target, .. }) => {
             match infer_expression_type(target) {
                 Some(IrType::Array(kind)) => Some(IrType::Array(kind)),

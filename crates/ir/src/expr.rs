@@ -115,10 +115,10 @@ pub enum ArrayCall {
         target: Box<IrExpression>,
         callback: Box<IrExpression>,
     },
-    // Pop {
-    //     target: Box<IrExpression>,
-
-    // }
+    Pop {
+        target: Box<IrExpression>,
+        args: Vec<IrExpression>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
