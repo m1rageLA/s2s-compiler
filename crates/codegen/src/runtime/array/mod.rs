@@ -1,51 +1,35 @@
-use crate::Codegen;
-use ir::{ArrayCall, IrArrayKind};
+mod filter;
+mod index;
+mod length;
+mod map;
+mod push;
+
+use filter::filter_tokens;
+use index::index_tokens;
+use ir::ArrayCall;
+use length::length_tokens;
+use map::map_tokens;
 use proc_macro2::TokenStream;
-use quote::quote;
+use push::push_tokens;
 
 pub(crate) fn array_call_tokens(call: &ArrayCall) -> TokenStream {
     match call {
-        ArrayCall::Push { target, args } => {
-            let target_tokens = target.codegen();
-            let value_tokens: Vec<TokenStream> = args.iter().map(|arg| arg.codegen()).collect();
-
-            quote! { runtime::array::push_number(&mut #target_tokens, vec![ #( #value_tokens ),* ]) }
-        }
-        ArrayCall::Length { target } => {
-            let target_tokens = target.codegen();
-            quote! { runtime::array::length_number(&#target_tokens) }
-        }
+        ArrayCall::Push { target, args } => push_tokens(target, args),
+        ArrayCall::Length { target } => length_tokens(target),
         ArrayCall::Index {
             target,
             index,
             element,
-        } => {
-            let target_tokens = target.codegen();
-            let index_tokens = index.codegen();
-            match element {
-                Some(IrArrayKind::Number) => {
-                    quote! { runtime::array::index_number(&#target_tokens, #index_tokens) }
-                }
-                _ => quote! { runtime::array::index(&#target_tokens, #index_tokens) },
-            }
-        }
-        ArrayCall::Map { target, callback } => {
-            let target_tokens = target.codegen();
-            let callback_tokens = callback.codegen();
-            quote! { runtime::array::map(&#target_tokens, #callback_tokens) }
-        }
-        ArrayCall::Filter { target, callback } => {
-            let target_tokens = target.codegen();
-            let callback_tokens = callback.codegen();
-            quote! { runtime::array::filter(&#target_tokens, #callback_tokens) }
-        }
+        } => index_tokens(target, index, *element),
+        ArrayCall::Map { target, callback } => map_tokens(target, callback),
+        ArrayCall::Filter { target, callback } => filter_tokens(target, callback),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ir::{ArrayCall, IrExpression, IrLiteral};
+    use ir::{IrArrayKind, IrExpression, IrLiteral};
 
     #[test]
     fn array_push_generates_mutating_runtime_call() {
@@ -61,7 +45,7 @@ mod tests {
         let tokens = array_call_tokens(&call);
         assert_eq!(
             tokens.to_string(),
-            quote! { runtime::array::push_number(&mut values, vec![runtime::value::into_value(4.0)]) }
+            quote::quote! { runtime::array::push_number(&mut values, vec![runtime::value::into_value(4.0)]) }
                 .to_string()
         );
     }
@@ -75,7 +59,7 @@ mod tests {
         let tokens = array_call_tokens(&call);
         assert_eq!(
             tokens.to_string(),
-            quote! { runtime::array::length_number(&values) }.to_string()
+            quote::quote! { runtime::array::length_number(&values) }.to_string()
         );
     }
 
@@ -90,7 +74,7 @@ mod tests {
         let tokens = array_call_tokens(&call);
         assert_eq!(
             tokens.to_string(),
-            quote! { runtime::array::index(&values, 1.0) }.to_string()
+            quote::quote! { runtime::array::index(&values, 1.0) }.to_string()
         );
     }
 
@@ -105,7 +89,7 @@ mod tests {
         let tokens = array_call_tokens(&call);
         assert_eq!(
             tokens.to_string(),
-            quote! { runtime::array::index_number(&values, i) }.to_string()
+            quote::quote! { runtime::array::index_number(&values, i) }.to_string()
         );
     }
 
@@ -119,7 +103,7 @@ mod tests {
         let tokens = array_call_tokens(&call);
         assert_eq!(
             tokens.to_string(),
-            quote! { runtime::array::map(&values, callback) }.to_string()
+            quote::quote! { runtime::array::map(&values, callback) }.to_string()
         );
     }
 
@@ -133,7 +117,7 @@ mod tests {
         let tokens = array_call_tokens(&call);
         assert_eq!(
             tokens.to_string(),
-            quote! { runtime::array::filter(&values, predicate) }.to_string()
+            quote::quote! { runtime::array::filter(&values, predicate) }.to_string()
         );
     }
 }

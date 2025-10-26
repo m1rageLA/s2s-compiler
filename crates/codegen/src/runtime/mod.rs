@@ -1,6 +1,6 @@
-mod array;
-mod console;
-mod value;
+pub mod array;
+pub mod console;
+pub mod value;
 
 use ir::RuntimeNamespace;
 use proc_macro2::TokenStream;

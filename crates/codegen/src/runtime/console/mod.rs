@@ -1,40 +1,30 @@
-use crate::Codegen;
+mod log;
+
 use ir::ConsoleCall;
 use proc_macro2::TokenStream;
-use quote::quote;
 
 pub(crate) fn console_call_tokens(call: &ConsoleCall) -> TokenStream {
     match call {
-        ConsoleCall::Log(args) => {
-            let arg_tokens: Vec<TokenStream> = args
-                .iter()
-                .map(|arg| {
-                    let expr = arg.codegen();
-                    quote! { runtime::console::stringify_any(&(#expr)) }
-                })
-                .collect();
-
-            quote! { runtime::console::log(vec![ #( #arg_tokens ),* ]) }
-        }
+        ConsoleCall::Log(args) => log::log_tokens(args),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ir::{ConsoleCall, IrExpression, IrLiteral};
+    use ir::{IrExpression, IrLiteral};
 
     #[test]
     fn console_log_wraps_arguments_with_stringify() {
-        let namespace = ConsoleCall::Log(vec![
+        let call = ConsoleCall::Log(vec![
             IrExpression::Literal(IrLiteral::Number(1.0)),
             IrExpression::Identifier("value".into()),
         ]);
 
-        let tokens = console_call_tokens(&namespace);
+        let tokens = console_call_tokens(&call);
         assert_eq!(
             tokens.to_string(),
-            quote! {
+            quote::quote! {
                 runtime::console::log(vec![
                     runtime::console::stringify_any(&(1.0)),
                     runtime::console::stringify_any(&(value))
