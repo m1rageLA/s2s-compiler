@@ -196,7 +196,14 @@ mod tests {
                                 IrExpression::Identifier(name) if name == "array"
                             ));
                             assert_eq!(args.len(), 1);
-                            assert_number_literal(Some(&args[0]), 2.0);
+                            match &args[0] {
+                                IrExpression::RuntimeCall(RuntimeNamespace::Value(
+                                    ir::ValueCall::Coerce { expr },
+                                )) => assert_number_literal(Some(expr.as_ref()), 2.0),
+                                other => {
+                                    panic!("expected value coercion for push arg, got {other:?}")
+                                }
+                            }
                         }
                         //todo
                         ir::ArrayCall::Length { .. } => todo!(),

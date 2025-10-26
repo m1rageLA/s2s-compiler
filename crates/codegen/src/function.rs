@@ -66,7 +66,7 @@ pub(crate) fn render_type(ty: &IrType) -> TokenStream {
 fn default_value(ty: &IrType) -> TokenStream {
     match ty {
         IrType::Number => quote! { 0.0f64 },
-        IrType::Str => quote! { ::std::string::String::new() },
+        IrType::Str => quote! { runtime::value::Value::String(::std::string::String::new()) },
         IrType::Bool => quote! { false },
         IrType::Unit => quote! { () },
         IrType::Any | IrType::Value => quote! { runtime::value::Value::Undefined },
@@ -235,7 +235,7 @@ mod tests {
     fn render_type_maps_all_variants() {
         let cases = vec![
             (IrType::Number, quote! { f64 }),
-            (IrType::Str, quote! { ::std::string::String }),
+            (IrType::Str, quote! { runtime::value::Value }),
             (IrType::Bool, quote! { bool }),
             (IrType::Unit, quote! { () }),
             (IrType::Any, quote! { runtime::value::Value }),

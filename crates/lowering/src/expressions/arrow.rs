@@ -47,6 +47,12 @@ mod tests {
             .as_ref()
             .expect("double should have initializer")
         {
+            IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Coerce {
+                expr,
+            })) => match expr.as_ref() {
+                IrExpression::Function(func) => func,
+                other => panic!("expected function expression for double, got {other:?}"),
+            },
             IrExpression::Function(func) => func,
             other => panic!("expected function expression for double, got {other:?}"),
         };
@@ -58,17 +64,19 @@ mod tests {
                 ty: IrType::Number
             }]
         );
-        assert!(
-            matches!(
-                function.body.as_slice(),
-                [IrStmt::Return(Some(IrExpression::Binary {
-                    op: IrBinOp::Mul,
-                    ..
-                }))]
-            ),
-            "expected multiplicative return, got {:?}",
-            function.body
-        );
+        match function.body.as_slice() {
+            [IrStmt::Return(Some(expr))] => match expr {
+                IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Coerce {
+                    expr,
+                })) => match expr.as_ref() {
+                    IrExpression::Binary { op, .. } => assert_eq!(*op, IrBinOp::Mul),
+                    other => panic!("expected multiplicative return, got {other:?}"),
+                },
+                IrExpression::Binary { op, .. } => assert_eq!(*op, IrBinOp::Mul),
+                other => panic!("expected multiplicative return, got {other:?}"),
+            },
+            other => panic!("expected single return statement, got {other:?}"),
+        }
 
         let format = expect_variable(&ir_module.items[1], "format");
         assert!(!format.mutable);
@@ -77,6 +85,12 @@ mod tests {
             .as_ref()
             .expect("format should have initializer")
         {
+            IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Coerce {
+                expr,
+            })) => match expr.as_ref() {
+                IrExpression::Function(func) => func,
+                other => panic!("expected function expression for format, got {other:?}"),
+            },
             IrExpression::Function(func) => func,
             other => panic!("expected function expression for format, got {other:?}"),
         };
@@ -94,18 +108,27 @@ mod tests {
 
         assert_eq!(function.body.len(), 1);
         match &function.body[0] {
-            IrStmt::Return(Some(expr)) => match expr {
-                IrExpression::Template(parts) => {
-                    assert_eq!(parts.len(), 3);
-                    assert!(matches!(parts[0], IrTemplatePart::String(ref s) if s == "value:"));
-                    match &parts[1] {
-                        IrTemplatePart::Expr(inner) => assert_identifier(inner, "value"),
-                        other => panic!("expected interpolation expression, got {other:?}"),
+            IrStmt::Return(Some(expr)) => {
+                let expr = match expr {
+                    IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(
+                        ir::ValueCall::Coerce { expr },
+                    )) => expr.as_ref(),
+                    other => other,
+                };
+
+                match expr {
+                    IrExpression::Template(parts) => {
+                        assert_eq!(parts.len(), 3);
+                        assert!(matches!(parts[0], IrTemplatePart::String(ref s) if s == "value:"));
+                        match &parts[1] {
+                            IrTemplatePart::Expr(inner) => assert_identifier(inner, "value"),
+                            other => panic!("expected interpolation expression, got {other:?}"),
+                        }
+                        assert!(matches!(parts[2], IrTemplatePart::String(ref s) if s.is_empty()));
                     }
-                    assert!(matches!(parts[2], IrTemplatePart::String(ref s) if s.is_empty()));
+                    other => panic!("expected template literal in return, got {other:?}"),
                 }
-                other => panic!("expected template literal in return, got {other:?}"),
-            },
+            }
             other => panic!("expected return statement in block arrow, got {other:?}"),
         }
     }

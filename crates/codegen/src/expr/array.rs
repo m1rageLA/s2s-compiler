@@ -4,13 +4,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 pub(crate) fn array_tokens(items: &[IrExpression]) -> TokenStream {
-    let item_tokens: Vec<TokenStream> = items
-        .iter()
-        .map(|item| {
-            let expr = item.codegen();
-            quote! { runtime::value::into_value(#expr) }
-        })
-        .collect();
+    let item_tokens: Vec<TokenStream> = items.iter().map(|item| item.codegen()).collect();
     quote! { vec![ #( #item_tokens ),* ] }
 }
 
@@ -35,9 +29,15 @@ mod tests {
     #[test]
     fn test_array_tokens() {
         let items = vec![
-            IrExpression::Literal(ir::IrLiteral::Number(1.0)),
-            IrExpression::Literal(ir::IrLiteral::Number(2.0)),
-            IrExpression::Literal(ir::IrLiteral::Number(3.0)),
+            IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Coerce {
+                expr: Box::new(IrExpression::Literal(ir::IrLiteral::Number(1.0))),
+            })),
+            IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Coerce {
+                expr: Box::new(IrExpression::Literal(ir::IrLiteral::Number(2.0))),
+            })),
+            IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Coerce {
+                expr: Box::new(IrExpression::Literal(ir::IrLiteral::Number(3.0))),
+            })),
         ];
         let tokens = array_tokens(&items);
 

@@ -33,3 +33,8 @@ mod conditionals;
 #[allow(unused)]
 #[path = "e2e/arrow_functions.rs"]
 mod arrow_functions;
+
+#[cfg(test)]
+#[allow(unused)]
+#[path = "e2e/binary.rs"]
+mod binary;

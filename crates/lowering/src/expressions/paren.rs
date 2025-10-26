@@ -4,7 +4,6 @@ pub fn paren_to_ir(expr: &ast::ParenExpr) -> IrExpression {
     expr_to_ir(&expr.expr)
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::test_utils::{expect_variable, lower};

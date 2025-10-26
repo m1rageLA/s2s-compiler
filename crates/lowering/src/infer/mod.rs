@@ -1,4 +1,4 @@
-use ir::{IrExpression, IrType};
+use ir::{IrArrayKind, IrExpression, IrType};
 
 mod expression_binary;
 mod expression_conditional;
@@ -28,9 +28,47 @@ pub(crate) fn infer_expression_type(expr: &IrExpression) -> Option<IrType> {
             ..
         } => expression_conditional::infer_conditional(consequent, alternate),
         IrExpression::Object(_) => Some(IrType::Value),
+        IrExpression::Array(elements) => Some(IrType::Array(infer_array_kind(elements))),
         IrExpression::Template(parts) => expression_template::infer_template(parts),
         IrExpression::RuntimeCall(call) => expression_runtime::infer_runtime(call),
         _ => expression_trivial::infer_default(expr),
+    }
+}
+
+fn infer_array_kind(elements: &[IrExpression]) -> IrArrayKind {
+    if elements.is_empty() {
+        return IrArrayKind::Unknown;
+    }
+
+    let mut kind = IrArrayKind::Unknown;
+    for element in elements {
+        match infer_expression_type(element) {
+            Some(IrType::Number) => {
+                kind = match kind {
+                    IrArrayKind::Unknown | IrArrayKind::Number => IrArrayKind::Number,
+                    _ => return IrArrayKind::Any,
+                };
+            }
+            Some(IrType::Str) => {
+                kind = match kind {
+                    IrArrayKind::Unknown | IrArrayKind::Str => IrArrayKind::Str,
+                    _ => return IrArrayKind::Any,
+                };
+            }
+            Some(IrType::Bool) => {
+                kind = match kind {
+                    IrArrayKind::Unknown | IrArrayKind::Bool => IrArrayKind::Bool,
+                    _ => return IrArrayKind::Any,
+                };
+            }
+            Some(IrType::Value | IrType::Any) => return IrArrayKind::Any,
+            Some(IrType::Array(_) | IrType::Unit) | None => return IrArrayKind::Any,
+        }
+    }
+
+    match kind {
+        IrArrayKind::Unknown => IrArrayKind::Any,
+        other => other,
     }
 }
 
@@ -38,8 +76,8 @@ pub(crate) fn infer_expression_type(expr: &IrExpression) -> Option<IrType> {
 mod tests {
     use super::*;
     use ir::{
-        ConsoleCall, IrBinOp, IrExpression, IrForInit, IrLiteral, IrStmt, IrTemplatePart, IrType,
-        IrVariable, RuntimeNamespace,
+        ConsoleCall, IrArrayKind, IrBinOp, IrExpression, IrForInit, IrLiteral, IrStmt,
+        IrTemplatePart, IrType, IrVariable, RuntimeNamespace,
     };
 
     fn number(value: f64) -> IrExpression {
@@ -132,6 +170,15 @@ mod tests {
             value: IrExpression::Literal(IrLiteral::Number(1.0)),
         }]);
         assert_eq!(infer_expression_type(&object), Some(IrType::Value));
+
+        let number_array = IrExpression::Array(vec![
+            IrExpression::Literal(IrLiteral::Number(1.0)),
+            IrExpression::Literal(IrLiteral::Number(2.0)),
+        ]);
+        assert_eq!(
+            infer_expression_type(&number_array),
+            Some(IrType::Array(IrArrayKind::Number))
+        );
 
         let runtime =
             IrExpression::RuntimeCall(RuntimeNamespace::Console(ConsoleCall::Log(vec![number(

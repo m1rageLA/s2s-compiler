@@ -1,18 +1,19 @@
 use super::*;
 
 pub(crate) fn array_expr_to_ir(a: &ast::ArrayLit) -> IrExpression {
-    IrExpression::Array(
-        a.elems
-            .iter()
-            .filter_map(|opt| opt.as_ref())
-            .map(|expr_or_spread| match expr_or_spread {
-                ast::ExprOrSpread { spread: None, expr } => expr_to_ir(expr),
-                ast::ExprOrSpread {
-                    spread: Some(_), ..
-                } => IrExpression::Identifier("spread_not_supported".to_string()),
-            })
-            .collect(),
-    )
+    let elements = a
+        .elems
+        .iter()
+        .filter_map(|opt| opt.as_ref())
+        .map(|expr_or_spread| match expr_or_spread {
+            ast::ExprOrSpread { spread: None, expr } => coerce_to_value(expr_to_ir(expr)),
+            ast::ExprOrSpread {
+                spread: Some(_), ..
+            } => IrExpression::Identifier("spread_not_supported".to_string()),
+        })
+        .collect();
+
+    IrExpression::Array(elements)
 }
 
 #[cfg(test)]
@@ -41,8 +42,19 @@ mod tests {
             other => panic!("expected array literal, got {other:?}"),
         };
         assert_eq!(array.len(), 3);
-        assert_number_literal(Some(&array[0]), 1.0);
-        assert_number_literal(Some(&array[1]), 2.0);
-        assert_number_literal(Some(&array[2]), 3.0);
+        assert_value_literal(&array[0], 1.0);
+        assert_value_literal(&array[1], 2.0);
+        assert_value_literal(&array[2], 3.0);
+    }
+
+    fn assert_value_literal(expr: &IrExpression, expected: f64) {
+        match expr {
+            IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Coerce {
+                expr,
+            })) => {
+                assert_number_literal(Some(expr.as_ref()), expected);
+            }
+            other => panic!("expected runtime value coercion, got {other:?}"),
+        }
     }
 }

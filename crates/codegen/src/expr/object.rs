@@ -10,7 +10,7 @@ pub(crate) fn object_literal_tokens(properties: &[IrObjectProperty]) -> TokenStr
             let key = &property.key;
             let value = property.value.codegen();
             quote! {
-                map.insert(#key.to_string(), runtime::value::into_value(#value));
+                map.insert(#key.to_string(), #value);
             }
         })
         .collect();
@@ -33,11 +33,19 @@ mod tests {
         let tokens = object_literal_tokens(&[
             IrObjectProperty {
                 key: "a".into(),
-                value: IrExpression::Literal(IrLiteral::Number(1.0)),
+                value: IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(
+                    ir::ValueCall::Coerce {
+                        expr: Box::new(IrExpression::Literal(IrLiteral::Number(1.0))),
+                    },
+                )),
             },
             IrObjectProperty {
                 key: "b".into(),
-                value: IrExpression::Identifier("value".into()),
+                value: IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(
+                    ir::ValueCall::Coerce {
+                        expr: Box::new(IrExpression::Identifier("value".into())),
+                    },
+                )),
             },
         ]);
 

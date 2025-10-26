@@ -43,7 +43,11 @@ mod tests {
     fn dispatches_array_calls() {
         let namespace = RuntimeNamespace::Array(ArrayCall::Push {
             target: Box::new(IrExpression::Identifier("values".into())),
-            args: vec![IrExpression::Literal(IrLiteral::Number(4.0))],
+            args: vec![IrExpression::RuntimeCall(RuntimeNamespace::Value(
+                ValueCall::Coerce {
+                    expr: Box::new(IrExpression::Literal(IrLiteral::Number(4.0))),
+                },
+            ))],
         });
 
         let tokens = runtime_call_tokens(&namespace);

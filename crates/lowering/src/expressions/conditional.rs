@@ -41,7 +41,14 @@ mod tests {
                 match alternate.as_ref() {
                     IrExpression::Array(elements) => {
                         assert_eq!(elements.len(), 1);
-                        assert_number_literal(Some(&elements[0]), 0.0);
+                        match &elements[0] {
+                            IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(
+                                ir::ValueCall::Coerce { expr },
+                            )) => assert_number_literal(Some(expr.as_ref()), 0.0),
+                            other => panic!(
+                                "expected runtime value coercion inside array literal, got {other:?}"
+                            ),
+                        }
                     }
                     other => panic!("expected array literal in alternate branch, got {other:?}"),
                 }

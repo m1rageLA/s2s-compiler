@@ -1,7 +1,30 @@
 use super::*;
+use crate::context;
+use crate::expressions::coerce_to_value;
+use ir::{IrType, RuntimeNamespace};
+
 pub(crate) fn assignment_expr_to_ir(assign: &ast::AssignExpr) -> IrExpression {
     let left = assignment_target_to_ir(&assign.left);
-    let right = expr_to_ir(&assign.right);
+    let mut right = expr_to_ir(&assign.right);
+
+    // If assigning to a simple identifier which is declared as `Str` or
+    // `Value` (both represented as runtime `Value` in codegen), coerce the
+    // RHS to Value — but skip coercion for simple literal/template RHS
+    // expressions so tests and literals stay as-is.
+    if let IrExpression::Identifier(name) = &left {
+        if let Some(ty) = context::lookup(name) {
+            if matches!(ty, IrType::Value | IrType::Str) {
+                match &right {
+                    IrExpression::Literal(_)
+                    | IrExpression::Template(_)
+                    | IrExpression::RuntimeCall(RuntimeNamespace::Value(_)) => {}
+                    _ => {
+                        right = coerce_to_value(right);
+                    }
+                }
+            }
+        }
+    }
 
     IrExpression::Assignment {
         op: assign_op_to_ir(assign.op),
@@ -149,7 +172,14 @@ mod tests {
             .as_ref()
             .expect("result should have initializer");
 
-        let (left, right, op) = expect_assignment(value);
+        let value_expr = match value {
+            IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Coerce {
+                expr,
+            })) => expr.as_ref(),
+            other => other,
+        };
+
+        let (left, right, op) = expect_assignment(value_expr);
         assert_identifier(left, "counter");
         assert_eq!(op, IrAssignOp::AddAssign);
         assert_number_literal(Some(right), 2.0);

@@ -1,4 +1,4 @@
-use crate::expressions::{IrExpression, ast, expr_to_ir};
+use crate::expressions::{IrExpression, ast, coerce_to_value, expr_to_ir};
 use ir::IrObjectProperty;
 
 pub(crate) fn object_expr_to_ir(object: &ast::ObjectLit) -> IrExpression {
@@ -12,14 +12,14 @@ pub(crate) fn object_expr_to_ir(object: &ast::ObjectLit) -> IrExpression {
                         Some(key) => key,
                         None => return IrExpression::Identifier("unsupported".to_string()),
                     };
-                    let value = expr_to_ir(kv.value.as_ref());
+                    let value = coerce_to_value(expr_to_ir(kv.value.as_ref()));
                     properties.push(IrObjectProperty { key, value });
                 }
                 ast::Prop::Shorthand(ident) => {
                     let name = ident.sym.to_string();
                     properties.push(IrObjectProperty {
                         key: name.clone(),
-                        value: IrExpression::Identifier(name),
+                        value: coerce_to_value(IrExpression::Identifier(name)),
                     });
                 }
                 _ => return IrExpression::Identifier("unsupported".to_string()),
@@ -71,12 +71,22 @@ mod tests {
 
         assert_eq!(props.len(), 2);
         assert_eq!(props[0].key, "a");
-        assert_eq!(
-            props[0].value,
-            IrExpression::Literal(IrLiteral::Number(1.0))
-        );
+        let first_value = match &props[0].value {
+            IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Coerce {
+                expr,
+            })) => expr.as_ref(),
+            other => panic!("expected value coercion for property 'a', got {other:?}"),
+        };
+        assert_eq!(*first_value, IrExpression::Literal(IrLiteral::Number(1.0)));
 
         assert_eq!(props[1].key, "b");
-        assert_eq!(props[1].value, IrExpression::Identifier("b".to_string()));
+        match &props[1].value {
+            IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Coerce {
+                expr,
+            })) => {
+                assert_eq!(**expr, IrExpression::Identifier("b".to_string()));
+            }
+            other => panic!("expected value coercion for shorthand property, got {other:?}"),
+        }
     }
 }

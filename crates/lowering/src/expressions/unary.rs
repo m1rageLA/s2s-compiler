@@ -19,12 +19,19 @@ pub fn unary_expr_to_ir(u: &ast::UnaryExpr) -> IrExpression {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use crate::test_utils::{assert_identifier, expect_variable, lower};
     use ir::{IrBinOp, IrExpression, IrLiteral};
+
+    fn unwrap_value(expr: &IrExpression) -> &IrExpression {
+        match expr {
+            IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Coerce {
+                expr,
+            })) => expr.as_ref(),
+            other => other,
+        }
+    }
 
     #[test]
     fn lowers_unary_minus_and_plus() {
@@ -67,21 +74,25 @@ mod tests {
         }
 
         let positive = expect_variable(&ir_module.items[2], "positive");
-        match positive
-            .value
-            .as_ref()
-            .expect("positive should have initializer")
-        {
+        let positive_value = unwrap_value(
+            positive
+                .value
+                .as_ref()
+                .expect("positive should have initializer"),
+        );
+        match positive_value {
             IrExpression::Identifier(name) => assert_eq!(name, "value"),
             other => panic!("expected identity for unary plus, got {other:?}"),
         }
 
         let unsupported = expect_variable(&ir_module.items[3], "unsupported");
-        match unsupported
-            .value
-            .as_ref()
-            .expect("unsupported should have initializer")
-        {
+        let unsupported_value = unwrap_value(
+            unsupported
+                .value
+                .as_ref()
+                .expect("unsupported should have initializer"),
+        );
+        match unsupported_value {
             IrExpression::Identifier(name) => assert_eq!(name, "unsupported_unary"),
             other => panic!("expected unsupported sentinel, got {other:?}"),
         }
@@ -97,11 +108,13 @@ mod tests {
 
         assert_eq!(ir_module.items.len(), 1);
         let variable = expect_variable(&ir_module.items[0], "result");
-        match variable
-            .value
-            .as_ref()
-            .expect("result should have initializer")
-        {
+        let value = unwrap_value(
+            variable
+                .value
+                .as_ref()
+                .expect("result should have initializer"),
+        );
+        match value {
             IrExpression::Identifier(name) => assert_eq!(name, "value"),
             other => panic!("expected identifier after removing parentheses, got {other:?}"),
         }

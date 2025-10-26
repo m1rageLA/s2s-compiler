@@ -3,10 +3,10 @@
 // - `ops` contains runtime operations (add, sub, comparisons, etc.)
 // - `conversions` contains small helpers / conversions used across runtime
 // - `prelude` re-exports the commonly used symbols for `crate::prelude`
-pub mod types;
-pub mod ops;
 pub mod conversions;
+pub mod ops;
 pub mod prelude;
+pub mod types;
 
 // Re-export the public surface for convenient consumption by other crates.
 pub use prelude::*;

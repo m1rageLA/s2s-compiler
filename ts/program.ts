@@ -1,8 +1,5 @@
-function add(a: any): string | number {
-    if (a === "string") {
-        return "123" + "456";
-    }
-    return 123 + 456;
-}
+let x = (function add() {
+    return "string" + "string";
+})()
 
-console.log(add("string"));
+console.log(x); 

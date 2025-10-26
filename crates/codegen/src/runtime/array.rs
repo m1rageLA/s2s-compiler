@@ -7,13 +7,7 @@ pub(crate) fn array_call_tokens(call: &ArrayCall) -> TokenStream {
     match call {
         ArrayCall::Push { target, args } => {
             let target_tokens = target.codegen();
-            let value_tokens: Vec<TokenStream> = args
-                .iter()
-                .map(|arg| {
-                    let expr = arg.codegen();
-                    quote! { runtime::value::into_value(#expr) }
-                })
-                .collect();
+            let value_tokens: Vec<TokenStream> = args.iter().map(|arg| arg.codegen()).collect();
 
             quote! { runtime::array::push_number(&mut #target_tokens, vec![ #( #value_tokens ),* ]) }
         }
@@ -47,7 +41,11 @@ mod tests {
     fn array_push_generates_mutating_runtime_call() {
         let call = ArrayCall::Push {
             target: Box::new(IrExpression::Identifier("values".into())),
-            args: vec![IrExpression::Literal(IrLiteral::Number(4.0))],
+            args: vec![IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(
+                ir::ValueCall::Coerce {
+                    expr: Box::new(IrExpression::Literal(IrLiteral::Number(4.0))),
+                },
+            ))],
         };
 
         let tokens = array_call_tokens(&call);

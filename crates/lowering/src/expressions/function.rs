@@ -56,7 +56,23 @@ pub fn function_expr_to_ir(fn_expr: &ast::FnExpr) -> IrExpression {
 #[cfg(test)]
 mod tests {
     use crate::test_utils::{assert_number_literal, assert_string_literal, expect_variable, lower};
-    use ir::{IrBinOp, IrExpression, IrStmt, IrType};
+    use ir::{IrBinOp, IrExpression, IrFunctionExpr, IrStmt, IrType};
+
+    fn unwrap_value(expr: &IrExpression) -> &IrExpression {
+        match expr {
+            IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Coerce {
+                expr,
+            })) => expr.as_ref(),
+            other => other,
+        }
+    }
+
+    fn expect_function_expr<'a>(expr: Option<&'a IrExpression>) -> &'a IrFunctionExpr {
+        match unwrap_value(expr.expect("function expression expected")) {
+            IrExpression::Function(func) => func,
+            other => panic!("expected function expression initializer, got {other:?}"),
+        }
+    }
 
     #[test]
     fn lowers_function_expression_into_ir_variant() {
@@ -72,10 +88,7 @@ mod tests {
         let handler = expect_variable(&ir_module.items[0], "handler");
         assert!(!handler.mutable);
 
-        let function = match handler.value.as_ref() {
-            Some(IrExpression::Function(function)) => function,
-            other => panic!("expected function expression initializer, got {other:?}"),
-        };
+        let function = expect_function_expr(handler.value.as_ref());
 
         assert!(function.name.is_none());
         assert_eq!(function.params.len(), 1);
@@ -86,7 +99,7 @@ mod tests {
         assert_eq!(function.body.len(), 1);
 
         match &function.body[0] {
-            IrStmt::Return(Some(expr)) => match expr {
+            IrStmt::Return(Some(expr)) => match unwrap_value(expr) {
                 IrExpression::Binary { op, .. } => assert_eq!(*op, IrBinOp::Add),
                 other => panic!("expected binary addition in return, got {other:?}"),
             },
@@ -107,10 +120,7 @@ mod tests {
         assert_eq!(ir_module.items.len(), 1);
         let variable = expect_variable(&ir_module.items[0], "handler");
 
-        let function = match variable.value.as_ref() {
-            Some(IrExpression::Function(function)) => function,
-            other => panic!("expected function expression initializer, got {other:?}"),
-        };
+        let function = expect_function_expr(variable.value.as_ref());
 
         assert_eq!(function.name.as_deref(), Some("internal"));
         assert_eq!(function.params.len(), 1);
@@ -119,7 +129,7 @@ mod tests {
         assert_eq!(function.ret, IrType::Number);
 
         match &function.body[0] {
-            IrStmt::Return(Some(expr)) => match expr {
+            IrStmt::Return(Some(expr)) => match unwrap_value(expr) {
                 IrExpression::Binary { op, .. } => assert_eq!(*op, IrBinOp::Mul),
                 other => panic!("expected multiplication return, got {other:?}"),
             },
@@ -140,10 +150,7 @@ mod tests {
         assert_eq!(ir_module.items.len(), 1);
         let variable = expect_variable(&ir_module.items[0], "noop");
 
-        let function = match variable.value.as_ref() {
-            Some(IrExpression::Function(function)) => function,
-            other => panic!("expected function expression initializer, got {other:?}"),
-        };
+        let function = expect_function_expr(variable.value.as_ref());
 
         assert!(function.name.is_none());
         assert!(function.params.is_empty());
@@ -175,10 +182,7 @@ mod tests {
         assert_eq!(ir_module.items.len(), 1);
         let variable = expect_variable(&ir_module.items[0], "creator");
 
-        let function = match variable.value.as_ref() {
-            Some(IrExpression::Function(function)) => function,
-            other => panic!("expected function expression initializer, got {other:?}"),
-        };
+        let function = expect_function_expr(variable.value.as_ref());
 
         assert_eq!(function.ret, IrType::Str);
         assert_eq!(function.body.len(), 1);
@@ -202,18 +206,24 @@ mod tests {
 
         let async_var = expect_variable(&ir_module.items[0], "asyncHandler");
         match async_var.value.as_ref() {
-            Some(IrExpression::Identifier(name)) => {
-                assert_eq!(name, "async_function_expression_not_supported");
-            }
-            other => panic!("expected unsupported sentinel identifier, got {other:?}"),
+            Some(expr) => match unwrap_value(expr) {
+                IrExpression::Identifier(name) => {
+                    assert_eq!(name, "async_function_expression_not_supported");
+                }
+                other => panic!("expected unsupported sentinel identifier, got {other:?}"),
+            },
+            None => panic!("expected initializer for async handler"),
         }
 
         let generator_var = expect_variable(&ir_module.items[1], "generator");
         match generator_var.value.as_ref() {
-            Some(IrExpression::Identifier(name)) => {
-                assert_eq!(name, "generator_function_expression_not_supported");
-            }
-            other => panic!("expected unsupported sentinel identifier, got {other:?}"),
+            Some(expr) => match unwrap_value(expr) {
+                IrExpression::Identifier(name) => {
+                    assert_eq!(name, "generator_function_expression_not_supported");
+                }
+                other => panic!("expected unsupported sentinel identifier, got {other:?}"),
+            },
+            None => panic!("expected initializer for generator"),
         }
     }
 }

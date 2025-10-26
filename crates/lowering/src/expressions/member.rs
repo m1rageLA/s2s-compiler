@@ -38,10 +38,17 @@ fn detect_runtime_call(
         (IrExpression::Identifier(name), "log") if name == "console" => {
             Some(RuntimeNamespace::Console(ConsoleCall::Log(args.to_vec())))
         }
-        (IrExpression::Identifier(_), "push") => Some(RuntimeNamespace::Array(ArrayCall::Push {
-            target: Box::new(object.clone()),
-            args: args.to_vec(),
-        })),
+        (IrExpression::Identifier(_), "push") => {
+            let coerced_args = args
+                .iter()
+                .cloned()
+                .map(coerce_to_value)
+                .collect::<Vec<_>>();
+            Some(RuntimeNamespace::Array(ArrayCall::Push {
+                target: Box::new(object.clone()),
+                args: coerced_args,
+            }))
+        }
         _ => None,
     }
 }

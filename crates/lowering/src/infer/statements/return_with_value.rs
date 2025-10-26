@@ -6,7 +6,14 @@ pub(crate) fn handle(
     saw_return: &mut bool,
 ) -> bool {
     *saw_return = true;
-    let ty = match super::super::infer_expression_type(expr) {
+    let inner_expr = match expr {
+        IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Coerce { expr })) => {
+            expr.as_ref()
+        }
+        _ => expr,
+    };
+
+    let ty = match super::super::infer_expression_type(inner_expr) {
         Some(value) => value,
         None => return false,
     };

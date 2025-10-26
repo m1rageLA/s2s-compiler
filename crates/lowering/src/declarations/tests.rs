@@ -111,13 +111,22 @@ fn infers_return_type_from_branches() {
                 .expect("if statement should have else branch");
             assert_eq!(else_branch.len(), 1);
             match &else_branch[0] {
-                IrStmt::Return(Some(expr)) => match expr {
-                    IrExpression::Template(parts) => {
-                        assert_eq!(parts.len(), 1);
-                        assert!(matches!(parts[0], IrTemplatePart::String(ref s) if s == "no"));
+                IrStmt::Return(Some(expr)) => {
+                    let expr = match expr {
+                        IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(
+                            ir::ValueCall::Coerce { expr },
+                        )) => expr.as_ref(),
+                        other => other,
+                    };
+
+                    match expr {
+                        IrExpression::Template(parts) => {
+                            assert_eq!(parts.len(), 1);
+                            assert!(matches!(parts[0], IrTemplatePart::String(ref s) if s == "no"));
+                        }
+                        other => panic!("expected template string in else return, got {other:?}"),
                     }
-                    other => panic!("expected template string in else return, got {other:?}"),
-                },
+                }
                 other => panic!("expected return in else branch, got {other:?}"),
             }
         }

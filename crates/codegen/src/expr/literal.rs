@@ -15,7 +15,8 @@ impl Codegen for IrLiteral {
             }
             IrLiteral::Str(value) => {
                 let lit = Literal::string(value);
-                quote! { #lit.to_string() }
+                // Strings are represented as runtime::value::Value in codegen
+                quote! { runtime::value::Value::String(#lit.to_string()) }
             }
             IrLiteral::Bool(value) => {
                 if *value {
@@ -43,7 +44,7 @@ mod tests {
         let tokens = IrLiteral::Str("hello".into()).codegen();
         assert_eq!(
             tokens.to_string(),
-            quote::quote! { "hello".to_string() }.to_string()
+            quote::quote! { runtime::value::Value::String("hello".to_string()) }.to_string()
         );
     }
 

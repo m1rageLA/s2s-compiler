@@ -53,8 +53,8 @@ pub(crate) fn bin_op_to_ir(op: &ast::BinaryOp) -> IrBinOp {
 }
 
 fn requires_value_runtime(left: Option<IrType>, right: Option<IrType>) -> bool {
-    matches!(left, Some(IrType::Any | IrType::Value))
-        || matches!(right, Some(IrType::Any | IrType::Value))
+    matches!(left, Some(IrType::Any | IrType::Value | IrType::Str))
+        || matches!(right, Some(IrType::Any | IrType::Value | IrType::Str))
         || left.is_none()
         || right.is_none()
 }
@@ -180,6 +180,12 @@ mod tests {
                     .value
                     .as_ref()
                     .expect("variable should have initializer");
+                let expr = match expr {
+                    IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(
+                        ir::ValueCall::Coerce { expr },
+                    )) => expr.as_ref(),
+                    other => other,
+                };
                 match expr {
                     IrExpression::Binary { op, .. } => assert_eq!(*op, $expected),
                     other => panic!("expected binary expression for {}, got {other:?}", $name),
@@ -199,6 +205,13 @@ mod tests {
                 .value
                 .as_ref()
                 .expect("power should have initializer");
+            let expr = match expr {
+                IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Coerce {
+                    expr,
+                })) => expr.as_ref(),
+                other => other,
+            };
+
             match expr {
                 IrExpression::Call { callee, args } => {
                     match callee.as_ref() {
@@ -250,6 +263,50 @@ mod tests {
         }
 
         assert!(items.next().is_none(), "unexpected trailing items");
+    }
+
+    #[test]
+    fn string_addition_uses_value_runtime() {
+        let ir_module = crate::test_utils::lower(
+            r#"
+            const result = "foo" + "bar";
+        "#,
+        );
+
+        let variable = expect_variable(&ir_module.items[0], "result");
+        let value = variable
+            .value
+            .as_ref()
+            .expect("result should have initializer");
+        match value {
+            IrExpression::RuntimeCall(RuntimeNamespace::Value(ValueCall::Add { left, right })) => {
+                crate::test_utils::assert_string_literal(Some(left.as_ref()), "foo");
+                crate::test_utils::assert_string_literal(Some(right.as_ref()), "bar");
+            }
+            other => panic!("expected value runtime add call, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn string_and_number_comparisons_use_value_runtime() {
+        let ir_module = crate::test_utils::lower(
+            r#"
+            const eq = "5" == 5;
+        "#,
+        );
+
+        let variable = expect_variable(&ir_module.items[0], "eq");
+        let value = variable.value.as_ref().expect("eq should have initializer");
+        match value {
+            IrExpression::RuntimeCall(RuntimeNamespace::Value(ValueCall::Equal {
+                left,
+                right,
+            })) => {
+                crate::test_utils::assert_string_literal(Some(left.as_ref()), "5");
+                crate::test_utils::assert_number_literal(Some(right.as_ref()), 5.0);
+            }
+            other => panic!("expected value runtime equality call, got {other:?}"),
+        }
     }
 
     #[test]

@@ -1,9 +1,10 @@
-use ir::{IrExpression, IrStmt, IrType};
+use ir::{IrExpression, IrLiteral, IrStmt, IrType, RuntimeNamespace};
 use swc_ecma_ast::{self as ast};
 
 use crate::context;
 use crate::expressions::{coerce_to_value, expr_to_ir};
-use crate::infer;
+// infer is no longer needed here; type decisions are made by inspecting the
+// lowered expression shape rather than running inference.
 
 pub(crate) fn lower(ret_stmt: &ast::ReturnStmt) -> IrStmt {
     let value = ret_stmt.arg.as_ref().map(|expr| {
@@ -20,9 +21,18 @@ pub(crate) fn lower(ret_stmt: &ast::ReturnStmt) -> IrStmt {
 
 fn should_coerce_return(expr: &IrExpression) -> bool {
     match context::current_function_return() {
-        Some(IrType::Any | IrType::Value) => match infer::infer_expression_type(expr) {
-            Some(IrType::Number | IrType::Str | IrType::Bool | IrType::Unit) => false,
-            Some(IrType::Value) => false,
+        // Coerce when the function's declared return is represented by the runtime Value.
+        // - For `Value`, everything should flow through the runtime unless it's already
+        //   expressed as a runtime value call.
+        Some(IrType::Value) => {
+            !matches!(expr, IrExpression::RuntimeCall(RuntimeNamespace::Value(_)))
+        }
+        // - For `Str`, allow literal/template expressions to remain as-is (they already emit
+        //   runtime values in codegen) while still coercing everything else.
+        Some(IrType::Str) => match expr {
+            IrExpression::RuntimeCall(RuntimeNamespace::Value(_))
+            | IrExpression::Literal(IrLiteral::Str(_))
+            | IrExpression::Template(_) => false,
             _ => true,
         },
         _ => false,
