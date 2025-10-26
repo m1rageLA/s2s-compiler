@@ -58,8 +58,8 @@ fn equality_op(name: &str, left: &IrExpression, right: &IrExpression) -> TokenSt
     let left_tokens = left.codegen();
     let right_tokens = right.codegen();
     quote! {{
-        let left_tmp = runtime::value::into_value(#left_tokens.clone());
-        let right_tmp = runtime::value::into_value(#right_tokens.clone());
+        let left_tmp = runtime::value::types::into_value(#left_tokens.clone());
+        let right_tmp = runtime::value::types::into_value(#right_tokens.clone());
         runtime::value::ops::#func(&left_tmp, &right_tmp)
     }}
 }
