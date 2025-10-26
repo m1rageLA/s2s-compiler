@@ -288,9 +288,16 @@ mod tests {
         let lowered = lower_expression("items.map(transform)");
 
         match lowered {
-            IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Map { target, callback })) => {
-                assert!(matches!(target.as_ref(), IrExpression::Identifier(name) if name == "items"));
-                assert!(matches!(callback.as_ref(), IrExpression::Identifier(name) if name == "transform"));
+            IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Map {
+                target,
+                callback,
+            })) => {
+                assert!(
+                    matches!(target.as_ref(), IrExpression::Identifier(name) if name == "items")
+                );
+                assert!(
+                    matches!(callback.as_ref(), IrExpression::Identifier(name) if name == "transform")
+                );
             }
             other => panic!("expected array.map runtime call, got {other:?}"),
         }
@@ -301,9 +308,16 @@ mod tests {
         let lowered = lower_expression("items.filter(predicate)");
 
         match lowered {
-            IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Filter { target, callback })) => {
-                assert!(matches!(target.as_ref(), IrExpression::Identifier(name) if name == "items"));
-                assert!(matches!(callback.as_ref(), IrExpression::Identifier(name) if name == "predicate"));
+            IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Filter {
+                target,
+                callback,
+            })) => {
+                assert!(
+                    matches!(target.as_ref(), IrExpression::Identifier(name) if name == "items")
+                );
+                assert!(
+                    matches!(callback.as_ref(), IrExpression::Identifier(name) if name == "predicate")
+                );
             }
             other => panic!("expected array.filter runtime call, got {other:?}"),
         }

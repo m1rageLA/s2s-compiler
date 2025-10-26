@@ -1,12 +1,14 @@
 use crate::value::Value;
 
-pub fn map<F>(array: &[Value], mut callback: F) -> Vec<Value>
+pub fn map<F, R>(array: &[Value], mut callback: F) -> Vec<Value>
 where
-    F: FnMut(Value) -> Value,
+    F: FnMut(Value) -> R,
+    R: Into<Value>,
 {
     let mut result = Vec::with_capacity(array.len());
     for value in array {
-        result.push(callback(Value::from(value)));
+        let mapped: R = callback(Value::from(value));
+        result.push(mapped.into());
     }
     result
 }
@@ -34,5 +36,17 @@ mod tests {
             values,
             vec![Value::Number(1.0), Value::Number(2.0), Value::Number(3.0)]
         );
+    }
+
+    #[test]
+    fn map_accepts_non_value_returns() {
+        let values = vec![Value::Number(1.0), Value::Number(2.0)];
+
+        let mapped = map(&values, |value| match value {
+            Value::Number(n) => n * 3.0,
+            _ => 0.0,
+        });
+
+        assert_eq!(mapped, vec![Value::Number(3.0), Value::Number(6.0)]);
     }
 }
