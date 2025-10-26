@@ -41,14 +41,27 @@ pub(crate) fn binary_op_tokens(op: IrBinOp, left: TokenStream, right: TokenStrea
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proc_macro2::TokenStream as Ts;
     use quote::quote;
+    use syn::{parse2, Expr};
+
+    /// Удобняшка: нормализуем строковое представление токенов.
+    /// to_string у TokenStream детерминирован, но может иметь разные пробелы в зависимости от версии.
+    fn norm(ts: &Ts) -> String {
+        ts.to_string().replace([' ', '\n', '\t'], "")
+    }
+
+    /// Проверяет, что токены парсятся как корректное выражение Rust
+    fn assert_parses(expr: &Ts) {
+        parse2::<Expr>(expr.clone()).expect("generated tokens must be a valid Rust expression");
+    }
 
     #[test]
-    fn supported_binary_ops_emit_expected_tokens() {
+    fn supported_binary_ops_emit_expected_tokens_on_simple_idents() {
         let left = quote!(lhs);
         let right = quote!(rhs);
 
-        let cases = vec![
+        let cases: Vec<(IrBinOp, Ts)> = vec![
             (IrBinOp::Add, quote! { (lhs) + (rhs) }),
             (IrBinOp::Sub, quote! { (lhs) - (rhs) }),
             (IrBinOp::Mul, quote! { (lhs) * (rhs) }),
@@ -72,47 +85,117 @@ mod tests {
         ];
 
         for (op, expected) in cases {
-            let tokens = binary_op_tokens(op, left.clone(), right.clone());
+            let got = binary_op_tokens(op, left.clone(), right.clone());
             assert_eq!(
-                tokens.to_string(),
-                expected.to_string(),
-                "mismatch for {op:?}"
+                norm(&got),
+                norm(&expected),
+                "mismatch for {op:?}: got `{}` expected `{}`",
+                got,
+                expected
+            );
+            assert_parses(&got);
+        }
+    }
+
+    #[test]
+    fn parentheses_preserve_precedence_for_complex_operands() {
+        // Важно: левый/правый могут быть уже составными выражениями — мы обязаны поставить скобки.
+        let complex_left = quote! { a + b * c };
+        let complex_right = quote! { d || e && f };
+
+        // Проверим на нескольких бинарных операторах разных приоритетов.
+        let cases = [
+            (IrBinOp::Mul, quote! { (a + b * c) * (d || e && f) }),
+            (IrBinOp::Add, quote! { (a + b * c) + (d || e && f) }),
+            (IrBinOp::LogicalAnd, quote! { (a + b * c) && (d || e && f) }),
+            (IrBinOp::BitwiseOr, quote! { (a + b * c) | (d || e && f) }),
+            (IrBinOp::RightShift, quote! { (a + b * c) >> (d || e && f) }),
+            (IrBinOp::LessThanOrEqual, quote! { (a + b * c) <= (d || e && f) }),
+        ];
+
+        for (op, expected) in cases {
+            let got = binary_op_tokens(op, complex_left.clone(), complex_right.clone());
+            assert_eq!(norm(&got), norm(&expected), "parentheses lost for {op:?}");
+            assert_parses(&got);
+        }
+    }
+
+    #[test]
+    fn works_with_weird_idents_and_paths() {
+        // Проверяем, что не ломаемся на путях, generic'ах и raw идентификаторах
+        let left = quote! { ::core::mem::size_of::<r#match>() };
+        let right = quote! { some::module::r#type::<Vec<u8>>() };
+        let cases = [
+            (IrBinOp::Sub, quote! { (::core::mem::size_of::<r#match>()) - (some::module::r#type::<Vec<u8>>()) }),
+            (IrBinOp::Equal, quote! { (::core::mem::size_of::<r#match>()) == (some::module::r#type::<Vec<u8>>()) }),
+        ];
+        for (op, expected) in cases {
+            let got = binary_op_tokens(op, left.clone(), right.clone());
+            assert_eq!(norm(&got), norm(&expected), "mismatch with raw idents/paths for {op:?}");
+            assert_parses(&got);
+        }
+    }
+
+    #[test]
+    fn generation_is_deterministic_for_same_inputs() {
+        let left = quote!(foo.bar().baz(1, 2 + 3));
+        let right = quote!((x << 2) | 7);
+        let op = IrBinOp::BitwiseAnd;
+
+        let a = binary_op_tokens(op, left.clone(), right.clone());
+        let b = binary_op_tokens(op, left.clone(), right.clone());
+        assert_eq!(norm(&a), norm(&b), "TokenStream must be deterministic");
+    }
+
+    #[test]
+    fn unsupported_binary_ops_emit_clean_panic_without_operands() {
+        let left = quote!(lhs + 42);     // намеренно не тривиальные
+        let right = quote!(rhs >> 1);
+
+        let cases = vec![
+            (IrBinOp::UnsignedRightShift, "codegen for binary op `unsigned right shift` not implemented"),
+            (IrBinOp::In, "codegen for binary op `in` not implemented"),
+            (IrBinOp::InstanceOf, "codegen for binary op `instanceof` not implemented"),
+            (IrBinOp::Exp, "codegen for binary op `exponentiation` not implemented"),
+            (IrBinOp::Unsupported, "codegen for binary op `unsupported` not implemented"),
+        ];
+
+        for (op, message) in cases {
+            let got = binary_op_tokens(op, left.clone(), right.clone());
+            let expected = quote! { panic!(#message) };
+
+            // 1) точное «золотое» сравнение
+            assert_eq!(norm(&got), norm(&expected), "unexpected tokens for {op:?}");
+
+            // 2) синтаксис валиден
+            assert_parses(&got);
+
+            // 3) в сгенерированном коде не должно быть следов lhs/rhs
+            let got_str = got.to_string();
+            assert!(
+                !got_str.contains("lhs") && !got_str.contains("rhs"),
+                "unsupported op must not embed operands; got: {got_str}"
+            );
+
+            // 4) сообщение должно быть именно строковым литералом (а не форматированием)
+            // На уровне токенов это просто проверка наличия кавычек вокруг текста.
+            assert!(
+                got_str.contains("codegen for binary op")
+                    && got_str.contains("not implemented"),
+                "panic message content changed; got: {got_str}"
             );
         }
     }
 
     #[test]
-    fn unsupported_binary_ops_panic_with_reason() {
-        let left = quote!(lhs);
-        let right = quote!(rhs);
+    fn boolean_vs_bitwise_are_not_confused() {
+        let left = quote!(p());
+        let right = quote!(q());
 
-        let cases = vec![
-            (
-                IrBinOp::UnsignedRightShift,
-                "codegen for binary op `unsigned right shift` not implemented",
-            ),
-            (IrBinOp::In, "codegen for binary op `in` not implemented"),
-            (
-                IrBinOp::InstanceOf,
-                "codegen for binary op `instanceof` not implemented",
-            ),
-            (
-                IrBinOp::Exp,
-                "codegen for binary op `exponentiation` not implemented",
-            ),
-            (
-                IrBinOp::Unsupported,
-                "codegen for binary op `unsupported` not implemented",
-            ),
-        ];
-
-        for (op, message) in cases {
-            let tokens = binary_op_tokens(op, left.clone(), right.clone());
-            assert_eq!(
-                tokens.to_string(),
-                quote! { panic!(#message) }.to_string(),
-                "unexpected output for {op:?}"
-            );
-        }
+        let logical_or = binary_op_tokens(IrBinOp::LogicalOr, left.clone(), right.clone());
+        let bit_or = binary_op_tokens(IrBinOp::BitwiseOr, left.clone(), right.clone());
+        assert_ne!(norm(&logical_or), norm(&bit_or), "|| must not degrade to |");
+        assert_eq!(norm(&logical_or), norm(&quote! { (p()) || (q()) }));
+        assert_eq!(norm(&bit_or), norm(&quote! { (p()) | (q()) }));
     }
 }
