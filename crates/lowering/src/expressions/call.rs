@@ -205,9 +205,11 @@ mod tests {
                                 }
                             }
                         }
-                        //todo
-                        ir::ArrayCall::Length { .. } => todo!(),
-                        ir::ArrayCall::Index { .. } => todo!(),
+                        // Additional array runtime variants are not exercised here yet.
+                        ir::ArrayCall::Length { .. }
+                        | ir::ArrayCall::Index { .. }
+                        | ir::ArrayCall::Map { .. }
+                        | ir::ArrayCall::Filter { .. } => todo!(),
                     }
                 }
                 other => panic!("expected array runtime call, got {other:?}"),

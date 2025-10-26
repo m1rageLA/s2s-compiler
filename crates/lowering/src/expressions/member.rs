@@ -49,6 +49,18 @@ fn detect_runtime_call(
                 args: coerced_args,
             }))
         }
+        (_, "map") => args.first().cloned().map(|callback| {
+            RuntimeNamespace::Array(ArrayCall::Map {
+                target: Box::new(object.clone()),
+                callback: Box::new(callback),
+            })
+        }),
+        (_, "filter") => args.first().cloned().map(|callback| {
+            RuntimeNamespace::Array(ArrayCall::Filter {
+                target: Box::new(object.clone()),
+                callback: Box::new(callback),
+            })
+        }),
         _ => None,
     }
 }
@@ -268,6 +280,32 @@ mod tests {
                 ));
             }
             other => panic!("expected runtime length call, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn detects_array_map_runtime_member() {
+        let lowered = lower_expression("items.map(transform)");
+
+        match lowered {
+            IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Map { target, callback })) => {
+                assert!(matches!(target.as_ref(), IrExpression::Identifier(name) if name == "items"));
+                assert!(matches!(callback.as_ref(), IrExpression::Identifier(name) if name == "transform"));
+            }
+            other => panic!("expected array.map runtime call, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn detects_array_filter_runtime_member() {
+        let lowered = lower_expression("items.filter(predicate)");
+
+        match lowered {
+            IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Filter { target, callback })) => {
+                assert!(matches!(target.as_ref(), IrExpression::Identifier(name) if name == "items"));
+                assert!(matches!(callback.as_ref(), IrExpression::Identifier(name) if name == "predicate"));
+            }
+            other => panic!("expected array.filter runtime call, got {other:?}"),
         }
     }
 }

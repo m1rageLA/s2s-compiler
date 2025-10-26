@@ -107,6 +107,14 @@ pub enum ArrayCall {
         target: Box<IrExpression>,
         args: Vec<IrExpression>,
     },
+    Map {
+        target: Box<IrExpression>,
+        callback: Box<IrExpression>,
+    },
+    Filter {
+        target: Box<IrExpression>,
+        callback: Box<IrExpression>,
+    },
     // Pop {
     //     target: Box<IrExpression>,
 

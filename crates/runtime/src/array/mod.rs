@@ -1,9 +1,13 @@
+pub mod filter;
 pub mod index;
 pub mod length;
+pub mod map;
 pub mod push;
 
+pub use filter::filter;
 pub use index::{index, index_number};
 pub use length::{length, length_number};
+pub use map::map;
 pub use push::{push, push_number};
 
 use crate::value::Value;

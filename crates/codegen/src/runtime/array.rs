@@ -29,6 +29,16 @@ pub(crate) fn array_call_tokens(call: &ArrayCall) -> TokenStream {
                 _ => quote! { runtime::array::index(&#target_tokens, #index_tokens) },
             }
         }
+        ArrayCall::Map { target, callback } => {
+            let target_tokens = target.codegen();
+            let callback_tokens = callback.codegen();
+            quote! { runtime::array::map(&#target_tokens, #callback_tokens) }
+        }
+        ArrayCall::Filter { target, callback } => {
+            let target_tokens = target.codegen();
+            let callback_tokens = callback.codegen();
+            quote! { runtime::array::filter(&#target_tokens, #callback_tokens) }
+        }
     }
 }
 
@@ -96,6 +106,34 @@ mod tests {
         assert_eq!(
             tokens.to_string(),
             quote! { runtime::array::index_number(&values, i) }.to_string()
+        );
+    }
+
+    #[test]
+    fn array_map_generates_runtime_call() {
+        let call = ArrayCall::Map {
+            target: Box::new(IrExpression::Identifier("values".into())),
+            callback: Box::new(IrExpression::Identifier("callback".into())),
+        };
+
+        let tokens = array_call_tokens(&call);
+        assert_eq!(
+            tokens.to_string(),
+            quote! { runtime::array::map(&values, callback) }.to_string()
+        );
+    }
+
+    #[test]
+    fn array_filter_generates_runtime_call() {
+        let call = ArrayCall::Filter {
+            target: Box::new(IrExpression::Identifier("values".into())),
+            callback: Box::new(IrExpression::Identifier("predicate".into())),
+        };
+
+        let tokens = array_call_tokens(&call);
+        assert_eq!(
+            tokens.to_string(),
+            quote! { runtime::array::filter(&values, predicate) }.to_string()
         );
     }
 }

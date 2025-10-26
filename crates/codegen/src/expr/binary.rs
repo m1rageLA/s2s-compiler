@@ -43,7 +43,7 @@ mod tests {
     use super::*;
     use proc_macro2::TokenStream as Ts;
     use quote::quote;
-    use syn::{parse2, Expr};
+    use syn::{Expr, parse2};
 
     /// Удобняшка: нормализуем строковое представление токенов.
     /// to_string у TokenStream детерминирован, но может иметь разные пробелы в зависимости от версии.
@@ -110,7 +110,10 @@ mod tests {
             (IrBinOp::LogicalAnd, quote! { (a + b * c) && (d || e && f) }),
             (IrBinOp::BitwiseOr, quote! { (a + b * c) | (d || e && f) }),
             (IrBinOp::RightShift, quote! { (a + b * c) >> (d || e && f) }),
-            (IrBinOp::LessThanOrEqual, quote! { (a + b * c) <= (d || e && f) }),
+            (
+                IrBinOp::LessThanOrEqual,
+                quote! { (a + b * c) <= (d || e && f) },
+            ),
         ];
 
         for (op, expected) in cases {
@@ -126,12 +129,22 @@ mod tests {
         let left = quote! { ::core::mem::size_of::<r#match>() };
         let right = quote! { some::module::r#type::<Vec<u8>>() };
         let cases = [
-            (IrBinOp::Sub, quote! { (::core::mem::size_of::<r#match>()) - (some::module::r#type::<Vec<u8>>()) }),
-            (IrBinOp::Equal, quote! { (::core::mem::size_of::<r#match>()) == (some::module::r#type::<Vec<u8>>()) }),
+            (
+                IrBinOp::Sub,
+                quote! { (::core::mem::size_of::<r#match>()) - (some::module::r#type::<Vec<u8>>()) },
+            ),
+            (
+                IrBinOp::Equal,
+                quote! { (::core::mem::size_of::<r#match>()) == (some::module::r#type::<Vec<u8>>()) },
+            ),
         ];
         for (op, expected) in cases {
             let got = binary_op_tokens(op, left.clone(), right.clone());
-            assert_eq!(norm(&got), norm(&expected), "mismatch with raw idents/paths for {op:?}");
+            assert_eq!(
+                norm(&got),
+                norm(&expected),
+                "mismatch with raw idents/paths for {op:?}"
+            );
             assert_parses(&got);
         }
     }
@@ -149,15 +162,27 @@ mod tests {
 
     #[test]
     fn unsupported_binary_ops_emit_clean_panic_without_operands() {
-        let left = quote!(lhs + 42);     // намеренно не тривиальные
+        let left = quote!(lhs + 42); // намеренно не тривиальные
         let right = quote!(rhs >> 1);
 
         let cases = vec![
-            (IrBinOp::UnsignedRightShift, "codegen for binary op `unsigned right shift` not implemented"),
+            (
+                IrBinOp::UnsignedRightShift,
+                "codegen for binary op `unsigned right shift` not implemented",
+            ),
             (IrBinOp::In, "codegen for binary op `in` not implemented"),
-            (IrBinOp::InstanceOf, "codegen for binary op `instanceof` not implemented"),
-            (IrBinOp::Exp, "codegen for binary op `exponentiation` not implemented"),
-            (IrBinOp::Unsupported, "codegen for binary op `unsupported` not implemented"),
+            (
+                IrBinOp::InstanceOf,
+                "codegen for binary op `instanceof` not implemented",
+            ),
+            (
+                IrBinOp::Exp,
+                "codegen for binary op `exponentiation` not implemented",
+            ),
+            (
+                IrBinOp::Unsupported,
+                "codegen for binary op `unsupported` not implemented",
+            ),
         ];
 
         for (op, message) in cases {
@@ -180,8 +205,7 @@ mod tests {
             // 4) сообщение должно быть именно строковым литералом (а не форматированием)
             // На уровне токенов это просто проверка наличия кавычек вокруг текста.
             assert!(
-                got_str.contains("codegen for binary op")
-                    && got_str.contains("not implemented"),
+                got_str.contains("codegen for binary op") && got_str.contains("not implemented"),
                 "panic message content changed; got: {got_str}"
             );
         }
