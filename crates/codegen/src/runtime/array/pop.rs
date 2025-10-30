@@ -1,7 +1,7 @@
+use crate::Codegen;
 use ir::IrExpression;
 use proc_macro2::TokenStream;
 use quote::quote;
-use crate::Codegen;
 
 pub(crate) fn pop_tokens(target: &Box<IrExpression>, args: &Vec<IrExpression>) -> TokenStream {
     let target_tokens = target.codegen();

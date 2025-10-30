@@ -10,10 +10,9 @@ pub(crate) fn index_tokens(
 ) -> TokenStream {
     let target_tokens = target.codegen();
     let index_tokens = index.codegen();
-    match element {
-        Some(IrArrayKind::Number) => {
-            quote! { runtime::array::index_number(&#target_tokens, #index_tokens) }
-        }
-        _ => quote! { runtime::array::index(&#target_tokens, #index_tokens) },
-    }
+    let _ = element; // element hint currently unused in Value mode
+    quote! {{
+        let index_tmp = (#index_tokens).clone();
+        runtime::array::index(&#target_tokens, index_tmp)
+    }}
 }

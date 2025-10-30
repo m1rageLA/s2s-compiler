@@ -52,10 +52,10 @@ fn test_arrow_tokens() {
 
     assert_eq!(
         tokens_block.to_string(),
-        "move | a : runtime :: value :: Value | { return (1.0) + (2.0) ; }",
+        "move | a : runtime :: value :: Value | { return runtime :: value :: ops :: add (runtime :: value :: Value :: Number (1.0) , runtime :: value :: Value :: Number (2.0)) ; }",
     );
     assert_eq!(
         tokens_expr.to_string(),
-        "move | a : runtime :: value :: Value | { 1.0 }",
+        "move | a : runtime :: value :: Value | { runtime :: value :: Value :: Number (1.0) }",
     );
 }

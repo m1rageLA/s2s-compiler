@@ -37,8 +37,16 @@ pub(crate) fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
             }
         }
         RuntimeNamespace::Value(call) => match call {
-            ValueCall::Coerce { .. } => Some(IrType::Value),
-            ValueCall::Add { .. } => Some(IrType::Value),
+            ValueCall::Coerce { expr } => infer_expression_type(expr).or(Some(IrType::Value)),
+            ValueCall::Add { left, right } => {
+                let left_ty = infer_expression_type(left);
+                let right_ty = infer_expression_type(right);
+                if left_ty == Some(IrType::Number) && right_ty == Some(IrType::Number) {
+                    Some(IrType::Number)
+                } else {
+                    Some(IrType::Value)
+                }
+            }
             ValueCall::Sub { .. }
             | ValueCall::Mul { .. }
             | ValueCall::Div { .. }

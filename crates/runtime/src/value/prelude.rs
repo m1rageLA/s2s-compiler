@@ -3,4 +3,4 @@
 
 pub use crate::value::conversions::into_value;
 pub use crate::value::ops::*;
-pub use crate::value::types::Value;
+pub use crate::value::types::{Value, ValueCastError, ValueKind, ValueResult};

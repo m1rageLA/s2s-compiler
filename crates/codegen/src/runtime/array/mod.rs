@@ -2,15 +2,15 @@ mod filter;
 mod index;
 mod length;
 mod map;
-mod push;
 mod pop;
+mod push;
 
-use pop::pop_tokens;
 use filter::filter_tokens;
 use index::index_tokens;
 use ir::ArrayCall;
 use length::length_tokens;
 use map::map_tokens;
+use pop::pop_tokens;
 use proc_macro2::TokenStream;
 use push::push_tokens;
 
@@ -48,8 +48,13 @@ mod tests {
         let tokens = array_call_tokens(&call);
         assert_eq!(
             tokens.to_string(),
-            quote::quote! { runtime::array::push_number(&mut values, vec![runtime::value::into_value(4.0)]) }
-                .to_string()
+            quote::quote! {
+                runtime::array::push(
+                    &mut values,
+                    vec![runtime::value::into_value(runtime::value::Value::Number(4.0))]
+                )
+            }
+            .to_string()
         );
     }
 
@@ -62,7 +67,7 @@ mod tests {
         let tokens = array_call_tokens(&call);
         assert_eq!(
             tokens.to_string(),
-            quote::quote! { runtime::array::length_number(&values) }.to_string()
+            quote::quote! { runtime::array::length(&values) }.to_string()
         );
     }
 
@@ -77,7 +82,8 @@ mod tests {
         let tokens = array_call_tokens(&call);
         assert_eq!(
             tokens.to_string(),
-            quote::quote! { runtime::array::index(&values, 1.0) }.to_string()
+            quote::quote! { runtime::array::index(&values, runtime::value::Value::Number(1.0)) }
+                .to_string()
         );
     }
 
@@ -92,7 +98,7 @@ mod tests {
         let tokens = array_call_tokens(&call);
         assert_eq!(
             tokens.to_string(),
-            quote::quote! { runtime::array::index_number(&values, i) }.to_string()
+            quote::quote! { runtime::array::index(&values, i) }.to_string()
         );
     }
 

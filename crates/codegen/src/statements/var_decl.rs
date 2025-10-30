@@ -33,7 +33,7 @@ mod tests {
 
         let tokens = var_decl_tokens(&vars);
         let expected = quote! {
-            let a: f64 = 1.0;
+            let a: runtime::value::Value = runtime::value::Value::Number(1.0);
             let mut b: bool = false;
         };
 

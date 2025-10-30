@@ -25,7 +25,7 @@ pub fn arrow_expr_to_ir(arrow: &ast::ArrowExpr) -> IrExpression {
 #[cfg(test)]
 mod tests {
     use crate::test_utils::{assert_identifier, expect_variable, lower};
-    use ir::{IrBinOp, IrExpression, IrParam, IrStmt, IrTemplatePart, IrType};
+    use ir::{IrExpression, IrParam, IrStmt, IrTemplatePart, IrType};
 
     #[test]
     fn lowers_arrow_expression_bodies() {
@@ -65,16 +65,20 @@ mod tests {
             }]
         );
         match function.body.as_slice() {
-            [IrStmt::Return(Some(expr))] => match expr {
-                IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Coerce {
-                    expr,
-                })) => match expr.as_ref() {
-                    IrExpression::Binary { op, .. } => assert_eq!(*op, IrBinOp::Mul),
+            [IrStmt::Return(Some(expr))] => {
+                let expr = match expr {
+                    IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(
+                        ir::ValueCall::Coerce { expr },
+                    )) => expr.as_ref(),
+                    other => other,
+                };
+                match expr {
+                    IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(
+                        ir::ValueCall::Mul { .. },
+                    )) => {}
                     other => panic!("expected multiplicative return, got {other:?}"),
-                },
-                IrExpression::Binary { op, .. } => assert_eq!(*op, IrBinOp::Mul),
-                other => panic!("expected multiplicative return, got {other:?}"),
-            },
+                }
+            }
             other => panic!("expected single return statement, got {other:?}"),
         }
 

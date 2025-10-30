@@ -56,7 +56,7 @@ pub fn function_expr_to_ir(fn_expr: &ast::FnExpr) -> IrExpression {
 #[cfg(test)]
 mod tests {
     use crate::test_utils::{assert_number_literal, assert_string_literal, expect_variable, lower};
-    use ir::{IrBinOp, IrExpression, IrFunctionExpr, IrStmt, IrType};
+    use ir::{IrExpression, IrFunctionExpr, IrStmt, IrType};
 
     fn unwrap_value(expr: &IrExpression) -> &IrExpression {
         match expr {
@@ -95,13 +95,15 @@ mod tests {
         assert_eq!(function.params[0].name, "value");
         assert_eq!(function.params[0].ty, IrType::Number);
 
-        assert_eq!(function.ret, IrType::Number);
+        assert_eq!(function.ret, IrType::Value);
         assert_eq!(function.body.len(), 1);
 
         match &function.body[0] {
             IrStmt::Return(Some(expr)) => match unwrap_value(expr) {
-                IrExpression::Binary { op, .. } => assert_eq!(*op, IrBinOp::Add),
-                other => panic!("expected binary addition in return, got {other:?}"),
+                IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Add {
+                    ..
+                })) => {}
+                other => panic!("expected runtime add in return, got {other:?}"),
             },
             other => panic!("expected return statement, got {other:?}"),
         }
@@ -130,7 +132,9 @@ mod tests {
 
         match &function.body[0] {
             IrStmt::Return(Some(expr)) => match unwrap_value(expr) {
-                IrExpression::Binary { op, .. } => assert_eq!(*op, IrBinOp::Mul),
+                IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Mul {
+                    ..
+                })) => {}
                 other => panic!("expected multiplication return, got {other:?}"),
             },
             other => panic!("expected return statement, got {other:?}"),

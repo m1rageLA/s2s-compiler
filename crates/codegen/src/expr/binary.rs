@@ -6,28 +6,50 @@ use super::unsupported::unsupported_bin_op;
 
 pub(crate) fn binary_op_tokens(op: IrBinOp, left: TokenStream, right: TokenStream) -> TokenStream {
     match op {
-        // Arithmetic operators are emitted directly here for numeric cases.
-        // Dynamic/Any/Value operands are lowered into `IrExpression::RuntimeCall`
-        // by the lowering step, so codegen only needs to handle plain
-        // arithmetic tokens for `IrExpression::Binary`.
-        IrBinOp::Add => quote! { (#left) + (#right) },
-        IrBinOp::Sub => quote! { (#left) - (#right) },
-        IrBinOp::Mul => quote! { (#left) * (#right) },
-        IrBinOp::Div => quote! { (#left) / (#right) },
-        IrBinOp::Mod => quote! { (#left) % (#right) },
-
-        //not supported runtime
-        IrBinOp::Equal | IrBinOp::StrictEqual => quote! { (#left) == (#right) },
-        IrBinOp::NotEqual | IrBinOp::StrictNotEqual => quote! { (#left) != (#right) },
-        IrBinOp::LessThan => quote! { (#left) < (#right) },
-        IrBinOp::LessThanOrEqual => quote! { (#left) <= (#right) },
-        IrBinOp::GreaterThan => quote! { (#left) > (#right) },
-        IrBinOp::GreaterThanOrEqual => quote! { (#left) >= (#right) },
-        IrBinOp::LeftShift => quote! { (#left) << (#right) },
-        IrBinOp::RightShift => quote! { (#left) >> (#right) },
-        IrBinOp::BitwiseOr => quote! { (#left) | (#right) },
-        IrBinOp::BitwiseXor => quote! { (#left) ^ (#right) },
-        IrBinOp::BitwiseAnd => quote! { (#left) & (#right) },
+        IrBinOp::Add => quote! { runtime::value::ops::add(#left, #right) },
+        IrBinOp::Sub => quote! { runtime::value::ops::sub(#left, #right) },
+        IrBinOp::Mul => quote! { runtime::value::ops::mul(#left, #right) },
+        IrBinOp::Div => quote! { runtime::value::ops::div(#left, #right) },
+        IrBinOp::Mod => quote! { runtime::value::ops::modulo(#left, #right) },
+        IrBinOp::Equal => quote! { runtime::value::ops::loose_equal(#left, #right) },
+        IrBinOp::StrictEqual => quote! { runtime::value::ops::strict_equal(#left, #right) },
+        IrBinOp::NotEqual => quote! { runtime::value::ops::loose_not_equal(#left, #right) },
+        IrBinOp::StrictNotEqual => {
+            quote! { runtime::value::ops::strict_not_equal(#left, #right) }
+        }
+        IrBinOp::LessThan => quote! { runtime::value::ops::less_than(#left, #right) },
+        IrBinOp::LessThanOrEqual => {
+            quote! { runtime::value::ops::less_than_or_equal(#left, #right) }
+        }
+        IrBinOp::GreaterThan => quote! { runtime::value::ops::greater_than(#left, #right) },
+        IrBinOp::GreaterThanOrEqual => {
+            quote! { runtime::value::ops::greater_than_or_equal(#left, #right) }
+        }
+        IrBinOp::LeftShift => quote! {
+            runtime::value::Value::Number(
+                (((#left).into_number() as i64) << ((#right).into_number() as i64)) as f64
+            )
+        },
+        IrBinOp::RightShift => quote! {
+            runtime::value::Value::Number(
+                (((#left).into_number() as i64) >> ((#right).into_number() as i64)) as f64
+            )
+        },
+        IrBinOp::BitwiseOr => quote! {
+            runtime::value::Value::Number(
+                (((#left).into_number() as i64) | ((#right).into_number() as i64)) as f64
+            )
+        },
+        IrBinOp::BitwiseXor => quote! {
+            runtime::value::Value::Number(
+                (((#left).into_number() as i64) ^ ((#right).into_number() as i64)) as f64
+            )
+        },
+        IrBinOp::BitwiseAnd => quote! {
+            runtime::value::Value::Number(
+                (((#left).into_number() as i64) & ((#right).into_number() as i64)) as f64
+            )
+        },
         IrBinOp::LogicalOr => quote! { (#left) || (#right) },
         IrBinOp::LogicalAnd => quote! { (#left) && (#right) },
         IrBinOp::UnsignedRightShift => unsupported_bin_op("unsigned right shift"),
@@ -62,24 +84,86 @@ mod tests {
         let right = quote!(rhs);
 
         let cases: Vec<(IrBinOp, Ts)> = vec![
-            (IrBinOp::Add, quote! { (lhs) + (rhs) }),
-            (IrBinOp::Sub, quote! { (lhs) - (rhs) }),
-            (IrBinOp::Mul, quote! { (lhs) * (rhs) }),
-            (IrBinOp::Div, quote! { (lhs) / (rhs) }),
-            (IrBinOp::Mod, quote! { (lhs) % (rhs) }),
-            (IrBinOp::Equal, quote! { (lhs) == (rhs) }),
-            (IrBinOp::StrictEqual, quote! { (lhs) == (rhs) }),
-            (IrBinOp::NotEqual, quote! { (lhs) != (rhs) }),
-            (IrBinOp::StrictNotEqual, quote! { (lhs) != (rhs) }),
-            (IrBinOp::LessThan, quote! { (lhs) < (rhs) }),
-            (IrBinOp::LessThanOrEqual, quote! { (lhs) <= (rhs) }),
-            (IrBinOp::GreaterThan, quote! { (lhs) > (rhs) }),
-            (IrBinOp::GreaterThanOrEqual, quote! { (lhs) >= (rhs) }),
-            (IrBinOp::LeftShift, quote! { (lhs) << (rhs) }),
-            (IrBinOp::RightShift, quote! { (lhs) >> (rhs) }),
-            (IrBinOp::BitwiseOr, quote! { (lhs) | (rhs) }),
-            (IrBinOp::BitwiseXor, quote! { (lhs) ^ (rhs) }),
-            (IrBinOp::BitwiseAnd, quote! { (lhs) & (rhs) }),
+            (IrBinOp::Add, quote! { runtime::value::ops::add(lhs, rhs) }),
+            (IrBinOp::Sub, quote! { runtime::value::ops::sub(lhs, rhs) }),
+            (IrBinOp::Mul, quote! { runtime::value::ops::mul(lhs, rhs) }),
+            (IrBinOp::Div, quote! { runtime::value::ops::div(lhs, rhs) }),
+            (
+                IrBinOp::Mod,
+                quote! { runtime::value::ops::modulo(lhs, rhs) },
+            ),
+            (
+                IrBinOp::Equal,
+                quote! { runtime::value::ops::loose_equal(lhs, rhs) },
+            ),
+            (
+                IrBinOp::StrictEqual,
+                quote! { runtime::value::ops::strict_equal(lhs, rhs) },
+            ),
+            (
+                IrBinOp::NotEqual,
+                quote! { runtime::value::ops::loose_not_equal(lhs, rhs) },
+            ),
+            (
+                IrBinOp::StrictNotEqual,
+                quote! { runtime::value::ops::strict_not_equal(lhs, rhs) },
+            ),
+            (
+                IrBinOp::LessThan,
+                quote! { runtime::value::ops::less_than(lhs, rhs) },
+            ),
+            (
+                IrBinOp::LessThanOrEqual,
+                quote! { runtime::value::ops::less_than_or_equal(lhs, rhs) },
+            ),
+            (
+                IrBinOp::GreaterThan,
+                quote! { runtime::value::ops::greater_than(lhs, rhs) },
+            ),
+            (
+                IrBinOp::GreaterThanOrEqual,
+                quote! { runtime::value::ops::greater_than_or_equal(lhs, rhs) },
+            ),
+            (
+                IrBinOp::LeftShift,
+                quote! {
+                    runtime::value::Value::Number(
+                        (((lhs).into_number() as i64) << ((rhs).into_number() as i64)) as f64
+                    )
+                },
+            ),
+            (
+                IrBinOp::RightShift,
+                quote! {
+                    runtime::value::Value::Number(
+                        (((lhs).into_number() as i64) >> ((rhs).into_number() as i64)) as f64
+                    )
+                },
+            ),
+            (
+                IrBinOp::BitwiseOr,
+                quote! {
+                    runtime::value::Value::Number(
+                        (((lhs).into_number() as i64) | ((rhs).into_number() as i64)) as f64
+                    )
+                },
+            ),
+            (
+                IrBinOp::BitwiseXor,
+                quote! {
+                    runtime::value::Value::Number(
+                        (((lhs).into_number() as i64) ^ ((rhs).into_number() as i64)) as f64
+                    )
+                },
+            ),
+            (
+                IrBinOp::BitwiseAnd,
+                quote! {
+                    runtime::value::Value::Number(
+                        (((lhs).into_number() as i64) & ((rhs).into_number() as i64)) as f64
+                    )
+                },
+            ),
             (IrBinOp::LogicalOr, quote! { (lhs) || (rhs) }),
             (IrBinOp::LogicalAnd, quote! { (lhs) && (rhs) }),
         ];
@@ -105,14 +189,36 @@ mod tests {
 
         // Проверим на нескольких бинарных операторах разных приоритетов.
         let cases = [
-            (IrBinOp::Mul, quote! { (a + b * c) * (d || e && f) }),
-            (IrBinOp::Add, quote! { (a + b * c) + (d || e && f) }),
+            (
+                IrBinOp::Mul,
+                quote! { runtime::value::ops::mul(a + b * c, d || e && f) },
+            ),
+            (
+                IrBinOp::Add,
+                quote! { runtime::value::ops::add(a + b * c, d || e && f) },
+            ),
             (IrBinOp::LogicalAnd, quote! { (a + b * c) && (d || e && f) }),
-            (IrBinOp::BitwiseOr, quote! { (a + b * c) | (d || e && f) }),
-            (IrBinOp::RightShift, quote! { (a + b * c) >> (d || e && f) }),
+            (
+                IrBinOp::BitwiseOr,
+                quote! {
+                    runtime::value::Value::Number(
+                        (((a + b * c).into_number() as i64) | ((d || e && f).into_number() as i64)) as f64
+                    )
+                },
+            ),
+            (
+                IrBinOp::RightShift,
+                quote! {
+                    runtime::value::Value::Number(
+                        (((a + b * c).into_number() as i64) >> ((d || e && f).into_number() as i64)) as f64
+                    )
+                },
+            ),
             (
                 IrBinOp::LessThanOrEqual,
-                quote! { (a + b * c) <= (d || e && f) },
+                quote! {
+                    runtime::value::ops::less_than_or_equal(a + b * c, d || e && f)
+                },
             ),
         ];
 
@@ -131,11 +237,21 @@ mod tests {
         let cases = [
             (
                 IrBinOp::Sub,
-                quote! { (::core::mem::size_of::<r#match>()) - (some::module::r#type::<Vec<u8>>()) },
+                quote! {
+                    runtime::value::ops::sub(
+                        ::core::mem::size_of::<r#match>(),
+                        some::module::r#type::<Vec<u8>>()
+                    )
+                },
             ),
             (
                 IrBinOp::Equal,
-                quote! { (::core::mem::size_of::<r#match>()) == (some::module::r#type::<Vec<u8>>()) },
+                quote! {
+                    runtime::value::ops::loose_equal(
+                        ::core::mem::size_of::<r#match>(),
+                        some::module::r#type::<Vec<u8>>()
+                    )
+                },
             ),
         ];
         for (op, expected) in cases {
@@ -220,6 +336,13 @@ mod tests {
         let bit_or = binary_op_tokens(IrBinOp::BitwiseOr, left.clone(), right.clone());
         assert_ne!(norm(&logical_or), norm(&bit_or), "|| must not degrade to |");
         assert_eq!(norm(&logical_or), norm(&quote! { (p()) || (q()) }));
-        assert_eq!(norm(&bit_or), norm(&quote! { (p()) | (q()) }));
+        assert_eq!(
+            norm(&bit_or),
+            norm(&quote! {
+                runtime::value::Value::Number(
+                    (((p()).into_number() as i64) | ((q()).into_number() as i64)) as f64
+                )
+            })
+        );
     }
 }

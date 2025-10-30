@@ -10,18 +10,26 @@ pub(crate) fn postfixunary_tokens(left: Box<IrExpression>, op: IrPostfixOp) -> T
 
     match op {
         IrPostfixOp::Increment => {
-            // { let _ts2r_tmp = #left; #left += 1; _ts2r_tmp }
             quote! ({
-                let #temp = #left;
-                #left += 1.0;
+                let ts_2_rs_target = &mut #left;
+                let #temp = (*ts_2_rs_target).clone();
+                let ts_2_rs_new = runtime::value::ops::add(
+                    #temp.clone(),
+                    runtime::value::Value::Number(1.0)
+                );
+                *ts_2_rs_target = ts_2_rs_new;
                 #temp
             })
         }
         IrPostfixOp::Decrement => {
-            // { let _ts2r_tmp = #left; #left -= 1; _ts2r_tmp }
             quote! ({
-                let #temp = #left;
-                #left -= 1.0;
+                let ts_2_rs_target = &mut #left;
+                let #temp = (*ts_2_rs_target).clone();
+                let ts_2_rs_new = runtime::value::ops::sub(
+                    #temp.clone(),
+                    runtime::value::Value::Number(1.0)
+                );
+                *ts_2_rs_target = ts_2_rs_new;
                 #temp
             })
         }
@@ -43,8 +51,11 @@ mod tests {
         assert_eq!(
             tokens.to_string(),
             quote!({
-                let ts_2_rs = counter;
-                counter += 1.0;
+                let ts_2_rs_target = &mut counter;
+                let ts_2_rs = (*ts_2_rs_target).clone();
+                let ts_2_rs_new =
+                    runtime::value::ops::add(ts_2_rs.clone(), runtime::value::Value::Number(1.0));
+                *ts_2_rs_target = ts_2_rs_new;
                 ts_2_rs
             })
             .to_string()
@@ -61,8 +72,11 @@ mod tests {
         assert_eq!(
             tokens.to_string(),
             quote!({
-                let ts_2_rs = index;
-                index -= 1.0;
+                let ts_2_rs_target = &mut index;
+                let ts_2_rs = (*ts_2_rs_target).clone();
+                let ts_2_rs_new =
+                    runtime::value::ops::sub(ts_2_rs.clone(), runtime::value::Value::Number(1.0));
+                *ts_2_rs_target = ts_2_rs_new;
                 ts_2_rs
             })
             .to_string()

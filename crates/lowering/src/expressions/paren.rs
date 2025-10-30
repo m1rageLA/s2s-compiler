@@ -7,7 +7,7 @@ pub fn paren_to_ir(expr: &ast::ParenExpr) -> IrExpression {
 #[cfg(test)]
 mod tests {
     use crate::test_utils::{expect_variable, lower};
-    use ir::{IrBinOp, IrExpression};
+    use ir::IrExpression;
 
     #[test]
     fn lowers_parenthesized_expression() {
@@ -17,8 +17,10 @@ mod tests {
         let expr = var.value.as_ref().expect("expected initializer");
 
         match expr {
-            IrExpression::Binary { op, .. } => assert_eq!(*op, IrBinOp::Add),
-            other => panic!("expected binary add inside paren, got {other:?}"),
+            IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Add {
+                ..
+            })) => {}
+            other => panic!("expected runtime add inside paren, got {other:?}"),
         }
     }
 }

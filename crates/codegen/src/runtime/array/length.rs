@@ -5,5 +5,5 @@ use quote::quote;
 
 pub(crate) fn length_tokens(target: &IrExpression) -> TokenStream {
     let target_tokens = target.codegen();
-    quote! { runtime::array::length_number(&#target_tokens) }
+    quote! { runtime::array::length(&#target_tokens) }
 }

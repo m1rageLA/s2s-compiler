@@ -59,21 +59,22 @@ pub(super) fn binary_value_op(
     let func = format_ident!("{}", name);
     let left_tokens = left.codegen();
     let right_tokens = right.codegen();
-    quote! { runtime::value::ops::#func(#left_tokens, #right_tokens) }
-}
-
-pub(super) fn number_op(name: &str, left: &IrExpression, right: &IrExpression) -> TokenStream {
-    let func = format_ident!("{}", name);
-    let left_tokens = left.codegen();
-    let right_tokens = right.codegen();
-    quote! { runtime::value::ops::#func(#left_tokens, #right_tokens) }
+    quote! {{
+        let left_tmp = (#left_tokens).clone();
+        let right_tmp = (#right_tokens).clone();
+        runtime::value::ops::#func(left_tmp, right_tmp)
+    }}
 }
 
 pub(super) fn binary_bool_op(name: &str, left: &IrExpression, right: &IrExpression) -> TokenStream {
     let func = format_ident!("{}", name);
     let left_tokens = left.codegen();
     let right_tokens = right.codegen();
-    quote! { runtime::value::ops::#func(#left_tokens, #right_tokens) }
+    quote! {{
+        let left_tmp = (#left_tokens).clone();
+        let right_tmp = (#right_tokens).clone();
+        runtime::value::ops::#func(left_tmp, right_tmp)
+    }}
 }
 
 pub(super) fn equality_op(name: &str, left: &IrExpression, right: &IrExpression) -> TokenStream {

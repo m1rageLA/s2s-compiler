@@ -53,7 +53,7 @@ impl Codegen for IrVariable {
 
 pub(crate) fn render_type(ty: &IrType) -> TokenStream {
     match ty {
-        IrType::Number => quote! { f64 },
+        IrType::Number => quote! { runtime::value::Value },
         IrType::Str => quote! { runtime::value::Value },
         IrType::Bool => quote! { bool },
         IrType::Unit => quote! { () },
@@ -65,7 +65,7 @@ pub(crate) fn render_type(ty: &IrType) -> TokenStream {
 
 fn default_value(ty: &IrType) -> TokenStream {
     match ty {
-        IrType::Number => quote! { 0.0f64 },
+        IrType::Number => quote! { runtime::value::Value::Number(0.0) },
         IrType::Str => quote! { runtime::value::Value::String(::std::string::String::new()) },
         IrType::Bool => quote! { false },
         IrType::Unit => quote! { () },
@@ -78,10 +78,8 @@ fn default_value(ty: &IrType) -> TokenStream {
 mod tests {
     use super::*;
     use ir::{IrBinOp, IrExpression, IrFunction, IrParam, IrStmt, IrType, IrVariable};
-    use quote::quote;
-    use syn::{
-        BinOp, Expr, ExprBinary, ExprParen, ExprPath, FnArg, Item, ItemFn, ReturnType, Stmt, Type,
-    };
+    use quote::{ToTokens, quote};
+    use syn::{Expr, FnArg, Item, ItemFn, ReturnType, Stmt, Type};
 
     fn parse_function(tokens: TokenStream) -> ItemFn {
         match syn::parse2::<Item>(tokens).expect("function should parse") {
@@ -120,12 +118,13 @@ mod tests {
         let first = inputs.next().unwrap();
         let second = inputs.next().unwrap();
 
+        let expected_ty = quote!(runtime::value::Value).to_string();
+
         for arg in [first, second] {
             match arg {
                 FnArg::Typed(pat) => match pat.ty.as_ref() {
                     Type::Path(path) => {
-                        let ident = path.path.get_ident().expect("type ident");
-                        assert_eq!(ident.to_string(), "f64");
+                        assert_eq!(path.to_token_stream().to_string(), expected_ty);
                     }
                     _ => panic!("unexpected param type"),
                 },
@@ -136,8 +135,7 @@ mod tests {
         match &func.sig.output {
             ReturnType::Type(_, ty) => match ty.as_ref() {
                 Type::Path(path) => {
-                    let ident = path.path.get_ident().expect("return ident");
-                    assert_eq!(ident.to_string(), "f64");
+                    assert_eq!(path.to_token_stream().to_string(), expected_ty);
                 }
                 _ => panic!("unexpected return type"),
             },
@@ -167,35 +165,56 @@ mod tests {
             .as_ref();
 
         match value_expr {
-            Expr::Binary(ExprBinary {
-                left, op, right, ..
-            }) => {
-                assert!(matches!(op, BinOp::Add(_)));
-
-                let left_ident = match left.as_ref() {
-                    Expr::Paren(ExprParen { expr, .. }) => match expr.as_ref() {
-                        Expr::Path(ExprPath { path, .. }) => {
-                            path.get_ident().expect("left ident").to_string()
-                        }
-                        _ => panic!("unexpected left operand"),
+            Expr::Call(call) => {
+                let func_path = match call.func.as_ref() {
+                    Expr::Path(path) => path,
+                    Expr::Paren(paren) => match paren.expr.as_ref() {
+                        Expr::Path(path) => path,
+                        _ => panic!("expected path call for runtime add"),
                     },
-                    _ => panic!("expected paren-wrapped left operand"),
+                    _ => panic!("expected function path for runtime add"),
                 };
 
-                let right_ident = match right.as_ref() {
-                    Expr::Paren(ExprParen { expr, .. }) => match expr.as_ref() {
-                        Expr::Path(ExprPath { path, .. }) => {
-                            path.get_ident().expect("right ident").to_string()
-                        }
-                        _ => panic!("unexpected right operand"),
+                let segments: Vec<_> = func_path
+                    .path
+                    .segments
+                    .iter()
+                    .map(|seg| seg.ident.to_string())
+                    .collect();
+                assert_eq!(segments, ["runtime", "value", "ops", "add"]);
+
+                assert_eq!(call.args.len(), 2);
+
+                let left_ident = match call.args.first().unwrap() {
+                    Expr::Path(path) => path.path.get_ident().unwrap().to_string(),
+                    Expr::Call(inner_call) => match inner_call.func.as_ref() {
+                        Expr::Path(path) => path.path.get_ident().unwrap().to_string(),
+                        _ => panic!("unexpected left argument"),
                     },
-                    _ => panic!("expected paren-wrapped right operand"),
+                    Expr::Paren(paren) => match paren.expr.as_ref() {
+                        Expr::Path(path) => path.path.get_ident().unwrap().to_string(),
+                        _ => panic!("unexpected left argument"),
+                    },
+                    _ => panic!("unexpected left argument"),
+                };
+
+                let right_ident = match call.args.last().unwrap() {
+                    Expr::Path(path) => path.path.get_ident().unwrap().to_string(),
+                    Expr::Call(inner_call) => match inner_call.func.as_ref() {
+                        Expr::Path(path) => path.path.get_ident().unwrap().to_string(),
+                        _ => panic!("unexpected right argument"),
+                    },
+                    Expr::Paren(paren) => match paren.expr.as_ref() {
+                        Expr::Path(path) => path.path.get_ident().unwrap().to_string(),
+                        _ => panic!("unexpected right argument"),
+                    },
+                    _ => panic!("unexpected right argument"),
                 };
 
                 assert_eq!(left_ident, "a");
                 assert_eq!(right_ident, "b");
             }
-            _ => panic!("expected binary addition in return"),
+            _ => panic!("expected runtime value add call in return"),
         }
     }
 
@@ -234,7 +253,7 @@ mod tests {
     #[test]
     fn render_type_maps_all_variants() {
         let cases = vec![
-            (IrType::Number, quote! { f64 }),
+            (IrType::Number, quote! { runtime::value::Value }),
             (IrType::Str, quote! { runtime::value::Value }),
             (IrType::Bool, quote! { bool }),
             (IrType::Unit, quote! { () }),

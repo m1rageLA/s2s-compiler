@@ -6,7 +6,13 @@ use crate::Codegen;
 
 pub(crate) fn call_tokens(callee: &IrExpression, args: &[IrExpression]) -> TokenStream {
     let callee_tokens = callee.codegen();
-    let arg_tokens: Vec<TokenStream> = args.iter().map(|arg| arg.codegen()).collect();
+    let arg_tokens: Vec<TokenStream> = args
+        .iter()
+        .map(|arg| {
+            let tokens = arg.codegen();
+            quote! { (#tokens).clone() }
+        })
+        .collect();
     quote! { (#callee_tokens)( #( #arg_tokens ),* ) }
 }
 

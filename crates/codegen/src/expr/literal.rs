@@ -11,7 +11,7 @@ impl Codegen for IrLiteral {
         match self {
             IrLiteral::Number(value) => {
                 let lit = Literal::f64_unsuffixed(*value);
-                quote! { #lit }
+                quote! { runtime::value::Value::Number(#lit) }
             }
             IrLiteral::Str(value) => {
                 let lit = Literal::string(value);
@@ -36,7 +36,10 @@ mod tests {
     #[test]
     fn number_literal_codegen_emits_unsuffixed_float() {
         let tokens = IrLiteral::Number(42.5).codegen();
-        assert_eq!(tokens.to_string(), quote::quote! { 42.5 }.to_string());
+        assert_eq!(
+            tokens.to_string(),
+            quote::quote! { runtime::value::Value::Number(42.5) }.to_string()
+        );
     }
 
     #[test]

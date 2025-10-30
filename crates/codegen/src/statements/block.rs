@@ -22,7 +22,7 @@ mod tests {
         ];
 
         let tokens = block_tokens(&stmts);
-        let expected = quote! { { value; return 1.0; } };
+        let expected = quote! { { value; return runtime::value::Value::Number(1.0); } };
 
         assert_eq!(tokens.to_string(), expected.to_string());
     }

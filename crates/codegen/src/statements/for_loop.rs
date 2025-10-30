@@ -88,11 +88,20 @@ mod tests {
             &body,
         );
 
-        let expected = quote! {
-        {
-            let mut i : f64 = 0.0 ; while (i) < (5.0) { i ; { let ts_2_rs = i ; i += 1.0 ; ts_2_rs } ; } }
-        };
-
-        assert_eq!(tokens.to_string(), expected.to_string());
+        let output = tokens.to_string();
+        assert!(
+            output.contains(
+                "let mut i : runtime :: value :: Value = runtime :: value :: Value :: Number (0.0)"
+            ),
+            "expected initialization to use Value: {output}"
+        );
+        assert!(
+            output.contains("runtime :: value :: ops :: less_than"),
+            "expected while condition to use Value less_than: {output}"
+        );
+        assert!(
+            output.contains("runtime :: value :: ops :: add"),
+            "expected increment to use runtime value ops add: {output}"
+        );
     }
 }

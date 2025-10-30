@@ -31,7 +31,7 @@ mod tests {
             tokens.to_string(),
             quote::quote! {
                 runtime::console::log(vec![
-                    runtime::console::stringify_any(&(1.0)),
+                    runtime::console::stringify_any(&(runtime::value::Value::Number(1.0))),
                     runtime::console::stringify_any(&(value))
                 ])
             }
@@ -55,7 +55,10 @@ mod tests {
         assert_eq!(
             tokens.to_string(),
             quote::quote! {
-                runtime::array::push_number(&mut values, vec![runtime::value::into_value(4.0)])
+                runtime::array::push(
+                    &mut values,
+                    vec![runtime::value::into_value(runtime::value::Value::Number(4.0))]
+                )
             }
             .to_string()
         );
@@ -72,7 +75,12 @@ mod tests {
 
         assert_eq!(
             tokens.to_string(),
-            quote::quote! { runtime::value::ops::add(1.0, value) }.to_string()
+            quote::quote! {{
+                let left_tmp = (runtime::value::Value::Number(1.0)).clone();
+                let right_tmp = (value).clone();
+                runtime::value::ops::add(left_tmp, right_tmp)
+            }}
+            .to_string()
         );
     }
 }

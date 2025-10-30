@@ -232,10 +232,12 @@ mod tests {
                     match &closure.inputs[0] {
                         syn::Pat::Type(pat_type) => match pat_type.ty.as_ref() {
                             syn::Type::Path(path) => {
-                                let ty_ident = path.path.get_ident().expect("type ident");
-                                assert_eq!(ty_ident, "f64");
+                                assert_eq!(
+                                    quote!(#path).to_string(),
+                                    quote!(runtime::value::Value).to_string()
+                                );
                             }
-                            _ => panic!("expected closure arg type to be f64"),
+                            _ => panic!("expected closure arg type to be runtime::value::Value"),
                         },
                         _ => panic!("expected typed closure argument"),
                     }
@@ -243,10 +245,14 @@ mod tests {
                     match &closure.output {
                         syn::ReturnType::Type(_, ty) => match ty.as_ref() {
                             syn::Type::Path(path) => {
-                                let ty_ident = path.path.get_ident().expect("type ident");
-                                assert_eq!(ty_ident, "f64");
+                                assert_eq!(
+                                    quote!(#path).to_string(),
+                                    quote!(runtime::value::Value).to_string()
+                                );
                             }
-                            _ => panic!("expected closure return type to be f64 path"),
+                            _ => panic!(
+                                "expected closure return type to be runtime::value::Value path"
+                            ),
                         },
                         _ => panic!("expected explicit return type"),
                     }

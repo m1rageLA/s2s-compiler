@@ -1,18 +1,12 @@
 use super::*;
-use crate::infer;
-use ir::{IrType, ValueCall};
+use ir::ValueCall;
 
 pub(crate) fn binary_expr_to_ir(b: &ast::BinExpr) -> IrExpression {
     let left = expr_to_ir(&b.left);
     let right = expr_to_ir(&b.right);
 
-    let left_ty = infer::infer_expression_type(&left);
-    let right_ty = infer::infer_expression_type(&right);
-
-    if requires_value_runtime(left_ty, right_ty) {
-        if let Some(runtime_expr) = value_runtime_for_binary(&b.op, left.clone(), right.clone()) {
-            return runtime_expr;
-        }
+    if let Some(runtime_expr) = value_runtime_for_binary(&b.op, left.clone(), right.clone()) {
+        return runtime_expr;
     }
 
     IrExpression::Binary {
@@ -50,13 +44,6 @@ pub(crate) fn bin_op_to_ir(op: &ast::BinaryOp) -> IrBinOp {
         ast::BinaryOp::InstanceOf => IrBinOp::InstanceOf,
         _ => IrBinOp::Unsupported,
     }
-}
-
-fn requires_value_runtime(left: Option<IrType>, right: Option<IrType>) -> bool {
-    matches!(left, Some(IrType::Any | IrType::Value | IrType::Str))
-        || matches!(right, Some(IrType::Any | IrType::Value | IrType::Str))
-        || left.is_none()
-        || right.is_none()
 }
 
 fn value_runtime_for_binary(
@@ -172,7 +159,34 @@ mod tests {
         items.next();
         items.next();
 
-        macro_rules! assert_bin_op {
+        macro_rules! expect_value_call {
+            ($name:expr, $pattern:pat) => {{
+                let item = items.next().expect("expected another IR item");
+                let variable = expect_variable(item, $name);
+                let expr = variable
+                    .value
+                    .as_ref()
+                    .expect("variable should have initializer");
+                let expr = match expr {
+                    IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(
+                        ir::ValueCall::Coerce { expr },
+                    )) => expr.as_ref(),
+                    other => other,
+                };
+                match expr {
+                    IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(call)) => match call {
+                        $pattern => {}
+                        other => panic!("expected runtime value call for {}, got {other:?}", $name),
+                    },
+                    other => panic!(
+                        "expected runtime value call expression for {}, got {other:?}",
+                        $name
+                    ),
+                }
+            }};
+        }
+
+        macro_rules! expect_binary_op {
             ($name:expr, $expected:expr) => {{
                 let item = items.next().expect("expected another IR item");
                 let variable = expect_variable(item, $name);
@@ -193,11 +207,11 @@ mod tests {
             }};
         }
 
-        assert_bin_op!("add", IrBinOp::Add);
-        assert_bin_op!("sub", IrBinOp::Sub);
-        assert_bin_op!("mul", IrBinOp::Mul);
-        assert_bin_op!("div", IrBinOp::Div);
-        assert_bin_op!("modulo", IrBinOp::Mod);
+        expect_value_call!("add", ir::ValueCall::Add { .. });
+        expect_value_call!("sub", ir::ValueCall::Sub { .. });
+        expect_value_call!("mul", ir::ValueCall::Mul { .. });
+        expect_value_call!("div", ir::ValueCall::Div { .. });
+        expect_value_call!("modulo", ir::ValueCall::Mod { .. });
         {
             let item = items.next().expect("expected power item");
             let variable = expect_variable(item, "power");
@@ -229,24 +243,24 @@ mod tests {
                 other => panic!("expected Math.pow call for power, got {other:?}"),
             }
         }
-        assert_bin_op!("eq", IrBinOp::Equal);
-        assert_bin_op!("seq", IrBinOp::StrictEqual);
-        assert_bin_op!("neq", IrBinOp::NotEqual);
-        assert_bin_op!("sne", IrBinOp::StrictNotEqual);
-        assert_bin_op!("lt", IrBinOp::LessThan);
-        assert_bin_op!("lte", IrBinOp::LessThanOrEqual);
-        assert_bin_op!("gt", IrBinOp::GreaterThan);
-        assert_bin_op!("gte", IrBinOp::GreaterThanOrEqual);
-        assert_bin_op!("shl", IrBinOp::LeftShift);
-        assert_bin_op!("shr", IrBinOp::RightShift);
-        assert_bin_op!("ushr", IrBinOp::UnsignedRightShift);
-        assert_bin_op!("bor", IrBinOp::BitwiseOr);
-        assert_bin_op!("bxor", IrBinOp::BitwiseXor);
-        assert_bin_op!("band", IrBinOp::BitwiseAnd);
-        assert_bin_op!("lor", IrBinOp::LogicalOr);
-        assert_bin_op!("land", IrBinOp::LogicalAnd);
-        assert_bin_op!("inside", IrBinOp::In);
-        assert_bin_op!("inst", IrBinOp::InstanceOf);
+        expect_value_call!("eq", ir::ValueCall::Equal { .. });
+        expect_value_call!("seq", ir::ValueCall::StrictEqual { .. });
+        expect_value_call!("neq", ir::ValueCall::NotEqual { .. });
+        expect_value_call!("sne", ir::ValueCall::StrictNotEqual { .. });
+        expect_value_call!("lt", ir::ValueCall::LessThan { .. });
+        expect_value_call!("lte", ir::ValueCall::LessThanOrEqual { .. });
+        expect_value_call!("gt", ir::ValueCall::GreaterThan { .. });
+        expect_value_call!("gte", ir::ValueCall::GreaterThanOrEqual { .. });
+        expect_binary_op!("shl", IrBinOp::LeftShift);
+        expect_binary_op!("shr", IrBinOp::RightShift);
+        expect_binary_op!("ushr", IrBinOp::UnsignedRightShift);
+        expect_binary_op!("bor", IrBinOp::BitwiseOr);
+        expect_binary_op!("bxor", IrBinOp::BitwiseXor);
+        expect_binary_op!("band", IrBinOp::BitwiseAnd);
+        expect_binary_op!("lor", IrBinOp::LogicalOr);
+        expect_binary_op!("land", IrBinOp::LogicalAnd);
+        expect_binary_op!("inside", IrBinOp::In);
+        expect_binary_op!("inst", IrBinOp::InstanceOf);
 
         let item = items.next().expect("expected unsupported operator");
         let variable = expect_variable(item, "unsupported");

@@ -2,7 +2,7 @@ use crate::test_utils::{
     assert_bool_literal, assert_identifier, assert_number_literal, assert_string_literal,
     expect_variable, lower,
 };
-use ir::{IrBinOp, IrExpression, IrItem, IrParam, IrStmt, IrTemplatePart, IrType};
+use ir::{IrExpression, IrItem, IrParam, IrStmt, IrTemplatePart, IrType};
 
 #[test]
 fn handles_literal_initializers() {
@@ -32,12 +32,14 @@ fn handles_literal_initializers() {
     assert_eq!(total.ty, IrType::Number);
     let expr = total.value.as_ref().expect("total should have initializer");
     match expr {
-        IrExpression::Binary { op, left, right } => {
-            assert_eq!(*op, IrBinOp::Add);
-            assert_number_literal(Some(left), 1.0);
-            assert_number_literal(Some(right), 2.0);
+        IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Add {
+            left,
+            right,
+        })) => {
+            assert_number_literal(Some(left.as_ref()), 1.0);
+            assert_number_literal(Some(right.as_ref()), 2.0);
         }
-        other => panic!("expected binary expression for total, got {other:?}"),
+        other => panic!("expected runtime add expression for total, got {other:?}"),
     }
 
     let negative = expect_variable(&ir_module.items[3], "negative");
