@@ -1,5 +1,6 @@
 pub mod array;
 pub mod console;
+pub mod string;
 pub mod value;
 
 use ir::RuntimeNamespace;
@@ -10,13 +11,16 @@ pub(crate) fn runtime_call_tokens(namespace: &RuntimeNamespace) -> TokenStream {
         RuntimeNamespace::Console(call) => console::console_call_tokens(call),
         RuntimeNamespace::Array(call) => array::array_call_tokens(call),
         RuntimeNamespace::Value(call) => value::value_call_tokens(call),
+        RuntimeNamespace::String(call) => string::string_call_tokens(call),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ir::{ArrayCall, ConsoleCall, IrExpression, IrLiteral, RuntimeNamespace, ValueCall};
+    use ir::{
+        ArrayCall, ConsoleCall, IrExpression, IrLiteral, RuntimeNamespace, StringCall, ValueCall,
+    };
 
     #[test]
     fn dispatches_console_calls() {
@@ -79,6 +83,25 @@ mod tests {
                 let left_tmp = (runtime::value::Value::Number(1.0)).clone();
                 let right_tmp = (value).clone();
                 runtime::value::ops::add(left_tmp, right_tmp)
+            }}
+            .to_string()
+        );
+    }
+
+    #[test]
+    fn dispatches_string_calls() {
+        let namespace = RuntimeNamespace::String(StringCall::ToLowerCase {
+            target: Box::new(IrExpression::Literal(IrLiteral::Str("VALUE".into()))),
+        });
+
+        let tokens = runtime_call_tokens(&namespace);
+
+        assert_eq!(
+            tokens.to_string(),
+            quote::quote! {{
+                runtime::string::to_lower_case(
+                    runtime::value::into_value((runtime::value::Value::String("VALUE".to_string())).clone())
+                )
             }}
             .to_string()
         );

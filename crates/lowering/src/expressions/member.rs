@@ -1,6 +1,10 @@
 use super::*;
 use crate::context;
-use ir::{ArrayCall, ConsoleCall, IrArrayKind, IrExpression, IrType, RuntimeNamespace};
+use crate::infer;
+use ir::{
+    ArrayCall, ConsoleCall, IrArrayKind, IrExpression, IrType, RuntimeNamespace, StringCall,
+    ValueCall,
+};
 
 pub(crate) fn lower_member_expr(member: &ast::MemberExpr) -> IrExpression {
     let object = expr_to_ir(member.obj.as_ref());
@@ -34,6 +38,10 @@ fn detect_runtime_call(
     property: &str,
     args: &[IrExpression],
 ) -> Option<RuntimeNamespace> {
+    if let Some(string_call) = detect_string_runtime_call(object, property, args) {
+        return Some(RuntimeNamespace::String(string_call));
+    }
+
     match (object, property) {
         (IrExpression::Identifier(name), "log") if name == "console" => {
             Some(RuntimeNamespace::Console(ConsoleCall::Log(args.to_vec())))
@@ -65,8 +73,68 @@ fn detect_runtime_call(
             target: Box::new(object.clone()),
             args: vec![],
         })),
+        (_, "join") => {
+            let separator = args.get(0).cloned().map(coerce_to_value).map(Box::new);
+            Some(RuntimeNamespace::Array(ArrayCall::Join {
+                target: Box::new(object.clone()),
+                separator,
+            }))
+        }
         _ => None,
     }
+}
+
+fn detect_string_runtime_call(
+    object: &IrExpression,
+    property: &str,
+    args: &[IrExpression],
+) -> Option<StringCall> {
+    if !is_string_expression(object) {
+        return None;
+    }
+
+    match property {
+        "toUpperCase" if args.is_empty() => Some(StringCall::ToUpperCase {
+            target: Box::new(object.clone()),
+        }),
+        "toLowerCase" if args.is_empty() => Some(StringCall::ToLowerCase {
+            target: Box::new(object.clone()),
+        }),
+        "split" => Some(StringCall::Split {
+            target: Box::new(object.clone()),
+            separator: args.get(0).cloned().map(Box::new),
+            limit: args.get(1).cloned().map(Box::new),
+        }),
+        "replace" if args.len() == 2 => Some(StringCall::Replace {
+            target: Box::new(object.clone()),
+            pattern: Box::new(args[0].clone()),
+            replacement: Box::new(args[1].clone()),
+        }),
+        "includes" if !args.is_empty() => Some(StringCall::Includes {
+            target: Box::new(object.clone()),
+            search: Box::new(args[0].clone()),
+            position: args.get(1).cloned().map(Box::new),
+        }),
+        "concat" => Some(StringCall::Concat {
+            target: Box::new(object.clone()),
+            args: args.to_vec(),
+        }),
+        "slice" => Some(StringCall::Slice {
+            target: Box::new(object.clone()),
+            start: args.get(0).cloned().map(Box::new),
+            end: args.get(1).cloned().map(Box::new),
+        }),
+        "substr" => Some(StringCall::Substr {
+            target: Box::new(object.clone()),
+            start: args.get(0).cloned().map(Box::new),
+            length: args.get(1).cloned().map(Box::new),
+        }),
+        _ => None,
+    }
+}
+
+fn is_string_expression(expr: &IrExpression) -> bool {
+    matches!(infer::infer_expression_type(expr), Some(IrType::Str))
 }
 
 pub(crate) fn runtime_value_for_member(member: &IrExpression) -> Option<IrExpression> {
@@ -74,14 +142,34 @@ pub(crate) fn runtime_value_for_member(member: &IrExpression) -> Option<IrExpres
         return None;
     };
 
-    match (object.as_ref(), property.as_str()) {
-        (IrExpression::Identifier(_), "length") => Some(IrExpression::RuntimeCall(
-            RuntimeNamespace::Array(ArrayCall::Length {
-                target: Box::new(object.as_ref().clone()),
-            }),
-        )),
-        _ => None,
+    let inferred = infer::infer_expression_type(object.as_ref());
+
+    if property == "length" {
+        if matches!(inferred, Some(IrType::Str)) {
+            return Some(IrExpression::RuntimeCall(RuntimeNamespace::String(
+                StringCall::Length {
+                    target: Box::new(object.as_ref().clone()),
+                },
+            )));
+        }
+
+        if matches!(inferred, Some(IrType::Array(_)))
+            || matches!(object.as_ref(), IrExpression::Identifier(_))
+        {
+            return Some(IrExpression::RuntimeCall(RuntimeNamespace::Array(
+                ArrayCall::Length {
+                    target: Box::new(object.as_ref().clone()),
+                },
+            )));
+        }
     }
+
+    Some(IrExpression::RuntimeCall(RuntimeNamespace::Value(
+        ValueCall::GetProperty {
+            target: Box::new(object.as_ref().clone()),
+            property: property.clone(),
+        },
+    )))
 }
 
 fn lower_computed_member(object: IrExpression, property: &ast::Expr) -> IrExpression {
@@ -117,7 +205,7 @@ fn infer_array_kind(expr: &IrExpression) -> Option<IrArrayKind> {
 mod tests {
     use super::*;
     use crate::test_utils::lower;
-    use ir::{IrExpression, IrItem};
+    use ir::{IrExpression, IrItem, IrLiteral, RuntimeNamespace, StringCall, ValueCall};
     use swc_common::{DUMMY_SP, SyntaxContext};
     use swc_ecma_ast as swc_ast;
 
@@ -131,18 +219,117 @@ mod tests {
     }
 
     #[test]
+    fn detects_string_to_uppercase_runtime_member() {
+        let ir_module = lower(
+            r#"
+            let message = "hello";
+            message.toUpperCase();
+        "#,
+        );
+
+        assert_eq!(ir_module.items.len(), 2);
+        match &ir_module.items[1] {
+            IrItem::Expression(expr) => match expr {
+                IrExpression::RuntimeCall(RuntimeNamespace::String(StringCall::ToUpperCase {
+                    target,
+                })) => {
+                    assert!(matches!(
+                        target.as_ref(),
+                        IrExpression::Identifier(name) if name == "message"
+                    ));
+                }
+                other => panic!("expected string runtime call, got {other:?}"),
+            },
+            other => panic!("expected expression item, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn detects_string_split_runtime_member() {
+        let ir_module = lower(
+            r#"
+            const value = "a,b,c";
+            value.split(",", 2);
+        "#,
+        );
+
+        assert_eq!(ir_module.items.len(), 2);
+        match &ir_module.items[1] {
+            IrItem::Expression(expr) => match expr {
+                IrExpression::RuntimeCall(RuntimeNamespace::String(StringCall::Split {
+                    target,
+                    separator,
+                    limit,
+                })) => {
+                    assert!(matches!(
+                        target.as_ref(),
+                        IrExpression::Identifier(name) if name == "value"
+                    ));
+                    assert!(matches!(
+                        separator.as_ref().map(|expr| expr.as_ref()),
+                        Some(IrExpression::Literal(IrLiteral::Str(sep))) if sep == ","
+                    ));
+                    assert!(matches!(
+                        limit.as_ref().map(|expr| expr.as_ref()),
+                        Some(IrExpression::Literal(IrLiteral::Number(n))) if (*n - 2.0).abs() < f64::EPSILON
+                    ));
+                }
+                other => panic!("expected string split runtime call, got {other:?}"),
+            },
+            other => panic!("expected expression item, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lowers_object_property_access_to_runtime_call() {
+        let ir_expr = lower_expression("record.name");
+
+        match ir_expr {
+            IrExpression::RuntimeCall(RuntimeNamespace::Value(ValueCall::GetProperty {
+                target,
+                property,
+            })) => {
+                assert_eq!(property, "name");
+                assert!(matches!(
+                    target.as_ref(),
+                    IrExpression::Identifier(identifier) if identifier == "record"
+                ));
+            }
+            other => panic!("expected runtime property access, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lowers_string_length_to_runtime_call() {
+        let ir_expr = lower_expression(r#""value".length"#);
+
+        match ir_expr {
+            IrExpression::RuntimeCall(RuntimeNamespace::String(StringCall::Length { target })) => {
+                match target.as_ref() {
+                    IrExpression::Literal(IrLiteral::Str(value)) => assert_eq!(value, "value"),
+                    other => panic!("expected string literal target, got {other:?}"),
+                }
+            }
+            other => panic!("expected string length runtime call, got {other:?}"),
+        }
+    }
+
+    #[test]
     fn lowers_member_expression() {
         let ir_expr = lower_expression("foo.bar");
 
         match ir_expr {
-            IrExpression::Member { object, property } => {
+            IrExpression::RuntimeCall(RuntimeNamespace::Value(ValueCall::GetProperty {
+                target,
+                property,
+            })) => {
+                assert_eq!(property, "bar");
                 assert!(matches!(
-                    object.as_ref(),
+                    target.as_ref(),
                     IrExpression::Identifier(name) if name == "foo"
                 ));
-                assert_eq!(property, "bar");
             }
-            other => panic!("expected member expression, got {other:?}"),
+            other => panic!("expected runtime property access, got {other:?}"),
         }
     }
 

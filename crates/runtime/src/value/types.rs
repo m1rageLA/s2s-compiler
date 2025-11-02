@@ -145,6 +145,16 @@ impl Value {
         }
     }
 
+    pub(crate) fn to_boolean(&self) -> bool {
+        match self {
+            Value::Bool(value) => *value,
+            Value::Null | Value::Undefined => false,
+            Value::Number(value) => *value != 0.0 && !value.is_nan(),
+            Value::String(value) => !value.is_empty(),
+            Value::Array(_) | Value::Object(_) => true,
+        }
+    }
+
     pub(crate) fn is_string_like(&self) -> bool {
         matches!(self, Value::String(_) | Value::Array(_) | Value::Object(_))
     }

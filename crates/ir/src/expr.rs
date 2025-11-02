@@ -86,6 +86,7 @@ pub enum RuntimeNamespace {
     Console(ConsoleCall),
     Array(ArrayCall),
     Value(ValueCall),
+    String(StringCall),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -118,6 +119,52 @@ pub enum ArrayCall {
     Pop {
         target: Box<IrExpression>,
         args: Vec<IrExpression>,
+    },
+    Join {
+        target: Box<IrExpression>,
+        separator: Option<Box<IrExpression>>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum StringCall {
+    Length {
+        target: Box<IrExpression>,
+    },
+    ToUpperCase {
+        target: Box<IrExpression>,
+    },
+    ToLowerCase {
+        target: Box<IrExpression>,
+    },
+    Split {
+        target: Box<IrExpression>,
+        separator: Option<Box<IrExpression>>,
+        limit: Option<Box<IrExpression>>,
+    },
+    Replace {
+        target: Box<IrExpression>,
+        pattern: Box<IrExpression>,
+        replacement: Box<IrExpression>,
+    },
+    Includes {
+        target: Box<IrExpression>,
+        search: Box<IrExpression>,
+        position: Option<Box<IrExpression>>,
+    },
+    Concat {
+        target: Box<IrExpression>,
+        args: Vec<IrExpression>,
+    },
+    Slice {
+        target: Box<IrExpression>,
+        start: Option<Box<IrExpression>>,
+        end: Option<Box<IrExpression>>,
+    },
+    Substr {
+        target: Box<IrExpression>,
+        start: Option<Box<IrExpression>>,
+        length: Option<Box<IrExpression>>,
     },
 }
 
@@ -177,6 +224,13 @@ pub enum ValueCall {
     GreaterThanOrEqual {
         left: Box<IrExpression>,
         right: Box<IrExpression>,
+    },
+    LogicalNot {
+        expr: Box<IrExpression>,
+    },
+    GetProperty {
+        target: Box<IrExpression>,
+        property: String,
     },
 }
 

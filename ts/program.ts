@@ -1,63 +1,93 @@
-function headline(title: string): void {
-  console.log(`--- ${title} ---`);
+// string_methods_test.ts
+
+function testStringMethods() {
+  const str = "Hello World";
+  console.log("=== TEST STRING METHODS ===");
+
+  // length
+  console.log("length:", str.length === 11 ? "OK" : `FAIL (${str.length})`);
+
+  // toUpperCase
+  const upper = str.toUpperCase();
+  console.log("toUpperCase:", upper === "HELLO WORLD" ? "OK" : `FAIL (${upper})`);
+
+  // toLowerCase
+  const lower = str.toLowerCase();
+  console.log("toLowerCase:", lower === "hello world" ? "OK" : `FAIL (${lower})`);
+
+  // split
+  const parts = str.split(" ");
+  console.log("split:", parts.length === 2 && parts[0] === "Hello" && parts[1] === "World" ? "OK" : `FAIL (${parts})`);
+
+  // replace
+  const replaced = str.replace("World", "TS");
+  console.log("replace:", replaced === "Hello TS" ? "OK" : `FAIL (${replaced})`);
+
+  // includes
+  console.log("includes:", str.includes("Hello") && !str.includes("Bye") ? "OK" : "FAIL");
+
+  // concat
+  const concatenated = "Hello".concat(" ", "TypeScript");
+  console.log("concat:", concatenated === "Hello TypeScript" ? "OK" : `FAIL (${concatenated})`);
+
+  // slice
+  const sliced = str.slice(0, 5);
+  console.log("slice:", sliced === "Hello" ? "OK" : `FAIL (${sliced})`);
+
+  // substr (устаревший, но проверим)
+  const substrValue = str.substr(6, 5);
+  console.log("substr:", substrValue === "World" ? "OK" : `FAIL (${substrValue})`);
 }
 
-function mulByTwo(n: number): number {
-  return n * 2;
-}
+// Тест базовых конструкций языка
+function testBaseConstructs() {
+  console.log("\n=== TEST BASE CONSTRUCTS ===");
 
-const increment = (value: number): number => value + 1;
+  // if / else
+  const a = 10;
+  const b = 5;
+  let result = "";
+  if (a > b) result = "greater";
+  else result = "less";
+  console.log("if/else:", result === "greater" ? "OK" : "FAIL");
 
-function sum(values: number[]): number {
-  let total: number = 0;
-  for (let i = 0; i < values.length; i = i + 1) {
-    total = total + values[i];
+  // for loop
+  let sum = 0;
+  for (let i = 0; i < 5; i++) {
+    sum += i;
   }
-  return total;
-}
+  console.log("for:", sum === 10 ? "OK" : `FAIL (${sum})`);
 
-function factorial(n: number): number {
-  if (n <= 1) {
-    return 1;
+  // while loop
+  let count = 0;
+  let j = 0;
+  while (j < 3) {
+    count += j;
+    j++;
   }
-  return n * factorial(n - 1);
+  console.log("while:", count === 3 ? "OK" : `FAIL (${count})`);
+
+
+
+  // function
+  function multiply(x: number, y: number): number {
+    return x * y;
+  }
+  const mul = multiply(3, 4);
+  console.log("function:", mul === 12 ? "OK" : `FAIL (${mul})`);
+
+  // array + map
+  const arr = [1, 2, 3];
+  const doubled = arr.map(x => x * 2);
+  console.log("map:", doubled.join(",") === "2,4,6" ? "OK" : `FAIL (${doubled})`);
+
+  // object
+  const obj = { name: "Alice", age: 25 };
+  console.log("object:", obj.name === "Alice" && obj.age === 25 ? "OK" : "FAIL");
 }
 
-headline("pipeline");
-const input: number[] = [1, 2, 3, 4, 5];
-const doubled: number[] = input.map((n) => mulByTwo(n));
-const filtered: number[] = doubled.filter((n) => n > 4);
-const total: number = sum(filtered);
-console.log(`input=${input.length} filtered=${filtered.length} total=${total}`);
+// Запуск тестов
+testStringMethods();
+testBaseConstructs();
 
-headline("array mutation");
-let queue: number[] = [];
-queue.push(10);
-queue.push(20);
-queue.push(sum(filtered));
-console.log(`queue snapshot=${queue[0]},${queue[1]},${queue[2]}`);
-
-headline("control flow");
-let countdown: number = 3;
-while (countdown > 0) {
-  console.log(`while:${countdown}`);
-  countdown = countdown - 1;
-}
-
-let seen: number = 0;
-do {
-  console.log(`do:${seen}`);
-  seen = seen + 1;
-} while (seen < 2);
-
-headline("recursion");
-console.log(`factorial(5)=${factorial(5)}`);
-
-headline("higher-order");
-const pipeline = (value: number): number => increment(mulByTwo(value));
-console.log(`pipeline(7)=${pipeline(7)}`);
-
-headline("branching");
-const probe: number = total > 15 ? 1 : 0;
-const branchMessage: string = probe === 1 ? "probe:high" : "probe:low";
-console.log(branchMessage);
+console.log("\n=== TEST COMPLETE ===");

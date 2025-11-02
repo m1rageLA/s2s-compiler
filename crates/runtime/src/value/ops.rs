@@ -107,6 +107,31 @@ pub fn strict_not_equal_refs(left: &Value, right: &Value) -> bool {
     !strict_equal_refs(left, right)
 }
 
+pub fn logical_not<V>(value: V) -> bool
+where
+    V: Into<Value>,
+{
+    !value.into().to_boolean()
+}
+
+pub fn get_property<V>(value: V, property: &str) -> Value
+where
+    V: Into<Value>,
+{
+    match value.into() {
+        Value::Object(map) => map.get(property).cloned().unwrap_or(Value::Undefined),
+        Value::Array(values) => match property {
+            "length" => Value::Number(values.len() as f64),
+            _ => Value::Undefined,
+        },
+        Value::String(text) => match property {
+            "length" => Value::Number(text.chars().count() as f64),
+            _ => Value::Undefined,
+        },
+        Value::Number(_) | Value::Bool(_) | Value::Null | Value::Undefined => Value::Undefined,
+    }
+}
+
 pub fn less_than<L, R>(lhs: L, rhs: R) -> bool
 where
     L: Into<Value>,
@@ -196,6 +221,50 @@ fn loose_equal_values(left: &Value, right: &Value) -> bool {
         (String(a), String(b)) => a == b,
         (Bool(a), Bool(b)) => a == b,
         _ => numbers_equal(left.to_number(), right.to_number()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn logical_not_applies_js_truthiness() {
+        assert!(logical_not(Value::Number(0.0)));
+        assert!(logical_not(Value::String("".into())));
+        assert!(logical_not(Value::Bool(false)));
+        assert!(logical_not(Value::Undefined));
+        assert!(logical_not(Value::Null));
+
+        assert!(!logical_not(Value::Number(1.0)));
+        assert!(!logical_not(Value::String("hi".into())));
+        assert!(!logical_not(Value::Bool(true)));
+        assert!(!logical_not(Value::Array(vec![])));
+    }
+
+    #[test]
+    fn get_property_reads_object_fields() {
+        let mut map = std::collections::BTreeMap::new();
+        map.insert("name".into(), Value::String("Alice".into()));
+        assert_eq!(
+            get_property(Value::Object(map.clone()), "name"),
+            Value::String("Alice".into())
+        );
+        assert_eq!(
+            get_property(Value::Object(map), "missing"),
+            Value::Undefined
+        );
+    }
+
+    #[test]
+    fn get_property_handles_length_for_collections() {
+        let array = Value::Array(vec![Value::Number(1.0), Value::Number(2.0)]);
+        assert_eq!(get_property(array, "length"), Value::Number(2.0));
+
+        let text = Value::String("hi".into());
+        assert_eq!(get_property(text, "length"), Value::Number(2.0));
+
+        assert_eq!(get_property(Value::Number(1.0), "length"), Value::Undefined);
     }
 }
 

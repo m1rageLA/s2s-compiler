@@ -1,5 +1,6 @@
 use super::expr_to_ir;
 use super::*;
+use ir::{RuntimeNamespace, ValueCall};
 
 pub fn unary_expr_to_ir(u: &ast::UnaryExpr) -> IrExpression {
     let inner = expr_to_ir(&u.arg);
@@ -15,6 +16,11 @@ pub fn unary_expr_to_ir(u: &ast::UnaryExpr) -> IrExpression {
             },
         },
         ast::UnaryOp::Plus => inner,
+        ast::UnaryOp::Bang => {
+            IrExpression::RuntimeCall(RuntimeNamespace::Value(ValueCall::LogicalNot {
+                expr: Box::new(inner),
+            }))
+        }
         _ => IrExpression::Identifier("unsupported_unary".to_string()),
     }
 }
@@ -22,7 +28,7 @@ pub fn unary_expr_to_ir(u: &ast::UnaryExpr) -> IrExpression {
 #[cfg(test)]
 mod tests {
     use crate::test_utils::{assert_identifier, expect_variable, lower};
-    use ir::{IrBinOp, IrExpression, IrLiteral};
+    use ir::{IrBinOp, IrExpression, IrLiteral, RuntimeNamespace, ValueCall};
 
     fn unwrap_value(expr: &IrExpression) -> &IrExpression {
         match expr {
@@ -40,11 +46,12 @@ mod tests {
             const literal = -1;
             const computed = -value;
             const positive = +value;
+            const negated = !value;
             const unsupported = typeof value;
         "#,
         );
 
-        assert_eq!(ir_module.items.len(), 4);
+        assert_eq!(ir_module.items.len(), 5);
 
         let literal = expect_variable(&ir_module.items[0], "literal");
         match literal
@@ -85,7 +92,24 @@ mod tests {
             other => panic!("expected identity for unary plus, got {other:?}"),
         }
 
-        let unsupported = expect_variable(&ir_module.items[3], "unsupported");
+        let negated = expect_variable(&ir_module.items[3], "negated");
+        let negated_value = unwrap_value(
+            negated
+                .value
+                .as_ref()
+                .expect("negated should have initializer"),
+        );
+        match negated_value {
+            IrExpression::RuntimeCall(RuntimeNamespace::Value(ValueCall::LogicalNot { expr })) => {
+                match expr.as_ref() {
+                    IrExpression::Identifier(name) => assert_eq!(name, "value"),
+                    other => panic!("expected identifier operand for logical not, got {other:?}"),
+                }
+            }
+            other => panic!("expected logical not runtime call, got {other:?}"),
+        }
+
+        let unsupported = expect_variable(&ir_module.items[4], "unsupported");
         let unsupported_value = unwrap_value(
             unsupported
                 .value

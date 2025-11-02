@@ -1,5 +1,6 @@
 mod filter;
 mod index;
+mod join;
 mod length;
 mod map;
 mod pop;
@@ -8,6 +9,7 @@ mod push;
 use filter::filter_tokens;
 use index::index_tokens;
 use ir::ArrayCall;
+use join::join_tokens;
 use length::length_tokens;
 use map::map_tokens;
 use pop::pop_tokens;
@@ -26,6 +28,7 @@ pub(crate) fn array_call_tokens(call: &ArrayCall) -> TokenStream {
         ArrayCall::Map { target, callback } => map_tokens(target, callback),
         ArrayCall::Filter { target, callback } => filter_tokens(target, callback),
         ArrayCall::Pop { target, args } => pop_tokens(target, args),
+        ArrayCall::Join { target, separator } => join_tokens(target, separator.as_deref()),
     }
 }
 
@@ -82,8 +85,11 @@ mod tests {
         let tokens = array_call_tokens(&call);
         assert_eq!(
             tokens.to_string(),
-            quote::quote! { runtime::array::index(&values, runtime::value::Value::Number(1.0)) }
-                .to_string()
+            quote::quote! {{
+                let index_tmp = (runtime::value::Value::Number(1.0)).clone();
+                runtime::array::index(&values, index_tmp)
+            }}
+            .to_string()
         );
     }
 
@@ -98,7 +104,11 @@ mod tests {
         let tokens = array_call_tokens(&call);
         assert_eq!(
             tokens.to_string(),
-            quote::quote! { runtime::array::index(&values, i) }.to_string()
+            quote::quote! {{
+                let index_tmp = (i).clone();
+                runtime::array::index(&values, index_tmp)
+            }}
+            .to_string()
         );
     }
 
@@ -127,6 +137,20 @@ mod tests {
         assert_eq!(
             tokens.to_string(),
             quote::quote! { runtime::array::filter(&values, predicate) }.to_string()
+        );
+    }
+
+    #[test]
+    fn array_join_generates_runtime_call() {
+        let call = ArrayCall::Join {
+            target: Box::new(IrExpression::Identifier("values".into())),
+            separator: Some(Box::new(IrExpression::Literal(IrLiteral::Str(",".into())))),
+        };
+
+        let tokens = array_call_tokens(&call);
+        assert_eq!(
+            tokens.to_string(),
+            quote::quote! { runtime::array::join(&values, Some(runtime::value::into_value((runtime::value::Value::String(",".to_string())).clone()))) }.to_string()
         );
     }
 }

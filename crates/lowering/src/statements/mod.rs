@@ -6,6 +6,7 @@ mod block_like;
 mod do_while_stmt;
 mod expr_stmt;
 mod for_stmt;
+mod function_stmt;
 mod if_stmt;
 mod return_stmt;
 mod unsupported;
@@ -20,6 +21,7 @@ pub(crate) fn stmt_to_ir(stmt: &ast::Stmt) -> IrStmt {
         ast::Stmt::Expr(expr_stmt) => expr_stmt::lower(expr_stmt),
         ast::Stmt::Return(ret_stmt) => return_stmt::lower(ret_stmt),
         ast::Stmt::Decl(ast::Decl::Var(var_decl)) => var_decl_stmt::lower(var_decl),
+        ast::Stmt::Decl(ast::Decl::Fn(fn_decl)) => function_stmt::lower(fn_decl),
         ast::Stmt::Block(block) => block::from_block(block),
         ast::Stmt::If(if_stmt) => if_stmt::lower(if_stmt),
         ast::Stmt::While(while_stmt) => while_stmt::lower(while_stmt),
@@ -33,7 +35,7 @@ pub(crate) fn stmt_to_ir(stmt: &ast::Stmt) -> IrStmt {
 mod tests {
     use super::*;
     use crate::test_utils::{assert_identifier, assert_number_literal};
-    use ir::{IrAssignOp, IrExpression, IrForInit, IrStmt, RuntimeNamespace, ValueCall};
+    use ir::{IrAssignOp, IrExpression, IrForInit, IrStmt, IrType, RuntimeNamespace, ValueCall};
     use swc_ecma_ast::ModuleItem;
 
     fn lower_first_stmt(source: &str) -> IrStmt {
@@ -197,6 +199,40 @@ mod tests {
                 assert_identifier(&condition, "flag");
             }
             other => panic!("expected do/while statement, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lowers_function_declaration_statement() {
+        match lower_stmt_inside_function(
+            r#"
+            function helper(value: number) {
+                return value + 1;
+            }
+        "#,
+        ) {
+            IrStmt::VarDecl(vars) => {
+                assert_eq!(vars.len(), 1);
+                let helper = &vars[0];
+                assert_eq!(helper.name, "helper");
+                assert!(!helper.mutable);
+                assert_eq!(helper.ty, IrType::Any);
+
+                let Some(value) = helper.value.as_ref() else {
+                    panic!("expected function initializer for helper");
+                };
+
+                match value {
+                    IrExpression::Function(func) => {
+                        assert_eq!(func.params.len(), 1);
+                        assert_eq!(func.params[0].name, "value");
+                        assert_eq!(func.body.len(), 1);
+                        assert!(matches!(func.body[0], IrStmt::Return(_)));
+                    }
+                    other => panic!("expected function expression initializer, got {other:?}"),
+                }
+            }
+            other => panic!("expected function declaration to lower into var decl, got {other:?}"),
         }
     }
 

@@ -16,9 +16,27 @@ pub fn function_expr_to_ir(fn_expr: &ast::FnExpr) -> IrExpression {
     }
 
     let name = fn_expr.ident.as_ref().map(|ident| ident.sym.to_string());
-    let params = params_to_ir(&fn_expr.function.params);
-    let ret = fn_expr
-        .function
+    function_from_parts(name, &fn_expr.function)
+}
+
+pub(crate) fn function_decl_to_expr(fn_decl: &ast::FnDecl) -> IrExpression {
+    if fn_decl.function.is_async {
+        return IrExpression::Identifier("async_function_declaration_not_supported".to_string());
+    }
+
+    if fn_decl.function.is_generator {
+        return IrExpression::Identifier(
+            "generator_function_declaration_not_supported".to_string(),
+        );
+    }
+
+    let name = Some(fn_decl.ident.sym.to_string());
+    function_from_parts(name, &fn_decl.function)
+}
+
+fn function_from_parts(name: Option<String>, function: &ast::Function) -> IrExpression {
+    let params = params_to_ir(&function.params);
+    let ret = function
         .return_type
         .as_ref()
         .map(|ann| ts_type_ann_to_ir(ann))
@@ -28,12 +46,7 @@ pub fn function_expr_to_ir(fn_expr: &ast::FnExpr) -> IrExpression {
         context::define(&param.name, param.ty);
     }
     context::push_function_return(ret);
-    let body = fn_expr
-        .function
-        .body
-        .as_ref()
-        .map(block_to_ir)
-        .unwrap_or_default();
+    let body = function.body.as_ref().map(block_to_ir).unwrap_or_default();
     context::pop_function_return();
     context::pop_scope();
 

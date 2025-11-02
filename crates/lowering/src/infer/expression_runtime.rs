@@ -1,4 +1,4 @@
-use ir::{ArrayCall, ConsoleCall, IrArrayKind, IrType, RuntimeNamespace, ValueCall};
+use ir::{ArrayCall, ConsoleCall, IrArrayKind, IrType, RuntimeNamespace, StringCall, ValueCall};
 
 use super::infer_expression_type;
 
@@ -36,6 +36,7 @@ pub(crate) fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
                 _ => Some(IrType::Array(IrArrayKind::Value)),
             }
         }
+        RuntimeNamespace::Array(ArrayCall::Join { .. }) => Some(IrType::Str),
         RuntimeNamespace::Value(call) => match call {
             ValueCall::Coerce { expr } => infer_expression_type(expr).or(Some(IrType::Value)),
             ValueCall::Add { left, right } => {
@@ -47,6 +48,7 @@ pub(crate) fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
                     Some(IrType::Value)
                 }
             }
+            ValueCall::GetProperty { .. } => Some(IrType::Value),
             ValueCall::Sub { .. }
             | ValueCall::Mul { .. }
             | ValueCall::Div { .. }
@@ -58,7 +60,19 @@ pub(crate) fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
             | ValueCall::LessThan { .. }
             | ValueCall::LessThanOrEqual { .. }
             | ValueCall::GreaterThan { .. }
-            | ValueCall::GreaterThanOrEqual { .. } => Some(IrType::Bool),
+            | ValueCall::GreaterThanOrEqual { .. }
+            | ValueCall::LogicalNot { .. } => Some(IrType::Bool),
+        },
+        RuntimeNamespace::String(call) => match call {
+            StringCall::Length { .. } => Some(IrType::Number),
+            StringCall::ToUpperCase { .. }
+            | StringCall::ToLowerCase { .. }
+            | StringCall::Replace { .. }
+            | StringCall::Concat { .. }
+            | StringCall::Slice { .. }
+            | StringCall::Substr { .. } => Some(IrType::Str),
+            StringCall::Split { .. } => Some(IrType::Array(IrArrayKind::Str)),
+            StringCall::Includes { .. } => Some(IrType::Bool),
         },
     }
 }

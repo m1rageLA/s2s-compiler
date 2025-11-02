@@ -209,7 +209,8 @@ mod tests {
                         ir::ArrayCall::Length { .. }
                         | ir::ArrayCall::Index { .. }
                         | ir::ArrayCall::Map { .. }
-                        | ir::ArrayCall::Filter { .. } => todo!(),
+                        | ir::ArrayCall::Filter { .. }
+                        | ir::ArrayCall::Join { .. } => todo!(),
                         ir::ArrayCall::Pop { .. } => todo!(),
                     }
                 }

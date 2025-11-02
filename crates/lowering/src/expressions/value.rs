@@ -3,7 +3,7 @@ use ir::{IrBinOp, IrExpression, RuntimeNamespace, ValueCall};
 pub(crate) fn coerce_to_value(expr: IrExpression) -> IrExpression {
     match expr {
         IrExpression::RuntimeCall(RuntimeNamespace::Value(call)) => match call {
-            ValueCall::Add { .. } | ValueCall::Coerce { .. } => {
+            ValueCall::Add { .. } | ValueCall::Coerce { .. } | ValueCall::GetProperty { .. } => {
                 IrExpression::RuntimeCall(RuntimeNamespace::Value(call))
             }
             other => wrap_coerce(IrExpression::RuntimeCall(RuntimeNamespace::Value(other))),

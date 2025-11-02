@@ -8,6 +8,7 @@ mod less_than;
 mod less_than_or_equal;
 mod mod_op;
 mod mul;
+mod not;
 mod not_equal;
 mod strict_equal;
 mod strict_not_equal;
@@ -25,8 +26,9 @@ use less_than::less_than_tokens;
 use less_than_or_equal::less_than_or_equal_tokens;
 use mod_op::mod_tokens;
 use mul::mul_tokens;
+use not::logical_not_tokens;
 use not_equal::not_equal_tokens;
-use proc_macro2::TokenStream;
+use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 use strict_equal::strict_equal_tokens;
 use strict_not_equal::strict_not_equal_tokens;
@@ -48,6 +50,8 @@ pub(crate) fn value_call_tokens(call: &ValueCall) -> TokenStream {
         ValueCall::LessThanOrEqual { left, right } => less_than_or_equal_tokens(left, right),
         ValueCall::GreaterThan { left, right } => greater_than_tokens(left, right),
         ValueCall::GreaterThanOrEqual { left, right } => greater_than_or_equal_tokens(left, right),
+        ValueCall::LogicalNot { expr } => logical_not_tokens(expr),
+        ValueCall::GetProperty { target, property } => get_property_tokens(target, property),
     }
 }
 
@@ -85,5 +89,14 @@ pub(super) fn equality_op(name: &str, left: &IrExpression, right: &IrExpression)
         let left_tmp = runtime::value::types::into_value(#left_tokens.clone());
         let right_tmp = runtime::value::types::into_value(#right_tokens.clone());
         runtime::value::ops::#func(&left_tmp, &right_tmp)
+    }}
+}
+
+fn get_property_tokens(target: &IrExpression, property: &str) -> TokenStream {
+    let target_tokens = target.codegen();
+    let property_literal = Literal::string(property);
+    quote! {{
+        let target_tmp = runtime::value::into_value((#target_tokens).clone());
+        runtime::value::ops::get_property(target_tmp, #property_literal)
     }}
 }
