@@ -1,6 +1,14 @@
-use swc_common::{comments::SingleThreadedComments, Globals, Mark, GLOBALS};
-use swc_ecma_ast::{Module, Program};
-use swc_ecma_compat_es2015::es2015;
+use swc_common::{
+    comments::{Comments, SingleThreadedComments},
+    Globals, Mark, GLOBALS,
+};
+use swc_ecma_ast::{Module, Pass, Program};
+use swc_ecma_compat_common::regexp::{self, regexp};
+use swc_ecma_compat_es2015::{
+    arrow, block_scoped_functions, computed_properties, destructuring, duplicate_keys, for_of,
+    function_name, generator, instance_of, new_target, object_super, parameters, shorthand, spread,
+    sticky_regex, template_literal, typeof_symbol, Config as Es2015Config,
+};
 use swc_ecma_transforms_base::{fixer::fixer, hygiene::hygiene};
 use swc_ecma_transforms::resolver;
 use swc_ecma_transforms_typescript::strip;
@@ -22,11 +30,11 @@ fn normalize(mut ast: Module) -> Module {
     let mut program = Program::Module(ast);
     program = program.apply(strip(unresolved, top_level));
 
-    // 3️⃣ es2015 — Pass (теперь принимает 3 аргумента)
-    program = program.apply(es2015(
-        unresolved,       // Mark
-        None::<SingleThreadedComments>, // нет комментариев
-        Default::default() // конфиг
+    // 3️⃣ es2015 — кастомный Pass, сохраняющий class / const / let
+    program = program.apply(es2015_with_es6_preserved(
+        unresolved,
+        None::<SingleThreadedComments>,
+        Default::default(),
     ));
 
     // 4️⃣ hygiene и fixer — Fold
@@ -37,4 +45,60 @@ fn normalize(mut ast: Module) -> Module {
         Program::Module(module) => module,
         Program::Script(_) => unreachable!("нормализатор ожидает модуль"),
     }
+}
+
+fn es2015_with_es6_preserved<C>(
+    unresolved_mark: Mark,
+    comments: Option<C>,
+    config: Es2015Config,
+) -> impl Pass
+where
+    C: Comments + Clone,
+{
+    (
+        (
+            regexp(regexp::Config {
+                dot_all_regex: false,
+                has_indices: false,
+                lookbehind_assertion: false,
+                named_capturing_groups_regex: false,
+                sticky_regex: true,
+                unicode_property_regex: false,
+                unicode_regex: true,
+                unicode_sets_regex: false,
+            }),
+            block_scoped_functions(),
+            template_literal(config.template_literal),
+            // classes() убираем, чтобы сохранить синтаксис class
+            new_target(),
+            spread(config.spread, unresolved_mark),
+        ),
+        if !config.typescript {
+            Some(object_super())
+        } else {
+            None
+        },
+        shorthand(),
+        function_name(),
+        for_of(config.for_of),
+        // Should come before parameters (см. swc issue #1036)
+        parameters(config.parameters, unresolved_mark),
+        (
+            exprs(unresolved_mark),
+            typeof_symbol(config.typeof_symbol),
+            computed_properties(config.computed_props),
+            destructuring(config.destructuring),
+            // block_scoping() пропускаем, чтобы не занижать let/const
+            generator::generator(unresolved_mark, comments),
+        ),
+    )
+}
+
+fn exprs(unresolved_mark: Mark) -> impl Pass {
+    (
+        arrow(unresolved_mark),
+        duplicate_keys(),
+        sticky_regex(),
+        instance_of(),
+    )
 }
