@@ -47,9 +47,9 @@ pub fn parse_typescript(source: &str) -> Module {
 }
 
 /// Parse and downlevel TypeScript source, returning normalized JavaScript code.
-pub fn normalize_js(source: &str) -> String {
-    parser::downleveled_js(source)
-}
+// pub fn normalize_js(source: &str) -> String {
+//     parser::downleveled_js(source)
+// }
 
 /// Lower a TypeScript AST module into the project IR.
 pub fn lower_ast(module: &Module) -> IrModule {
