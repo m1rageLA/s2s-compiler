@@ -1,9 +1,9 @@
-pub mod expr;
+pub mod expression;
 pub mod item;
-pub mod stmt;
+pub mod statement;
 pub mod types;
 
-pub use expr::*;
+pub use expression::*;
 pub use item::*;
-pub use stmt::*;
+pub use statement::*;
 pub use types::*;

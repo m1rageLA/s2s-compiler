@@ -1,4 +1,4 @@
-pub mod expr;
+pub mod expression;
 pub mod function;
 pub mod statements;
 pub use statements as stmt;
