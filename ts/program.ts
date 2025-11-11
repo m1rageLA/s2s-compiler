@@ -1,4 +1,6 @@
-let x: number = 10;
-let y:string = x + "123";
+const greet = (name: string): string => {
+  const message = `Hello, ${name}!`;
+  return message.toUpperCase();
+};
 
-
+console.log(greet("Rust"));

@@ -1,22 +1,11 @@
-use swc_common::sync::Lrc;
-use swc_common::{FileName, SourceMap};
+pub mod parser;
+pub mod normalizer;
 use swc_ecma_ast::Module;
-use swc_ecma_parser::{Lexer, Parser, StringInput, Syntax, TsSyntax};
+use crate::normalizer::ast_normalize;
+use crate::parser::ts_to_ast;
 
 pub fn ast(source: &str) -> Module {
-    let cm = SourceMap::default();
-    let fm = cm.new_source_file(
-        Lrc::new(FileName::Custom("input.ts".into())),
-        source.to_owned(),
-    );
-    let syntax = Syntax::Typescript(TsSyntax {
-        tsx: false,
-        decorators: true,
-        ..Default::default()
-    });
-    let lexer = Lexer::new(syntax, Default::default(), StringInput::from(&*fm), None);
-    let mut parser = Parser::new_from(lexer);
-    let module = parser.parse_module().expect("failed to parse module");
-
-    module
+    let ast = ts_to_ast(source);
+    let ast_norm = ast_normalize(ast);
+    ast_norm
 }
