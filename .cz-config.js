@@ -17,6 +17,7 @@ module.exports = {
     { name: 'codegen' },
     { name: 'compiler' },
     { name: "integration"},
+    { name: "normalizer"},
     { name: "e2e" },
     { name: 'parser' },
     { name: 'tokenizer' },

@@ -1,6 +1,5 @@
-const greet = (name: string): string => {
-  const message = `Hello, ${name}!`;
-  return message.toUpperCase();
-};
+const x = [1, 2, 3, 4];
 
-console.log(greet("Rust"));
+for (const miau of x) {
+    console.log(miau);
+}

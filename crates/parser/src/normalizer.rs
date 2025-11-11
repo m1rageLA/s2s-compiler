@@ -5,7 +5,7 @@ use swc_common::{
 use swc_ecma_ast::{Module, Pass, Program};
 use swc_ecma_compat_common::regexp::{self, regexp};
 use swc_ecma_compat_es2015::{
-    arrow, block_scoped_functions, computed_properties, destructuring, duplicate_keys, for_of,
+    arrow, block_scoped_functions, computed_properties, destructuring, duplicate_keys,
     function_name, generator, instance_of, new_target, object_super, parameters, shorthand, spread,
     sticky_regex, template_literal, typeof_symbol, Config as Es2015Config,
 };
@@ -80,7 +80,7 @@ where
         },
         shorthand(),
         function_name(),
-        for_of(config.for_of),
+
         // Should come before parameters (см. swc issue #1036)
         parameters(config.parameters, unresolved_mark),
         (
