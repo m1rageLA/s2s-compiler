@@ -2,8 +2,8 @@ use super::*;
 use crate::context;
 use crate::infer;
 use ir::{
-    ArrayCall, ConsoleCall, IrArrayKind, IrExpression, IrType, RuntimeNamespace, StringCall,
-    ValueCall,
+    ArrayCall, ConsoleCall, IrArrayKind, IrExpression, IrType, MathCall, RuntimeNamespace,
+    StringCall, ValueCall,
 };
 
 pub(crate) fn lower_member_expr(member: &ast::MemberExpr) -> IrExpression {
@@ -40,6 +40,12 @@ fn detect_runtime_call(
 ) -> Option<RuntimeNamespace> {
     if let Some(string_call) = detect_string_runtime_call(object, property, args) {
         return Some(RuntimeNamespace::String(string_call));
+    }
+
+    if matches!(object, IrExpression::Identifier(name) if name == "Math") && property == "random" {
+        if args.is_empty() {
+            return Some(RuntimeNamespace::Math(MathCall::Random));
+        }
     }
 
     match (object, property) {
@@ -205,7 +211,9 @@ fn infer_array_kind(expr: &IrExpression) -> Option<IrArrayKind> {
 mod tests {
     use super::*;
     use crate::test_utils::lower;
-    use ir::{IrExpression, IrItem, IrLiteral, RuntimeNamespace, StringCall, ValueCall};
+    use ir::{
+        IrExpression, IrItem, IrLiteral, MathCall, RuntimeNamespace, StringCall, ValueCall,
+    };
     use swc_common::{DUMMY_SP, SyntaxContext};
     use swc_ecma_ast as swc_ast;
 
@@ -511,6 +519,16 @@ mod tests {
                 );
             }
             other => panic!("expected array.filter runtime call, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn detects_math_random_runtime_call() {
+        let lowered = lower_expression("Math.random()");
+
+        match lowered {
+            IrExpression::RuntimeCall(RuntimeNamespace::Math(MathCall::Random)) => {}
+            other => panic!("expected Math.random runtime call, got {other:?}"),
         }
     }
 }

@@ -87,6 +87,7 @@ pub enum RuntimeNamespace {
     Array(ArrayCall),
     Value(ValueCall),
     String(StringCall),
+    Math(MathCall),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -166,6 +167,11 @@ pub enum StringCall {
         start: Option<Box<IrExpression>>,
         length: Option<Box<IrExpression>>,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum MathCall {
+    Random,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

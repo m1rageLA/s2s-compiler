@@ -1,4 +1,6 @@
-use ir::{ArrayCall, ConsoleCall, IrArrayKind, IrType, RuntimeNamespace, StringCall, ValueCall};
+use ir::{
+    ArrayCall, ConsoleCall, IrArrayKind, IrType, MathCall, RuntimeNamespace, StringCall, ValueCall,
+};
 
 use super::infer_expression_type;
 
@@ -73,6 +75,9 @@ pub(crate) fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
             | StringCall::Substr { .. } => Some(IrType::Str),
             StringCall::Split { .. } => Some(IrType::Array(IrArrayKind::Str)),
             StringCall::Includes { .. } => Some(IrType::Bool),
+        },
+        RuntimeNamespace::Math(call) => match call {
+            MathCall::Random => Some(IrType::Number),
         },
     }
 }
