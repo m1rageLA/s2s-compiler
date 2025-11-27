@@ -1,10 +1,20 @@
 use ir::IrType;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 thread_local! {
     static TYPE_STACK: RefCell<Vec<HashMap<String, IrType>>> = RefCell::new(Vec::new());
     static RETURN_STACK: RefCell<Vec<IrType>> = RefCell::new(Vec::new());
+    static MUTATED: RefCell<HashSet<String>> = RefCell::new(HashSet::new());
+}
+
+pub(crate) fn mark_mutated(name: &str) {
+    MUTATED.with(|m| {
+        m.borrow_mut().insert(name.into());
+    });
+}
+pub(crate) fn is_mutated(name: &str) -> bool {
+    MUTATED.with(|m| m.borrow().contains(name))
 }
 
 pub(crate) fn reset() {
@@ -14,6 +24,7 @@ pub(crate) fn reset() {
         stack.push(HashMap::new());
     });
     RETURN_STACK.with(|stack| stack.borrow_mut().clear());
+    MUTATED.with(|set| set.borrow_mut().clear());
 }
 
 pub(crate) fn push_scope() {

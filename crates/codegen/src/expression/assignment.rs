@@ -1,5 +1,5 @@
 use ir::{IrAssignOp, IrExpression};
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{Literal, Span, TokenStream};
 use quote::{format_ident, quote};
 
 use crate::Codegen;
@@ -11,6 +11,10 @@ pub(crate) fn assignment_tokens(
     left: &IrExpression,
     right: &IrExpression,
 ) -> TokenStream {
+    if let IrExpression::Member { object, property } = left {
+        return member_assignment_tokens(op, object.as_ref(), property, right);
+    }
+
     let left_tokens = left.codegen();
     let right_tokens = right.codegen();
 
@@ -103,6 +107,109 @@ pub(crate) fn assignment_tokens(
         IrAssignOp::LogicalAndAssign => unsupported_assign_op("logical and assignment"),
         IrAssignOp::NullishCoalesceAssign => unsupported_assign_op("nullish coalesce assignment"),
     }
+}
+
+fn member_assignment_tokens(
+    op: IrAssignOp,
+    object: &IrExpression,
+    property: &str,
+    right: &IrExpression,
+) -> TokenStream {
+    match op {
+        IrAssignOp::Assign => member_simple_assign(object, property, right),
+        IrAssignOp::AddAssign => member_value_op(quote!(runtime::value::ops::add), object, property, right),
+        IrAssignOp::SubAssign => member_value_op(quote!(runtime::value::ops::sub), object, property, right),
+        IrAssignOp::MulAssign => member_value_op(quote!(runtime::value::ops::mul), object, property, right),
+        IrAssignOp::DivAssign => member_value_op(quote!(runtime::value::ops::div), object, property, right),
+        IrAssignOp::ModAssign => member_value_op(quote!(runtime::value::ops::modulo), object, property, right),
+        IrAssignOp::ExpAssign => member_exponent_assign(object, property, right),
+        IrAssignOp::LeftShiftAssign => member_bitwise_assign(quote!(<<), object, property, right),
+        IrAssignOp::RightShiftAssign => member_bitwise_assign(quote!(>>), object, property, right),
+        IrAssignOp::BitwiseOrAssign => member_bitwise_assign(quote!(|), object, property, right),
+        IrAssignOp::BitwiseXorAssign => member_bitwise_assign(quote!(^), object, property, right),
+        IrAssignOp::BitwiseAndAssign => member_bitwise_assign(quote!(&), object, property, right),
+        IrAssignOp::UnsignedRightShiftAssign
+        | IrAssignOp::LogicalOrAssign
+        | IrAssignOp::LogicalAndAssign
+        | IrAssignOp::NullishCoalesceAssign => unsupported_assign_op("unsupported member assignment"),
+    }
+}
+
+fn member_simple_assign(object: &IrExpression, property: &str, right: &IrExpression) -> TokenStream {
+    let object_tokens = object.codegen();
+    let right_tokens = right.codegen();
+    let property_literal = Literal::string(property);
+
+    quote!({
+        let ts_2_rs_value = (#right_tokens).clone();
+        let ts_2_rs_target = &mut #object_tokens;
+        runtime::value::ops::set_property_in_place(ts_2_rs_target, #property_literal, ts_2_rs_value.clone());
+        ts_2_rs_value
+    })
+}
+
+fn member_value_op(
+    op_fn: TokenStream,
+    object: &IrExpression,
+    property: &str,
+    right: &IrExpression,
+) -> TokenStream {
+    let object_tokens = object.codegen();
+    let right_tokens = right.codegen();
+    let property_literal = Literal::string(property);
+    let property_literal_for_set = property_literal.clone();
+
+    quote!({
+        let ts_2_rs_rhs = (#right_tokens).clone();
+        let ts_2_rs_target = &mut #object_tokens;
+        let ts_2_rs_current = runtime::value::ops::get_property((*ts_2_rs_target).clone(), #property_literal);
+        let ts_2_rs_new = #op_fn(ts_2_rs_current, (ts_2_rs_rhs).clone());
+        runtime::value::ops::set_property_in_place(ts_2_rs_target, #property_literal_for_set, ts_2_rs_new.clone());
+        ts_2_rs_new
+    })
+}
+
+fn member_exponent_assign(
+    object: &IrExpression,
+    property: &str,
+    right: &IrExpression,
+) -> TokenStream {
+    let object_tokens = object.codegen();
+    let right_tokens = right.codegen();
+    let property_literal = Literal::string(property);
+    let property_literal_for_set = property_literal.clone();
+
+    quote!({
+        let ts_2_rs_rhs = (#right_tokens).clone();
+        let ts_2_rs_target = &mut #object_tokens;
+        let ts_2_rs_base = runtime::value::ops::get_property((*ts_2_rs_target).clone(), #property_literal).into_number();
+        let ts_2_rs_exp = (ts_2_rs_rhs).clone().into_number();
+        let ts_2_rs_new = runtime::value::Value::Number(ts_2_rs_base.powf(ts_2_rs_exp));
+        runtime::value::ops::set_property_in_place(ts_2_rs_target, #property_literal_for_set, ts_2_rs_new.clone());
+        ts_2_rs_new
+    })
+}
+
+fn member_bitwise_assign(
+    operator: TokenStream,
+    object: &IrExpression,
+    property: &str,
+    right: &IrExpression,
+) -> TokenStream {
+    let object_tokens = object.codegen();
+    let right_tokens = right.codegen();
+    let property_literal = Literal::string(property);
+    let property_literal_for_set = property_literal.clone();
+
+    quote!({
+        let ts_2_rs_rhs = (#right_tokens).clone();
+        let ts_2_rs_target = &mut #object_tokens;
+        let ts_2_rs_lhs = runtime::value::ops::get_property((*ts_2_rs_target).clone(), #property_literal).into_number() as i64;
+        let ts_2_rs_rhs_num = (ts_2_rs_rhs).clone().into_number() as i64;
+        let ts_2_rs_new = runtime::value::Value::Number(((ts_2_rs_lhs) #operator (ts_2_rs_rhs_num)) as f64);
+        runtime::value::ops::set_property_in_place(ts_2_rs_target, #property_literal_for_set, ts_2_rs_new.clone());
+        ts_2_rs_new
+    })
 }
 
 fn value_compound_assignment(

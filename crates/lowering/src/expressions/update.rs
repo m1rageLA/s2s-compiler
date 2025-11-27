@@ -3,13 +3,22 @@ use ir::IrExpression;
 use crate::expressions::expr_to_ir;
 
 pub fn update_expr_to_ir(u: &swc_ecma_ast::UpdateExpr) -> IrExpression {
+    let left = expr_to_ir(&u.arg);
+    if let ir::IrExpression::Identifier(name) = &left {
+        crate::context::mark_mutated(name);
+    }
+    if let ir::IrExpression::Member { object, .. } = &left {
+        if let ir::IrExpression::Identifier(name) = object.as_ref() {
+            crate::context::mark_mutated(name);
+        }
+    }
     match u.op {
-        swc_ecma_ast::UpdateOp::PlusPlus => IrExpression::PostfixUnary {
-            left: Box::new(expr_to_ir(&u.arg)),
+        swc_ecma_ast::UpdateOp::PlusPlus => ir::IrExpression::PostfixUnary {
+            left: Box::new(left),
             op: ir::IrPostfixOp::Increment,
         },
-        swc_ecma_ast::UpdateOp::MinusMinus => IrExpression::PostfixUnary {
-            left: Box::new(expr_to_ir(&u.arg)),
+        swc_ecma_ast::UpdateOp::MinusMinus => ir::IrExpression::PostfixUnary {
+            left: Box::new(left),
             op: ir::IrPostfixOp::Decrement,
         },
     }

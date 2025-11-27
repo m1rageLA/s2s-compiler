@@ -60,7 +60,18 @@ pub(crate) fn var_decl_to_ir(
             }
         }
     }
-    let mutable = !matches!(kind, ast::VarDeclKind::Const);
+
+    let mut mutable = !matches!(kind, ast::VarDeclKind::Const);
+    if matches!(
+        ty,
+        IrType::Number | IrType::Str | IrType::Any | IrType::Value | IrType::Array(_)
+    ) && !matches!(kind, ast::VarDeclKind::Const)
+    {
+        mutable = true;
+    }
+    if context::is_mutated(&name) {
+        mutable = true;
+    }
 
     context::define(&name, ty);
 

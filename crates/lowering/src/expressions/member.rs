@@ -53,6 +53,9 @@ fn detect_runtime_call(
             Some(RuntimeNamespace::Console(ConsoleCall::Log(args.to_vec())))
         }
         (IrExpression::Identifier(_), "push") => {
+            if let IrExpression::Identifier(name) = object {
+                context::mark_mutated(name);
+            }
             let coerced_args = args
                 .iter()
                 .cloned()

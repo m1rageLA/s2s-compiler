@@ -226,7 +226,7 @@ mod tests {
         match main_fn.block.stmts.first() {
             Some(syn::Stmt::Expr(expr, _)) => match expr {
                 syn::Expr::Closure(closure) => {
-                    assert!(closure.capture.is_some(), "closure should be move");
+                    assert!(closure.capture.is_none(), "closure should not force move");
                     assert_eq!(closure.inputs.len(), 1);
 
                     match &closure.inputs[0] {

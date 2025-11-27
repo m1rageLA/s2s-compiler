@@ -18,12 +18,12 @@ pub(crate) fn arrow_tokens(params: &[IrParam], body: &IrArrowBody) -> TokenStrea
         IrArrowBody::Expr(expr) => {
             let params = &param_bindings;
             let expr_tokens = expr.codegen();
-            quote! { move | #( #params ),* | { #expr_tokens } }
+            quote! { | #( #params ),* | { #expr_tokens } }
         }
         IrArrowBody::Block(stmts) => {
             let params = &param_bindings;
             let stmt_tokens = stmts.iter().map(|stmt| stmt.codegen());
-            quote! { move | #( #params ),* | { #( #stmt_tokens )* } }
+            quote! { | #( #params ),* | { #( #stmt_tokens )* } }
         }
     }
 }
@@ -52,10 +52,10 @@ fn test_arrow_tokens() {
 
     assert_eq!(
         tokens_block.to_string(),
-        "move | a : runtime :: value :: Value | { return runtime :: value :: ops :: add (runtime :: value :: Value :: Number (1.0) , runtime :: value :: Value :: Number (2.0)) ; }",
+        "| a : runtime :: value :: Value | { return runtime :: value :: ops :: add (runtime :: value :: Value :: Number (1.0) , runtime :: value :: Value :: Number (2.0)) ; }",
     );
     assert_eq!(
         tokens_expr.to_string(),
-        "move | a : runtime :: value :: Value | { runtime :: value :: Value :: Number (1.0) }",
+        "| a : runtime :: value :: Value | { runtime :: value :: Value :: Number (1.0) }",
     );
 }

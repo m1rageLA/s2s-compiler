@@ -5,6 +5,15 @@ use ir::{IrType, RuntimeNamespace};
 
 pub(crate) fn assignment_expr_to_ir(assign: &ast::AssignExpr) -> IrExpression {
     let left = assignment_target_to_ir(&assign.left);
+    
+    if let IrExpression::Identifier(name) = &left {
+        context::mark_mutated(name);
+    }
+    if let IrExpression::Member { object, .. } = &left {
+        if let IrExpression::Identifier(name) = object.as_ref() {
+            context::mark_mutated(name);
+        }
+    }
     let mut right = expr_to_ir(&assign.right);
 
     // If assigning to a simple identifier which is declared as `Str` or

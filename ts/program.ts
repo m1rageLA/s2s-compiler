@@ -12,8 +12,8 @@ function nbody() {
     }
 
 
-    const N = 1500;         // количество тел (можешь менять)
-    const STEPS = 3000;     // количество шагов
+    const N = 100;         // количество тел (можешь менять)
+    const STEPS = 300;     // количество шагов
     const G = 1.0;
     const DT = 0.01;
     const EPS = 1e-9;
@@ -21,7 +21,7 @@ function nbody() {
     //
     // Храним каждое тело как обычный JS-объект
     //
-    const bodies: any[] = [];
+    let bodies: any[] = [];
 
     for (let i = 0; i < N; i++) {
         bodies.push({
@@ -42,10 +42,10 @@ function nbody() {
     //
     function step() {
         for (let i = 0; i < N; i++) {
-            const bi = bodies[i];
+            let bi = bodies[i];
 
             for (let j = i + 1; j < N; j++) {
-                const bj = bodies[j];
+                let bj = bodies[j];
 
                 const dx = bj.x - bi.x;
                 const dy = bj.y - bi.y;
@@ -73,7 +73,7 @@ function nbody() {
         }
 
         for (let i = 0; i < N; i++) {
-            const b = bodies[i];
+            let b = bodies[i];
             b.x += b.vx * DT;
             b.y += b.vy * DT;
             b.z += b.vz * DT;

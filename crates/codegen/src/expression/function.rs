@@ -20,7 +20,7 @@ pub(crate) fn function_expr_tokens(function: &IrFunctionExpr) -> TokenStream {
     if matches!(function.ret, IrType::Any) {
         let params = &params;
         quote! {
-            move | #( #params ),* | {
+            | #( #params ),* | {
                 #( #body_tokens )*
             }
         }
@@ -28,7 +28,7 @@ pub(crate) fn function_expr_tokens(function: &IrFunctionExpr) -> TokenStream {
         let params = &params;
         let ret_ty = render_type(&function.ret);
         quote! {
-            move | #( #params ),* | -> #ret_ty {
+            | #( #params ),* | -> #ret_ty {
                 #( #body_tokens )*
             }
         }
@@ -65,7 +65,7 @@ mod tests {
         };
 
         let closure = parse_closure(function_expr_tokens(&func));
-        assert!(closure.capture.is_some(), "closure should use move capture");
+        assert!(closure.capture.is_none(), "closure should not force move capture");
         assert_eq!(closure.inputs.len(), 1);
 
         let typed_param = match &closure.inputs[0] {

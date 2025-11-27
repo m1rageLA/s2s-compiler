@@ -1,10 +1,14 @@
 use ir::{IrExpression, IrPostfixOp};
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{Literal, Span, TokenStream};
 use quote::{format_ident, quote};
 
 use crate::Codegen;
 
 pub(crate) fn postfixunary_tokens(left: Box<IrExpression>, op: IrPostfixOp) -> TokenStream {
+    if let IrExpression::Member { object, property } = left.as_ref() {
+        return member_postfix_tokens(object.as_ref(), property, op);
+    }
+
     let left = left.codegen();
     let temp = format_ident!("ts_2_rs", span = Span::mixed_site());
 
@@ -34,6 +38,25 @@ pub(crate) fn postfixunary_tokens(left: Box<IrExpression>, op: IrPostfixOp) -> T
             })
         }
     }
+}
+
+fn member_postfix_tokens(object: &IrExpression, property: &str, op: IrPostfixOp) -> TokenStream {
+    let object_tokens = object.codegen();
+    let property_literal = Literal::string(property);
+    let property_literal_for_set = property_literal.clone();
+
+    let op_fn = match op {
+        IrPostfixOp::Increment => quote!(runtime::value::ops::add),
+        IrPostfixOp::Decrement => quote!(runtime::value::ops::sub),
+    };
+
+    quote!({
+        let ts_2_rs_target = &mut #object_tokens;
+        let ts_2_rs_current = runtime::value::ops::get_property((*ts_2_rs_target).clone(), #property_literal);
+        let ts_2_rs_new = #op_fn(ts_2_rs_current.clone(), runtime::value::Value::Number(1.0));
+        runtime::value::ops::set_property_in_place(ts_2_rs_target, #property_literal_for_set, ts_2_rs_new);
+        ts_2_rs_current
+    })
 }
 
 #[cfg(test)]

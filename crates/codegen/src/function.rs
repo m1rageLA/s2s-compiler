@@ -1,4 +1,4 @@
-use ir::{IrFunction, IrType, IrVariable};
+use ir::{IrExpression, IrFunction, IrType, IrVariable};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
@@ -33,7 +33,20 @@ impl Codegen for IrVariable {
         let value = self
             .value
             .as_ref()
-            .map(|expr| expr.codegen())
+            .map(|expr| {
+                let tokens = expr.codegen();
+                if matches!(
+                    (&self.ty, expr),
+                    (
+                        IrType::Number | IrType::Str | IrType::Any | IrType::Value,
+                        IrExpression::Identifier(_)
+                    )
+                ) {
+                    quote! { (#tokens).clone() }
+                } else {
+                    tokens
+                }
+            })
             .unwrap_or_else(|| default_value(&self.ty));
 
         let mutability = self.mutable.then(|| quote! { mut });
