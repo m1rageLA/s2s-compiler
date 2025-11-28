@@ -2,19 +2,24 @@ use ir::{IrArrowBody, IrParam};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::{Codegen, function::render_type};
+use crate::{Codegen, function::render_type, typing};
 
 pub(crate) fn arrow_tokens(params: &[IrParam], body: &IrArrowBody) -> TokenStream {
+    typing::push_scope();
+    if let Some(ret) = typing::infer_arrow_body_type(body) {
+        typing::push_return_type(ret);
+    }
     let param_bindings: Vec<TokenStream> = params
         .iter()
         .map(|param| {
             let ident = format_ident!("{}", param.name);
             let ty = render_type(&param.ty);
+            typing::define(&param.name, param.ty);
             quote! { #ident: #ty }
         })
         .collect();
 
-    match body {
+    let tokens = match body {
         IrArrowBody::Expr(expr) => {
             let params = &param_bindings;
             let expr_tokens = expr.codegen();
@@ -25,7 +30,11 @@ pub(crate) fn arrow_tokens(params: &[IrParam], body: &IrArrowBody) -> TokenStrea
             let stmt_tokens = stmts.iter().map(|stmt| stmt.codegen());
             quote! { | #( #params ),* | { #( #stmt_tokens )* } }
         }
-    }
+    };
+
+    typing::pop_return_type();
+    typing::pop_scope();
+    tokens
 }
 
 #[test]
@@ -52,10 +61,10 @@ fn test_arrow_tokens() {
 
     assert_eq!(
         tokens_block.to_string(),
-        "| a : runtime :: value :: Value | { return runtime :: value :: ops :: add (runtime :: value :: Value :: Number (1.0) , runtime :: value :: Value :: Number (2.0)) ; }",
+        "| a : :: std :: string :: String | { return (1.0) + (2.0) ; }",
     );
     assert_eq!(
         tokens_expr.to_string(),
-        "| a : runtime :: value :: Value | { runtime :: value :: Value :: Number (1.0) }",
+        "| a : :: std :: string :: String | { 1.0 }",
     );
 }

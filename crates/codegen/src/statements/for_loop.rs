@@ -3,7 +3,8 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use super::collect_stmt_tokens;
-use crate::Codegen;
+use super::var_decl::var_decl_tokens;
+use crate::{Codegen, typing};
 
 pub fn for_loop_tokens(
     init: Option<&IrForInit>,
@@ -11,6 +12,7 @@ pub fn for_loop_tokens(
     update: Option<&IrExpression>,
     body: &[IrStmt],
 ) -> TokenStream {
+    typing::push_scope();
     let init_tokens = render_for_init(init);
     let condition_tokens = condition.map(|expr| expr.codegen());
     let update_tokens = update
@@ -20,6 +22,7 @@ pub fn for_loop_tokens(
         })
         .unwrap_or_default();
     let body_tokens = collect_stmt_tokens(body);
+    typing::pop_scope();
 
     if let Some(condition_tokens) = condition_tokens {
         quote! {
@@ -47,8 +50,7 @@ pub fn for_loop_tokens(
 fn render_for_init(init: Option<&IrForInit>) -> TokenStream {
     match init {
         Some(IrForInit::VarDecl(vars)) => {
-            let decls = vars.iter().map(|var| var.codegen());
-            quote! { #(#decls)* }
+            var_decl_tokens(vars)
         }
         Some(IrForInit::Expr(expr)) => {
             let expr_tokens = expr.codegen();
@@ -89,19 +91,8 @@ mod tests {
         );
 
         let output = tokens.to_string();
-        assert!(
-            output.contains(
-                "let mut i : runtime :: value :: Value = runtime :: value :: Value :: Number (0.0)"
-            ),
-            "expected initialization to use Value: {output}"
-        );
-        assert!(
-            output.contains("runtime :: value :: ops :: less_than"),
-            "expected while condition to use Value less_than: {output}"
-        );
-        assert!(
-            output.contains("runtime :: value :: ops :: add"),
-            "expected increment to use runtime value ops add: {output}"
-        );
+        assert!(output.contains("let mut i : f64 = 0.0"), "unexpected init: {output}");
+        assert!(output.contains("(i) < (5.0)"), "unexpected condition: {output}");
+        assert!(output.contains("+ 1.0"), "unexpected increment: {output}");
     }
 }

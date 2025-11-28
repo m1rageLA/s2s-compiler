@@ -11,12 +11,11 @@ impl Codegen for IrLiteral {
         match self {
             IrLiteral::Number(value) => {
                 let lit = Literal::f64_unsuffixed(*value);
-                quote! { runtime::value::Value::Number(#lit) }
+                quote! { #lit }
             }
             IrLiteral::Str(value) => {
                 let lit = Literal::string(value);
-                // Strings are represented as runtime::value::Value in codegen
-                quote! { runtime::value::Value::String(#lit.to_string()) }
+                quote! { #lit.to_string() }
             }
             IrLiteral::Bool(value) => {
                 if *value {
@@ -38,7 +37,7 @@ mod tests {
         let tokens = IrLiteral::Number(42.5).codegen();
         assert_eq!(
             tokens.to_string(),
-            quote::quote! { runtime::value::Value::Number(42.5) }.to_string()
+            quote::quote! { 42.5 }.to_string()
         );
     }
 
@@ -47,7 +46,7 @@ mod tests {
         let tokens = IrLiteral::Str("hello".into()).codegen();
         assert_eq!(
             tokens.to_string(),
-            quote::quote! { runtime::value::Value::String("hello".to_string()) }.to_string()
+            quote::quote! { "hello".to_string() }.to_string()
         );
     }
 

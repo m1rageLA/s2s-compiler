@@ -42,9 +42,17 @@ fn detect_runtime_call(
         return Some(RuntimeNamespace::String(string_call));
     }
 
-    if matches!(object, IrExpression::Identifier(name) if name == "Math") && property == "random" {
-        if args.is_empty() {
-            return Some(RuntimeNamespace::Math(MathCall::Random));
+    if matches!(object, IrExpression::Identifier(name) if name == "Math") {
+        match property {
+            "random" if args.is_empty() => {
+                return Some(RuntimeNamespace::Math(MathCall::Random));
+            }
+            "sqrt" if args.len() == 1 => {
+                return Some(RuntimeNamespace::Math(MathCall::Sqrt {
+                    arg: Box::new(args[0].clone()),
+                }));
+            }
+            _ => {}
         }
     }
 
@@ -56,28 +64,49 @@ fn detect_runtime_call(
             if let IrExpression::Identifier(name) = object {
                 context::mark_mutated(name);
             }
-            let coerced_args = args
-                .iter()
-                .cloned()
-                .map(coerce_to_value)
-                .collect::<Vec<_>>();
+
+            let target_ty = infer_array_kind(object).map(IrType::Array);
+
+            let args = if matches!(
+                target_ty,
+                Some(IrType::Array(IrArrayKind::Any | IrArrayKind::Value | IrArrayKind::Unknown))
+                    | Some(IrType::Any)
+                    | Some(IrType::Value)
+                    | None
+            ) {
+                args.iter()
+                    .cloned()
+                    .map(coerce_to_value)
+                    .collect::<Vec<_>>()
+            } else {
+                args.to_vec()
+            };
+
             Some(RuntimeNamespace::Array(ArrayCall::Push {
                 target: Box::new(object.clone()),
-                args: coerced_args,
+                args,
             }))
         }
-        (_, "map") => args.first().cloned().map(|callback| {
-            RuntimeNamespace::Array(ArrayCall::Map {
-                target: Box::new(object.clone()),
-                callback: Box::new(callback),
+        (_, "map") => {
+            let element_kind = infer_array_kind(object);
+            args.first().cloned().map(|callback| {
+                let callback = annotate_array_callback(callback, element_kind);
+                RuntimeNamespace::Array(ArrayCall::Map {
+                    target: Box::new(object.clone()),
+                    callback: Box::new(callback),
+                })
             })
-        }),
-        (_, "filter") => args.first().cloned().map(|callback| {
-            RuntimeNamespace::Array(ArrayCall::Filter {
-                target: Box::new(object.clone()),
-                callback: Box::new(callback),
+        }
+        (_, "filter") => {
+            let element_kind = infer_array_kind(object);
+            args.first().cloned().map(|callback| {
+                let callback = annotate_array_callback(callback, element_kind);
+                RuntimeNamespace::Array(ArrayCall::Filter {
+                    target: Box::new(object.clone()),
+                    callback: Box::new(callback),
+                })
             })
-        }),
+        }
         (_, "pop") if args.is_empty() => Some(RuntimeNamespace::Array(ArrayCall::Pop {
             target: Box::new(object.clone()),
             args: vec![],
@@ -201,12 +230,53 @@ fn lower_computed_member(object: IrExpression, property: &ast::Expr) -> IrExpres
 }
 
 fn infer_array_kind(expr: &IrExpression) -> Option<IrArrayKind> {
-    match expr {
-        IrExpression::Identifier(name) => match context::lookup(name) {
-            Some(IrType::Array(kind)) => Some(kind),
+    match infer::infer_expression_type(expr) {
+        Some(IrType::Array(kind)) => Some(kind),
+        _ => match expr {
+            IrExpression::Identifier(name) => match context::lookup(name) {
+                Some(IrType::Array(kind)) => Some(kind),
+                _ => None,
+            },
             _ => None,
         },
-        _ => None,
+    }
+}
+
+fn annotate_array_callback(callback: IrExpression, element_kind: Option<IrArrayKind>) -> IrExpression {
+    let desired = element_kind.and_then(array_kind_to_type);
+
+    match callback {
+        IrExpression::Arrow { mut params, body } => {
+            if let Some(param) = params.first_mut() {
+                if matches!(param.ty, IrType::Any | IrType::Value) {
+                    if let Some(ty) = desired {
+                        param.ty = ty;
+                    }
+                }
+            }
+            IrExpression::Arrow { params, body }
+        }
+        IrExpression::Function(mut func) => {
+            if let Some(param) = func.params.first_mut() {
+                if matches!(param.ty, IrType::Any | IrType::Value) {
+                    if let Some(ty) = desired {
+                        param.ty = ty;
+                    }
+                }
+            }
+            IrExpression::Function(func)
+        }
+        other => other,
+    }
+}
+
+fn array_kind_to_type(kind: IrArrayKind) -> Option<IrType> {
+    match kind {
+        IrArrayKind::Number => Some(IrType::Number),
+        IrArrayKind::Str => Some(IrType::Str),
+        IrArrayKind::Bool => Some(IrType::Bool),
+        IrArrayKind::Value | IrArrayKind::Any => Some(IrType::Value),
+        IrArrayKind::Unknown => None,
     }
 }
 

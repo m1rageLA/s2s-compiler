@@ -51,15 +51,15 @@ mod tests {
 
         let rendered = render_expr(tokens);
         assert!(
-            rendered.contains("runtime::value::Value::Number(1.0)"),
+            rendered.contains("runtime::value::into_value(1.0)"),
             "formatted output:\n{rendered}"
         );
         assert!(
-            rendered.contains("runtime::value::Value::Number(2.0)"),
+            rendered.contains("runtime::value::into_value(2.0)"),
             "formatted output:\n{rendered}"
         );
         assert!(
-            rendered.contains("runtime::value::Value::Number(3.0)"),
+            rendered.contains("runtime::value::into_value(3.0)"),
             "formatted output:\n{rendered}"
         );
     }

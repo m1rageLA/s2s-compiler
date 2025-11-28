@@ -3,10 +3,11 @@ pub mod function;
 pub mod statements;
 pub use statements as stmt;
 pub mod runtime;
+mod typing;
 
 use std::fmt;
 
-use ir::{IrItem, IrModule};
+use ir::{IrExpression, IrItem, IrModule, IrType};
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -83,12 +84,119 @@ impl Codegen for IrModule {
     type Output = TokenStream;
 
     fn codegen(&self) -> TokenStream {
+        typing::reset();
         let mut generator = ModuleGenerator::new();
         for item in &self.items {
+            // Register top-level bindings so later expressions can be type-checked during codegen.
+            match item {
+                IrItem::Variable(var) => {
+                    typing::define(&var.name, var.ty);
+                    if let Some(ret) = function_return_from_initializer(var.value.as_ref()) {
+                        typing::define_function_return(&var.name, ret);
+                    }
+                }
+                IrItem::Function(func) => {
+                    typing::define_function_return(&func.name, func.ret);
+                    typing::define(&func.name, IrType::Value);
+                }
+                _ => {}
+            }
             generator.add_element(item.codegen());
         }
         generator.finish()
     }
+}
+
+fn function_return_from_initializer(expr: Option<&IrExpression>) -> Option<IrType> {
+    match expr {
+        Some(IrExpression::Function(func)) => Some(func.ret),
+        Some(IrExpression::Arrow { params, body }) => infer_arrow_return(params, body),
+        _ => None,
+    }
+}
+
+fn infer_arrow_return(params: &[ir::IrParam], body: &ir::IrArrowBody) -> Option<IrType> {
+    typing::push_scope();
+    for param in params {
+        typing::define(&param.name, param.ty);
+    }
+    let ty = match body {
+        ir::IrArrowBody::Expr(expr) => typing::infer_expression_type(expr),
+        ir::IrArrowBody::Block(stmts) => infer_returns(stmts),
+    };
+    typing::pop_scope();
+    ty
+}
+
+fn infer_returns(stmts: &[ir::IrStmt]) -> Option<IrType> {
+    let mut inferred: Option<IrType> = None;
+    let mut saw_return = false;
+
+    for stmt in stmts {
+        match stmt {
+            ir::IrStmt::Return(Some(expr)) => {
+                let ty = typing::infer_expression_type(expr);
+                if let Some(found) = ty {
+                    if let Some(existing) = inferred {
+                        if existing != found {
+                            return None;
+                        }
+                    } else {
+                        inferred = Some(found);
+                    }
+                } else {
+                    return None;
+                }
+                saw_return = true;
+            }
+            ir::IrStmt::Return(None) => {
+                if let Some(existing) = inferred {
+                    if existing != IrType::Unit {
+                        return None;
+                    }
+                } else {
+                    inferred = Some(IrType::Unit);
+                }
+                saw_return = true;
+            }
+            ir::IrStmt::Block(inner) => {
+                if let Some(inner_ty) = infer_returns(inner) {
+                    if let Some(existing) = inferred {
+                        if existing != inner_ty {
+                            return None;
+                        }
+                    } else {
+                        inferred = Some(inner_ty);
+                    }
+                    saw_return = true;
+                }
+            }
+            ir::IrStmt::If {
+                then_branch,
+                else_branch,
+                ..
+            } => {
+                let then_ty = infer_returns(then_branch);
+                let else_ty = else_branch.as_deref().and_then(infer_returns);
+                match (then_ty, else_ty) {
+                    (Some(a), Some(b)) if a == b => {
+                        if let Some(existing) = inferred {
+                            if existing != a {
+                                return None;
+                            }
+                        } else {
+                            inferred = Some(a);
+                        }
+                        saw_return = true;
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+    }
+
+    if saw_return { inferred } else { Some(IrType::Unit) }
 }
 
 impl Codegen for IrItem {
@@ -234,10 +342,10 @@ mod tests {
                             syn::Type::Path(path) => {
                                 assert_eq!(
                                     quote!(#path).to_string(),
-                                    quote!(runtime::value::Value).to_string()
+                                    quote!(f64).to_string()
                                 );
                             }
-                            _ => panic!("expected closure arg type to be runtime::value::Value"),
+                            _ => panic!("expected closure arg type to be f64"),
                         },
                         _ => panic!("expected typed closure argument"),
                     }
@@ -247,12 +355,10 @@ mod tests {
                             syn::Type::Path(path) => {
                                 assert_eq!(
                                     quote!(#path).to_string(),
-                                    quote!(runtime::value::Value).to_string()
+                                    quote!(f64).to_string()
                                 );
                             }
-                            _ => panic!(
-                                "expected closure return type to be runtime::value::Value path"
-                            ),
+                            _ => panic!("expected closure return type to be f64"),
                         },
                         _ => panic!("expected explicit return type"),
                     }

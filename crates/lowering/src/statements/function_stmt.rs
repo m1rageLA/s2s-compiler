@@ -10,6 +10,7 @@ pub(crate) fn lower(fn_decl: &ast::FnDecl) -> IrStmt {
 
     match expr {
         IrExpression::Function(func) => {
+            context::define_function_return(&name, func.ret);
             context::define(&name, IrType::Any);
             IrStmt::VarDecl(vec![IrVariable {
                 name: name.clone(),

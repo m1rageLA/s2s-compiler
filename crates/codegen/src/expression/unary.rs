@@ -2,40 +2,59 @@ use ir::{IrExpression, IrPostfixOp};
 use proc_macro2::{Literal, Span, TokenStream};
 use quote::{format_ident, quote};
 
-use crate::Codegen;
+use crate::{Codegen, typing};
 
 pub(crate) fn postfixunary_tokens(left: Box<IrExpression>, op: IrPostfixOp) -> TokenStream {
     if let IrExpression::Member { object, property } = left.as_ref() {
         return member_postfix_tokens(object.as_ref(), property, op);
     }
 
-    let left = left.codegen();
+    let inferred = typing::infer_expression_type(left.as_ref());
+    let left_tokens = left.codegen();
     let temp = format_ident!("ts_2_rs", span = Span::mixed_site());
 
     match op {
         IrPostfixOp::Increment => {
-            quote! ({
-                let ts_2_rs_target = &mut #left;
-                let #temp = (*ts_2_rs_target).clone();
-                let ts_2_rs_new = runtime::value::ops::add(
-                    #temp.clone(),
-                    runtime::value::Value::Number(1.0)
-                );
-                *ts_2_rs_target = ts_2_rs_new;
-                #temp
-            })
+            if matches!(inferred, Some(ir::IrType::Number)) {
+                quote! ({
+                    let ts_2_rs_target = &mut #left_tokens;
+                    let #temp = (*ts_2_rs_target);
+                    *ts_2_rs_target = #temp + 1.0;
+                    #temp
+                })
+            } else {
+                quote! ({
+                    let ts_2_rs_target = &mut #left_tokens;
+                    let #temp = (*ts_2_rs_target).clone();
+                    let ts_2_rs_new = runtime::value::ops::add(
+                        #temp.clone(),
+                        runtime::value::Value::Number(1.0)
+                    );
+                    *ts_2_rs_target = ts_2_rs_new;
+                    #temp
+                })
+            }
         }
         IrPostfixOp::Decrement => {
-            quote! ({
-                let ts_2_rs_target = &mut #left;
-                let #temp = (*ts_2_rs_target).clone();
-                let ts_2_rs_new = runtime::value::ops::sub(
-                    #temp.clone(),
-                    runtime::value::Value::Number(1.0)
-                );
-                *ts_2_rs_target = ts_2_rs_new;
-                #temp
-            })
+            if matches!(inferred, Some(ir::IrType::Number)) {
+                quote! ({
+                    let ts_2_rs_target = &mut #left_tokens;
+                    let #temp = (*ts_2_rs_target);
+                    *ts_2_rs_target = #temp - 1.0;
+                    #temp
+                })
+            } else {
+                quote! ({
+                    let ts_2_rs_target = &mut #left_tokens;
+                    let #temp = (*ts_2_rs_target).clone();
+                    let ts_2_rs_new = runtime::value::ops::sub(
+                        #temp.clone(),
+                        runtime::value::Value::Number(1.0)
+                    );
+                    *ts_2_rs_target = ts_2_rs_new;
+                    #temp
+                })
+            }
         }
     }
 }

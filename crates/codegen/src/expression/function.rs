@@ -2,9 +2,15 @@ use ir::{IrFunctionExpr, IrType};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::{Codegen, function::render_type};
+use crate::{Codegen, function::render_type, typing};
 
 pub(crate) fn function_expr_tokens(function: &IrFunctionExpr) -> TokenStream {
+    typing::push_scope();
+    for param in &function.params {
+        typing::define(&param.name, param.ty);
+    }
+    typing::push_return_type(function.ret);
+
     let params: Vec<TokenStream> = function
         .params
         .iter()
@@ -16,6 +22,9 @@ pub(crate) fn function_expr_tokens(function: &IrFunctionExpr) -> TokenStream {
         .collect();
 
     let body_tokens: Vec<TokenStream> = function.body.iter().map(|stmt| stmt.codegen()).collect();
+
+    typing::pop_return_type();
+    typing::pop_scope();
 
     if matches!(function.ret, IrType::Any) {
         let params = &params;

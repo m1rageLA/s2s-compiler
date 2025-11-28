@@ -1,18 +1,39 @@
-use crate::Codegen;
-use ir::IrExpression;
+use crate::{Codegen, typing};
+use ir::{IrArrayKind, IrExpression, IrType};
 use proc_macro2::TokenStream;
 use quote::quote;
 
 pub(crate) fn join_tokens(target: &IrExpression, separator: Option<&IrExpression>) -> TokenStream {
     let target_tokens = target.codegen();
-    let separator_tokens = match separator {
-        Some(expr) => {
-            let tokens = expr.codegen();
-            quote! { Some(runtime::value::into_value((#tokens).clone())) }
+    let inferred = typing::infer_expression_type(target);
+
+    match inferred {
+        Some(IrType::Array(IrArrayKind::Number))
+        | Some(IrType::Array(IrArrayKind::Str))
+        | Some(IrType::Array(IrArrayKind::Bool)) => {
+            let separator_tokens = separator
+                .map(|expr| expr.codegen())
+                .unwrap_or_else(|| quote! { ",".to_string() });
+            quote! {{
+                let sep = #separator_tokens;
+                #target_tokens
+                    .iter()
+                    .map(|v| v.to_string())
+                    .collect::<::std::vec::Vec<_>>()
+                    .join(&sep)
+            }}
         }
-        None => quote! { None },
-    };
-    quote! { runtime::array::join(&#target_tokens, #separator_tokens) }
+        _ => {
+            let separator_tokens = match separator {
+                Some(expr) => {
+                    let tokens = expr.codegen();
+                    quote! { Some(runtime::value::into_value((#tokens).clone())) }
+                }
+                None => quote! { None },
+            };
+            quote! { runtime::array::join(&#target_tokens, #separator_tokens) }
+        }
+    }
 }
 
 #[cfg(test)]

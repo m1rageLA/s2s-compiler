@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use swc_common::{
     comments::{Comments, SingleThreadedComments},
     Globals, Mark, GLOBALS,
@@ -11,7 +12,6 @@ use swc_ecma_compat_es2015::{
 };
 use swc_ecma_transforms_base::{fixer::fixer, hygiene::hygiene};
 use swc_ecma_transforms::resolver;
-use swc_ecma_transforms_typescript::strip;
 use swc_ecma_visit::VisitMutWith;
 
 pub(crate) fn ast_normalize(ast: Module) -> Module {
@@ -26,18 +26,16 @@ fn normalize(mut ast: Module) -> Module {
     // 1️⃣ resolver — мутирует AST (VisitMut)
     ast.visit_mut_with(&mut resolver(unresolved, top_level, true));
 
-    // 2️⃣ strip TypeScript -> чистый JS AST
     let mut program = Program::Module(ast);
-    program = program.apply(strip(unresolved, top_level));
 
-    // 3️⃣ es2015 — кастомный Pass, сохраняющий class / const / let
+    // 2️⃣ es2015 — кастомный Pass, сохраняющий class / const / let
     program = program.apply(es2015_with_es6_preserved(
         unresolved,
         None::<SingleThreadedComments>,
         Default::default(),
     ));
 
-    // 4️⃣ hygiene и fixer — Fold
+    // 3️⃣ hygiene и fixer — Fold
     program = program.apply(hygiene());
     program = program.apply(fixer(None));
 

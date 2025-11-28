@@ -1,0 +1,119 @@
+function factorial(n: number): number {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+function sumRange(n: number): number {
+    let total: number = 0;
+    for (let i = 1; i <= n; i = i + 1) {
+        total = total + i;
+    }
+    return total;
+}
+
+function fibonacci(n: number): number {
+    if (n <= 1) {
+        return n;
+    }
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+const double = (value: number): number => value * 2;
+const increment = (value: number): number => value + 1;
+
+const pipeline = (value: number): number => {
+    const first = increment(value);
+    return double(first);
+};
+
+console.log('=== math and functions ===');
+const fact5 = factorial(5);
+const sum5 = sumRange(5);
+const fib7 = fibonacci(7);
+const pipelineResult = pipeline(3);
+console.log(`fact=${fact5}`);
+console.log(`sum=${sum5}`);
+console.log(`fib=${fib7}`);
+console.log(`pipeline=${pipelineResult}`);
+
+console.log('=== loops ===');
+let countdown: number = 3;
+while (countdown > 0) {
+    console.log(`while:${countdown}`);
+    countdown = countdown - 1;
+}
+
+let seen: number = 0;
+do {
+    console.log(`do:${seen}`);
+    seen = seen + 1;
+} while (seen < 2);
+
+let loopTotal: number = 0;
+for (let i = 0; i < 3; i = i + 1) {
+    loopTotal = loopTotal + i;
+}
+console.log(`for:${loopTotal}`);
+
+let cursor: number = 1;
+cursor++;
+cursor--;
+console.log(`cursor=${cursor}`);
+
+console.log('=== arrays ===');
+let values: number[] = [1, 2];
+const lenAfterPush = values.push(3, 4);
+const thirdValue = values[2];
+const finalLength = values.length;
+console.log(`len=${finalLength}`);
+console.log(`afterPush=${lenAfterPush}`);
+console.log(`third=${thirdValue}`);
+
+const incremented = values.map((value) => value + 1);
+console.log(`inc0=${incremented[0]}`);
+console.log(`inc1=${incremented[1]}`);
+console.log(`inc2=${incremented[2]}`);
+
+const evens = values.filter((value) => value % 2 === 0);
+console.log(`evens=${evens.length}`);
+
+console.log('=== arrow functions ===');
+const start = 5;
+const afterDouble = double(start);
+const afterIncrement = increment(afterDouble);
+console.log(`double=${afterDouble}`);
+console.log(`increment=${afterIncrement}`);
+console.log(`pipeline=${pipeline(8)}`);
+
+console.log('=== conditionals ===');
+function labelFor(score: number): string {
+    if (score > 5) {
+        return 'high';
+    }
+    return 'low';
+}
+
+const score: number = 7;
+const grade = score >= 9 ? 'A' : (score >= 7 ? 'B' : 'C');
+const label = labelFor(score);
+const status = label === 'high' ? 'pass' : 'fail';
+console.log(`user=compiler grade=${grade} label=${label} status=${status}`);
+
+console.log('=== binary dynamics ===');
+console.log('string' + 'string');
+console.log('5' - 2);
+console.log('5' + 2);
+console.log(10 / '2');
+console.log('5' == 5);
+console.log('5' === 5);
+console.log(3 < '10');
+
+function makeValue(): any {
+    const inner = 'foo' + 'bar';
+    return inner;
+}
+
+const value = makeValue();
+console.log(value);

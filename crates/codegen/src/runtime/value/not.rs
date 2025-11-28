@@ -23,7 +23,7 @@ mod tests {
         assert_eq!(
             tokens.to_string(),
             quote! {{
-                let value_tmp = runtime::value::into_value((runtime::value::Value::Number(0.0)).clone());
+                let value_tmp = runtime::value::into_value((0.0).clone());
                 runtime::value::ops::logical_not(value_tmp)
             }}
             .to_string()

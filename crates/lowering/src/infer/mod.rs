@@ -1,5 +1,7 @@
 use ir::{IrArrayKind, IrExpression, IrType};
 
+use crate::context;
+
 mod expression_binary;
 mod expression_conditional;
 mod expression_identifier;
@@ -31,6 +33,7 @@ pub(crate) fn infer_expression_type(expr: &IrExpression) -> Option<IrType> {
         IrExpression::Array(elements) => Some(IrType::Array(infer_array_kind(elements))),
         IrExpression::Template(parts) => expression_template::infer_template(parts),
         IrExpression::RuntimeCall(call) => expression_runtime::infer_runtime(call),
+        IrExpression::Call { callee, .. } => infer_call(callee),
         _ => expression_trivial::infer_default(expr),
     }
 }
@@ -69,6 +72,13 @@ fn infer_array_kind(elements: &[IrExpression]) -> IrArrayKind {
     match kind {
         IrArrayKind::Unknown => IrArrayKind::Any,
         other => other,
+    }
+}
+
+fn infer_call(callee: &IrExpression) -> Option<IrType> {
+    match callee {
+        IrExpression::Identifier(name) => context::lookup_function_return(name),
+        _ => None,
     }
 }
 

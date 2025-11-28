@@ -32,14 +32,11 @@ fn handles_literal_initializers() {
     assert_eq!(total.ty, IrType::Number);
     let expr = total.value.as_ref().expect("total should have initializer");
     match expr {
-        IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Add {
-            left,
-            right,
-        })) => {
+        IrExpression::Binary { op, left, right } if *op == ir::IrBinOp::Add => {
             assert_number_literal(Some(left.as_ref()), 1.0);
             assert_number_literal(Some(right.as_ref()), 2.0);
         }
-        other => panic!("expected runtime add expression for total, got {other:?}"),
+        other => panic!("expected add expression for total, got {other:?}"),
     }
 
     let negative = expect_variable(&ir_module.items[3], "negative");

@@ -2,9 +2,12 @@ use ir::IrVariable;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::Codegen;
+use crate::{Codegen, typing};
 
 pub fn var_decl_tokens(vars: &[IrVariable]) -> TokenStream {
+    for var in vars {
+        typing::define(&var.name, var.ty);
+    }
     let decls = vars.iter().map(|var| var.codegen());
     quote! { #(#decls)* }
 }
@@ -33,7 +36,7 @@ mod tests {
 
         let tokens = var_decl_tokens(&vars);
         let expected = quote! {
-            let a: runtime::value::Value = runtime::value::Value::Number(1.0);
+            let a: f64 = 1.0;
             let mut b: bool = false;
         };
 

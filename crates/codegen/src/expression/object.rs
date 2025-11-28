@@ -53,7 +53,7 @@ mod tests {
             let mut map = ::std::collections::BTreeMap::<::std::string::String, runtime::value::Value>::new();
             map.insert(
                 "a".to_string(),
-                runtime::value::into_value(runtime::value::Value::Number(1.0))
+                runtime::value::into_value(1.0)
             );
             map.insert("b".to_string(), runtime::value::into_value(value));
             runtime::value::Value::Object(map)

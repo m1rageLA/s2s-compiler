@@ -13,18 +13,36 @@ fn ts_type_to_ir(ty: &ast::TsType) -> IrType {
         ast::TsType::TsKeywordType(keyword) => keyword::from_keyword(keyword),
         ast::TsType::TsArrayType(array) => {
             let element_ty = ts_type_to_ir(&array.elem_type);
-            let kind = match element_ty {
-                IrType::Number => IrArrayKind::Number,
-                IrType::Str => IrArrayKind::Str,
-                IrType::Bool => IrArrayKind::Bool,
-                IrType::Value => IrArrayKind::Value,
-                IrType::Any => IrArrayKind::Any,
-                _ => IrArrayKind::Unknown,
-            };
-            IrType::Array(kind)
+            IrType::Array(array_kind_from_type(element_ty))
         }
+        ast::TsType::TsTypeRef(type_ref) => match &type_ref.type_name {
+            ast::TsEntityName::Ident(ident)
+                if ident.sym == *"Array" || ident.sym == *"ReadonlyArray" =>
+            {
+                let element_ty = type_ref
+                    .type_params
+                    .as_ref()
+                    .and_then(|params| params.params.first())
+                    .map(|ty| ts_type_to_ir(ty))
+                    .unwrap_or(IrType::Any);
+
+                IrType::Array(array_kind_from_type(element_ty))
+            }
+            _ => unknown::any(),
+        },
         ast::TsType::TsParenthesizedType(inner) => ts_type_to_ir(&inner.type_ann),
         _ => unknown::any(),
+    }
+}
+
+fn array_kind_from_type(element_ty: IrType) -> IrArrayKind {
+    match element_ty {
+        IrType::Number => IrArrayKind::Number,
+        IrType::Str => IrArrayKind::Str,
+        IrType::Bool => IrArrayKind::Bool,
+        IrType::Value => IrArrayKind::Value,
+        IrType::Any => IrArrayKind::Any,
+        _ => IrArrayKind::Unknown,
     }
 }
 
@@ -72,13 +90,13 @@ mod tests {
         let number_array = infer_type("const values: number[] = [];");
         assert_eq!(number_array, IrType::Array(IrArrayKind::Number));
 
-        let unknown_array = infer_type("const mixed: Array<string> = [];");
-        assert_eq!(unknown_array, IrType::Any);
+        let string_array = infer_type("const mixed: Array<string> = [];");
+        assert_eq!(string_array, IrType::Array(IrArrayKind::Str));
     }
 
     #[test]
     fn falls_back_to_any_for_unknown_types() {
-        let custom_ty = infer_type("const values: Array<number> = [];");
+        let custom_ty = infer_type("const values: CustomType = [];");
         assert_eq!(custom_ty, IrType::Any);
     }
 }

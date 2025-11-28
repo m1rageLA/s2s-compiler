@@ -148,18 +148,13 @@ mod tests {
             other => panic!("expected variable declaration, got {other:?}"),
         };
 
-        let fn_expr = match binding
-            .init
-            .as_ref()
-            .expect("expected initializer")
-            .as_ref()
-        {
-            ast::Expr::Fn(fn_expr) => fn_expr,
-            other => panic!("expected function expression, got {other:?}"),
+        let arrow = match binding.init.as_ref().expect("expected initializer").as_ref() {
+            ast::Expr::Arrow(arrow) => arrow,
+            other => panic!("expected arrow expression, got {other:?}"),
         };
 
-        let params = params_to_ir(&fn_expr.function.params);
-        assert_eq!(params.len(), 1);
+        let params = params_to_ir(&arrow.params);
+        assert_eq!(params.len(), 1, "expected single destructured param");
         assert_eq!(params[0].name, "unsupported_param");
     }
 }

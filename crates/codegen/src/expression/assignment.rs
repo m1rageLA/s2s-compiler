@@ -2,7 +2,7 @@ use ir::{IrAssignOp, IrExpression};
 use proc_macro2::{Literal, Span, TokenStream};
 use quote::{format_ident, quote};
 
-use crate::Codegen;
+use crate::{Codegen, typing};
 
 use super::unsupported::unsupported_assign_op;
 
@@ -22,48 +22,134 @@ pub(crate) fn assignment_tokens(
     let value_ident = format_ident!("ts_2_rs_value", span = Span::mixed_site());
     let rhs_ident = format_ident!("ts_2_rs_rhs", span = Span::mixed_site());
 
+    let left_ty = typing::infer_expression_type(left);
+    let right_ty = typing::infer_expression_type(right);
+    let dynamic = matches!(left_ty, Some(ir::IrType::Any | ir::IrType::Value)) || left_ty.is_none();
+    let coerce_rhs = |tokens: TokenStream| {
+        typing::coerce_to_type(tokens, &left_ty.unwrap_or(ir::IrType::Value), right_ty)
+    };
+
     match op {
-        IrAssignOp::Assign => quote!({
-            let #value_ident = (#right_tokens).clone();
-            let #target_ident = &mut #left_tokens;
-            *#target_ident = (#value_ident).clone();
-            #value_ident
-        }),
-        IrAssignOp::AddAssign => value_compound_assignment(
-            quote!(runtime::value::ops::add),
-            &target_ident,
-            &rhs_ident,
-            &left_tokens,
-            &right_tokens,
-        ),
-        IrAssignOp::SubAssign => value_compound_assignment(
-            quote!(runtime::value::ops::sub),
-            &target_ident,
-            &rhs_ident,
-            &left_tokens,
-            &right_tokens,
-        ),
-        IrAssignOp::MulAssign => value_compound_assignment(
-            quote!(runtime::value::ops::mul),
-            &target_ident,
-            &rhs_ident,
-            &left_tokens,
-            &right_tokens,
-        ),
-        IrAssignOp::DivAssign => value_compound_assignment(
-            quote!(runtime::value::ops::div),
-            &target_ident,
-            &rhs_ident,
-            &left_tokens,
-            &right_tokens,
-        ),
-        IrAssignOp::ModAssign => value_compound_assignment(
-            quote!(runtime::value::ops::modulo),
-            &target_ident,
-            &rhs_ident,
-            &left_tokens,
-            &right_tokens,
-        ),
+        IrAssignOp::Assign => {
+            if dynamic {
+                quote!({
+                    let #value_ident = (#right_tokens).clone();
+                    let #target_ident = &mut #left_tokens;
+                    *#target_ident = (#value_ident).clone();
+                    #value_ident
+                })
+            } else {
+                let coerced = coerce_rhs(quote! { (#right_tokens) });
+                quote!({
+                    let #value_ident = #coerced;
+                    let #target_ident = &mut #left_tokens;
+                    *#target_ident = (#value_ident).clone();
+                    #value_ident
+                })
+            }
+        }
+        IrAssignOp::AddAssign => {
+            if dynamic {
+                value_compound_assignment(
+                    quote!(runtime::value::ops::add),
+                    &target_ident,
+                    &rhs_ident,
+                    &left_tokens,
+                    &right_tokens,
+                )
+            } else if matches!(left_ty, Some(ir::IrType::Str)) {
+                quote!({
+                    let #rhs_ident = (#right_tokens).to_string();
+                    let #target_ident = &mut #left_tokens;
+                    #target_ident.push_str(&#rhs_ident);
+                    (#target_ident).clone()
+                })
+            } else {
+                let coerced_rhs = coerce_rhs(quote! { (#right_tokens) });
+                quote!({
+                    let #rhs_ident = #coerced_rhs;
+                    let #target_ident = &mut #left_tokens;
+                    *#target_ident = (*#target_ident) + (#rhs_ident);
+                    (*#target_ident)
+                })
+            }
+        }
+        IrAssignOp::SubAssign => {
+            if dynamic {
+                value_compound_assignment(
+                    quote!(runtime::value::ops::sub),
+                    &target_ident,
+                    &rhs_ident,
+                    &left_tokens,
+                    &right_tokens,
+                )
+            } else {
+                let coerced_rhs = coerce_rhs(quote! { (#right_tokens) });
+                quote!({
+                    let #rhs_ident = #coerced_rhs;
+                    let #target_ident = &mut #left_tokens;
+                    *#target_ident = (*#target_ident) - (#rhs_ident);
+                    (*#target_ident)
+                })
+            }
+        }
+        IrAssignOp::MulAssign => {
+            if dynamic {
+                value_compound_assignment(
+                    quote!(runtime::value::ops::mul),
+                    &target_ident,
+                    &rhs_ident,
+                    &left_tokens,
+                    &right_tokens,
+                )
+            } else {
+                let coerced_rhs = coerce_rhs(quote! { (#right_tokens) });
+                quote!({
+                    let #rhs_ident = #coerced_rhs;
+                    let #target_ident = &mut #left_tokens;
+                    *#target_ident = (*#target_ident) * (#rhs_ident);
+                    (*#target_ident)
+                })
+            }
+        }
+        IrAssignOp::DivAssign => {
+            if dynamic {
+                value_compound_assignment(
+                    quote!(runtime::value::ops::div),
+                    &target_ident,
+                    &rhs_ident,
+                    &left_tokens,
+                    &right_tokens,
+                )
+            } else {
+                let coerced_rhs = coerce_rhs(quote! { (#right_tokens) });
+                quote!({
+                    let #rhs_ident = #coerced_rhs;
+                    let #target_ident = &mut #left_tokens;
+                    *#target_ident = (*#target_ident) / (#rhs_ident);
+                    (*#target_ident)
+                })
+            }
+        }
+        IrAssignOp::ModAssign => {
+            if dynamic {
+                value_compound_assignment(
+                    quote!(runtime::value::ops::modulo),
+                    &target_ident,
+                    &rhs_ident,
+                    &left_tokens,
+                    &right_tokens,
+                )
+            } else {
+                let coerced_rhs = coerce_rhs(quote! { (#right_tokens) });
+                quote!({
+                    let #rhs_ident = #coerced_rhs;
+                    let #target_ident = &mut #left_tokens;
+                    *#target_ident = (*#target_ident) % (#rhs_ident);
+                    (*#target_ident)
+                })
+            }
+        }
         IrAssignOp::LeftShiftAssign => bitwise_assignment(
             quote!(<<),
             &target_ident,
@@ -278,7 +364,7 @@ mod tests {
         );
 
         let expected = quote!({
-            let ts_2_rs_value = (runtime::value::Value::Number(5.0)).clone();
+            let ts_2_rs_value = (5.0).clone();
             let ts_2_rs_target = &mut value;
             *ts_2_rs_target = (ts_2_rs_value).clone();
             ts_2_rs_value
@@ -296,7 +382,7 @@ mod tests {
         );
 
         let expected = quote!({
-            let ts_2_rs_rhs = (runtime::value::Value::Number(2.0)).clone();
+            let ts_2_rs_rhs = (2.0).clone();
             let ts_2_rs_target = &mut counter;
             let ts_2_rs_new =
                 runtime::value::ops::add((*ts_2_rs_target).clone(), (ts_2_rs_rhs).clone());
@@ -316,7 +402,7 @@ mod tests {
         );
 
         let expected = quote!({
-            let ts_2_rs_rhs = (runtime::value::Value::Number(3.0)).clone();
+            let ts_2_rs_rhs = (3.0).clone();
             let ts_2_rs_target = &mut base;
             let ts_2_rs_base = (*ts_2_rs_target).clone().into_number();
             let ts_2_rs_exp = (ts_2_rs_rhs).clone().into_number();

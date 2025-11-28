@@ -6,6 +6,9 @@ pub(crate) fn from_keyword(keyword: &ast::TsKeywordType) -> IrType {
         ast::TsKeywordTypeKind::TsStringKeyword => IrType::Str,
         ast::TsKeywordTypeKind::TsNumberKeyword => IrType::Number,
         ast::TsKeywordTypeKind::TsBooleanKeyword => IrType::Bool,
+        ast::TsKeywordTypeKind::TsVoidKeyword | ast::TsKeywordTypeKind::TsUndefinedKeyword => {
+            IrType::Unit
+        }
         _ => IrType::Any,
     }
 }

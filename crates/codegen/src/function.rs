@@ -1,21 +1,30 @@
-use ir::{IrExpression, IrFunction, IrType, IrVariable};
+use ir::{IrArrayKind, IrExpression, IrFunction, IrType, IrVariable};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::Codegen;
+use crate::{Codegen, typing};
 
 impl Codegen for IrFunction {
     type Output = TokenStream;
 
     fn codegen(&self) -> TokenStream {
         let name = format_ident!("{}", self.name);
+        typing::push_scope();
+        for param in &self.params {
+            typing::define(&param.name, param.ty);
+        }
+        typing::push_return_type(self.ret);
+
         let params = self.params.iter().map(|param| {
             let ident = format_ident!("{}", param.name);
             let ty = render_type(&param.ty);
             quote! { #ident: #ty }
         });
         let return_ty = render_type(&self.ret);
-        let body = self.body.iter().map(|stmt| stmt.codegen());
+        let body: Vec<_> = self.body.iter().map(|stmt| stmt.codegen()).collect();
+
+        typing::pop_return_type();
+        typing::pop_scope();
 
         quote! {
             fn #name( #( #params ),* ) -> #return_ty {
@@ -30,22 +39,18 @@ impl Codegen for IrVariable {
 
     fn codegen(&self) -> TokenStream {
         let ident = format_ident!("{}", self.name);
+        let expr_ty = self.value.as_ref().and_then(|expr| typing::infer_expression_type(expr));
         let value = self
             .value
             .as_ref()
             .map(|expr| {
-                let tokens = expr.codegen();
-                if matches!(
-                    (&self.ty, expr),
-                    (
-                        IrType::Number | IrType::Str | IrType::Any | IrType::Value,
-                        IrExpression::Identifier(_)
-                    )
-                ) {
-                    quote! { (#tokens).clone() }
-                } else {
-                    tokens
+                let mut tokens = expr.codegen();
+                if matches!((&self.ty, expr), (IrType::Number | IrType::Str, IrExpression::Identifier(_)))
+                    || matches!(self.ty, IrType::Array(_))
+                {
+                    tokens = quote! { (#tokens).clone() };
                 }
+                typing::coerce_to_type(tokens, &self.ty, expr_ty)
             })
             .unwrap_or_else(|| default_value(&self.ty));
 
@@ -66,24 +71,38 @@ impl Codegen for IrVariable {
 
 pub(crate) fn render_type(ty: &IrType) -> TokenStream {
     match ty {
-        IrType::Number => quote! { runtime::value::Value },
-        IrType::Str => quote! { runtime::value::Value },
+        IrType::Number => quote! { f64 },
+        IrType::Str => quote! { ::std::string::String },
         IrType::Bool => quote! { bool },
         IrType::Unit => quote! { () },
         IrType::Any => quote! { runtime::value::Value },
         IrType::Value => quote! { runtime::value::Value },
-        IrType::Array(_) => quote! { ::std::vec::Vec<runtime::value::Value> },
+        IrType::Array(kind) => match kind {
+            IrArrayKind::Number => quote! { ::std::vec::Vec<f64> },
+            IrArrayKind::Str => quote! { ::std::vec::Vec<::std::string::String> },
+            IrArrayKind::Bool => quote! { ::std::vec::Vec<bool> },
+            IrArrayKind::Value | IrArrayKind::Any | IrArrayKind::Unknown => {
+                quote! { ::std::vec::Vec<runtime::value::Value> }
+            }
+        },
     }
 }
 
 fn default_value(ty: &IrType) -> TokenStream {
     match ty {
-        IrType::Number => quote! { runtime::value::Value::Number(0.0) },
-        IrType::Str => quote! { runtime::value::Value::String(::std::string::String::new()) },
+        IrType::Number => quote! { 0.0f64 },
+        IrType::Str => quote! { ::std::string::String::new() },
         IrType::Bool => quote! { false },
         IrType::Unit => quote! { () },
         IrType::Any | IrType::Value => quote! { runtime::value::Value::Undefined },
-        IrType::Array(_) => quote! { ::std::vec::Vec::<runtime::value::Value>::new() },
+        IrType::Array(IrArrayKind::Number) => quote! { ::std::vec::Vec::<f64>::new() },
+        IrType::Array(IrArrayKind::Str) => {
+            quote! { ::std::vec::Vec::<::std::string::String>::new() }
+        }
+        IrType::Array(IrArrayKind::Bool) => quote! { ::std::vec::Vec::<bool>::new() },
+        IrType::Array(IrArrayKind::Value | IrArrayKind::Any | IrArrayKind::Unknown) => {
+            quote! { ::std::vec::Vec::<runtime::value::Value>::new() }
+        }
     }
 }
 
@@ -131,7 +150,7 @@ mod tests {
         let first = inputs.next().unwrap();
         let second = inputs.next().unwrap();
 
-        let expected_ty = quote!(runtime::value::Value).to_string();
+        let expected_ty = quote!(f64).to_string();
 
         for arg in [first, second] {
             match arg {
@@ -178,56 +197,10 @@ mod tests {
             .as_ref();
 
         match value_expr {
-            Expr::Call(call) => {
-                let func_path = match call.func.as_ref() {
-                    Expr::Path(path) => path,
-                    Expr::Paren(paren) => match paren.expr.as_ref() {
-                        Expr::Path(path) => path,
-                        _ => panic!("expected path call for runtime add"),
-                    },
-                    _ => panic!("expected function path for runtime add"),
-                };
-
-                let segments: Vec<_> = func_path
-                    .path
-                    .segments
-                    .iter()
-                    .map(|seg| seg.ident.to_string())
-                    .collect();
-                assert_eq!(segments, ["runtime", "value", "ops", "add"]);
-
-                assert_eq!(call.args.len(), 2);
-
-                let left_ident = match call.args.first().unwrap() {
-                    Expr::Path(path) => path.path.get_ident().unwrap().to_string(),
-                    Expr::Call(inner_call) => match inner_call.func.as_ref() {
-                        Expr::Path(path) => path.path.get_ident().unwrap().to_string(),
-                        _ => panic!("unexpected left argument"),
-                    },
-                    Expr::Paren(paren) => match paren.expr.as_ref() {
-                        Expr::Path(path) => path.path.get_ident().unwrap().to_string(),
-                        _ => panic!("unexpected left argument"),
-                    },
-                    _ => panic!("unexpected left argument"),
-                };
-
-                let right_ident = match call.args.last().unwrap() {
-                    Expr::Path(path) => path.path.get_ident().unwrap().to_string(),
-                    Expr::Call(inner_call) => match inner_call.func.as_ref() {
-                        Expr::Path(path) => path.path.get_ident().unwrap().to_string(),
-                        _ => panic!("unexpected right argument"),
-                    },
-                    Expr::Paren(paren) => match paren.expr.as_ref() {
-                        Expr::Path(path) => path.path.get_ident().unwrap().to_string(),
-                        _ => panic!("unexpected right argument"),
-                    },
-                    _ => panic!("unexpected right argument"),
-                };
-
-                assert_eq!(left_ident, "a");
-                assert_eq!(right_ident, "b");
+            Expr::Binary(bin) => {
+                assert!(matches!(bin.op, syn::BinOp::Add(_)));
             }
-            _ => panic!("expected runtime value add call in return"),
+            _ => panic!("expected binary add in return"),
         }
     }
 
@@ -266,8 +239,8 @@ mod tests {
     #[test]
     fn render_type_maps_all_variants() {
         let cases = vec![
-            (IrType::Number, quote! { runtime::value::Value }),
-            (IrType::Str, quote! { runtime::value::Value }),
+            (IrType::Number, quote! { f64 }),
+            (IrType::Str, quote! { ::std::string::String }),
             (IrType::Bool, quote! { bool }),
             (IrType::Unit, quote! { () }),
             (IrType::Any, quote! { runtime::value::Value }),

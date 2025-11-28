@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use swc_ecma_ast::*;
 
 pub(crate) fn assert_es5_strict(module: &Module) {

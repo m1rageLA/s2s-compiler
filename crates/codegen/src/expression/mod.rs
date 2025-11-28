@@ -39,11 +39,7 @@ impl Codegen for IrExpression {
         match self {
             IrExpression::Identifier(name) => identifier_tokens(name),
             IrExpression::Literal(literal) => literal.codegen(),
-            IrExpression::Binary { op, left, right } => {
-                let left_tokens = left.codegen();
-                let right_tokens = right.codegen();
-                binary_op_tokens(*op, left_tokens, right_tokens)
-            }
+            IrExpression::Binary { op, left, right } => binary_op_tokens(*op, left, right),
             IrExpression::Assignment { op, left, right } => assignment_tokens(*op, left, right),
             IrExpression::Template(parts) => template_literal_tokens(parts),
             IrExpression::RuntimeCall(namespace) => runtime_call_tokens(namespace),

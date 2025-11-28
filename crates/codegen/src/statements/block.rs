@@ -3,9 +3,12 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use super::collect_stmt_tokens;
+use crate::typing;
 
 pub fn block_tokens(stmts: &[IrStmt]) -> TokenStream {
+    typing::push_scope();
     let stmt_tokens = collect_stmt_tokens(stmts);
+    typing::pop_scope();
     quote! { { #(#stmt_tokens)* } }
 }
 
@@ -22,7 +25,7 @@ mod tests {
         ];
 
         let tokens = block_tokens(&stmts);
-        let expected = quote! { { value; return runtime::value::Value::Number(1.0); } };
+        let expected = quote! { { value; return 1.0; } };
 
         assert_eq!(tokens.to_string(), expected.to_string());
     }

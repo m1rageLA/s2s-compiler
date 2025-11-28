@@ -1,18 +1,55 @@
 use super::*;
-use ir::ValueCall;
+use ir::{IrType, ValueCall};
+use crate::infer;
 
 pub(crate) fn binary_expr_to_ir(b: &ast::BinExpr) -> IrExpression {
     let left = expr_to_ir(&b.left);
     let right = expr_to_ir(&b.right);
 
-    if let Some(runtime_expr) = value_runtime_for_binary(&b.op, left.clone(), right.clone()) {
-        return runtime_expr;
+    let left_ty = infer::infer_expression_type(&left);
+    let right_ty = infer::infer_expression_type(&right);
+
+    if needs_value_runtime(&b.op, left_ty, right_ty) {
+        if let Some(runtime_expr) = value_runtime_for_binary(&b.op, left.clone(), right.clone()) {
+            return runtime_expr;
+        }
     }
 
     IrExpression::Binary {
         op: bin_op_to_ir(&b.op),
         left: Box::new(left),
         right: Box::new(right),
+    }
+}
+
+fn needs_value_runtime(
+    op: &ast::BinaryOp,
+    left_ty: Option<IrType>,
+    right_ty: Option<IrType>,
+) -> bool {
+    let dynamic_lhs = matches!(left_ty, Some(IrType::Any | IrType::Value));
+    let dynamic_rhs = matches!(right_ty, Some(IrType::Any | IrType::Value));
+
+    if dynamic_lhs || dynamic_rhs {
+        return true;
+    }
+
+    // If we failed to infer either side, stay conservative for operators that rely on JS coercions.
+    match op {
+        ast::BinaryOp::Add
+        | ast::BinaryOp::Sub
+        | ast::BinaryOp::Mul
+        | ast::BinaryOp::Div
+        | ast::BinaryOp::Mod
+        | ast::BinaryOp::EqEq
+        | ast::BinaryOp::EqEqEq
+        | ast::BinaryOp::NotEq
+        | ast::BinaryOp::NotEqEq
+        | ast::BinaryOp::Lt
+        | ast::BinaryOp::LtEq
+        | ast::BinaryOp::Gt
+        | ast::BinaryOp::GtEq => left_ty.is_none() || right_ty.is_none(),
+        _ => false,
     }
 }
 
@@ -207,11 +244,11 @@ mod tests {
             }};
         }
 
-        expect_value_call!("add", ir::ValueCall::Add { .. });
-        expect_value_call!("sub", ir::ValueCall::Sub { .. });
-        expect_value_call!("mul", ir::ValueCall::Mul { .. });
-        expect_value_call!("div", ir::ValueCall::Div { .. });
-        expect_value_call!("modulo", ir::ValueCall::Mod { .. });
+        expect_binary_op!("add", IrBinOp::Add);
+        expect_binary_op!("sub", IrBinOp::Sub);
+        expect_binary_op!("mul", IrBinOp::Mul);
+        expect_binary_op!("div", IrBinOp::Div);
+        expect_binary_op!("modulo", IrBinOp::Mod);
         {
             let item = items.next().expect("expected power item");
             let variable = expect_variable(item, "power");
@@ -219,38 +256,19 @@ mod tests {
                 .value
                 .as_ref()
                 .expect("power should have initializer");
-            let expr = match expr {
-                IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Coerce {
-                    expr,
-                })) => expr.as_ref(),
-                other => other,
-            };
-
             match expr {
-                IrExpression::Call { callee, args } => {
-                    match callee.as_ref() {
-                        IrExpression::Member { object, property } => {
-                            assert!(
-                                matches!(object.as_ref(), IrExpression::Identifier(name) if name == "Math"),
-                                "expected Math member access, got {object:?}"
-                            );
-                            assert_eq!(property, "pow");
-                        }
-                        other => panic!("expected Math.pow member call, got {other:?}"),
-                    }
-                    assert_eq!(args.len(), 2, "expected two arguments to Math.pow");
-                }
-                other => panic!("expected Math.pow call for power, got {other:?}"),
+                IrExpression::Binary { op, .. } => assert_eq!(*op, IrBinOp::Exp),
+                other => panic!("expected exponent binary for power, got {other:?}"),
             }
         }
-        expect_value_call!("eq", ir::ValueCall::Equal { .. });
-        expect_value_call!("seq", ir::ValueCall::StrictEqual { .. });
-        expect_value_call!("neq", ir::ValueCall::NotEqual { .. });
-        expect_value_call!("sne", ir::ValueCall::StrictNotEqual { .. });
-        expect_value_call!("lt", ir::ValueCall::LessThan { .. });
-        expect_value_call!("lte", ir::ValueCall::LessThanOrEqual { .. });
-        expect_value_call!("gt", ir::ValueCall::GreaterThan { .. });
-        expect_value_call!("gte", ir::ValueCall::GreaterThanOrEqual { .. });
+        expect_binary_op!("eq", IrBinOp::Equal);
+        expect_binary_op!("seq", IrBinOp::StrictEqual);
+        expect_binary_op!("neq", IrBinOp::NotEqual);
+        expect_binary_op!("sne", IrBinOp::StrictNotEqual);
+        expect_binary_op!("lt", IrBinOp::LessThan);
+        expect_binary_op!("lte", IrBinOp::LessThanOrEqual);
+        expect_binary_op!("gt", IrBinOp::GreaterThan);
+        expect_binary_op!("gte", IrBinOp::GreaterThanOrEqual);
         expect_binary_op!("shl", IrBinOp::LeftShift);
         expect_binary_op!("shr", IrBinOp::RightShift);
         expect_binary_op!("ushr", IrBinOp::UnsignedRightShift);
@@ -268,6 +286,12 @@ mod tests {
             .value
             .as_ref()
             .expect("unsupported should have initializer");
+        let expr = match expr {
+            IrExpression::RuntimeCall(RuntimeNamespace::Value(ValueCall::Coerce { expr })) => {
+                expr.as_ref()
+            }
+            other => other,
+        };
         match expr {
             IrExpression::Binary { op, .. } => assert_eq!(*op, IrBinOp::Unsupported),
             IrExpression::Conditional { .. } => {
@@ -293,11 +317,11 @@ mod tests {
             .as_ref()
             .expect("result should have initializer");
         match value {
-            IrExpression::RuntimeCall(RuntimeNamespace::Value(ValueCall::Add { left, right })) => {
+            IrExpression::Binary { op, left, right } if *op == IrBinOp::Add => {
                 crate::test_utils::assert_string_literal(Some(left.as_ref()), "foo");
                 crate::test_utils::assert_string_literal(Some(right.as_ref()), "bar");
             }
-            other => panic!("expected value runtime add call, got {other:?}"),
+            other => panic!("expected binary add call, got {other:?}"),
         }
     }
 
@@ -312,14 +336,11 @@ mod tests {
         let variable = expect_variable(&ir_module.items[0], "eq");
         let value = variable.value.as_ref().expect("eq should have initializer");
         match value {
-            IrExpression::RuntimeCall(RuntimeNamespace::Value(ValueCall::Equal {
-                left,
-                right,
-            })) => {
+            IrExpression::Binary { op, left, right } if *op == IrBinOp::Equal => {
                 crate::test_utils::assert_string_literal(Some(left.as_ref()), "5");
                 crate::test_utils::assert_number_literal(Some(right.as_ref()), 5.0);
             }
-            other => panic!("expected value runtime equality call, got {other:?}"),
+            other => panic!("expected equality binary call, got {other:?}"),
         }
     }
 

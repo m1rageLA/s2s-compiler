@@ -19,6 +19,7 @@ pub(crate) fn fn_decl_to_ir(fn_decl: &ast::FnDecl) -> Option<IrFunction> {
         .map(|ann| ts_type_ann_to_ir(ann))
         .unwrap_or(IrType::Any);
 
+    context::define_function_return(&name, ret_ty);
     context::push_scope();
     for param in &params {
         context::define(&param.name, param.ty);
@@ -47,6 +48,7 @@ pub(crate) fn fn_decl_to_ir(fn_decl: &ast::FnDecl) -> Option<IrFunction> {
             ir_function.ret = inferred;
         }
     }
+    context::define_function_return(&ir_function.name, ir_function.ret);
 
     Some(ir_function)
 }

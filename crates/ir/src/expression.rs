@@ -172,6 +172,9 @@ pub enum StringCall {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MathCall {
     Random,
+    Sqrt {
+        arg: Box<IrExpression>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
