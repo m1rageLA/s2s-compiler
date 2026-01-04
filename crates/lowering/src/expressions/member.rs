@@ -2,8 +2,8 @@ use super::*;
 use crate::context;
 use crate::infer;
 use ir::{
-    ArrayCall, ConsoleCall, IrArrayKind, IrExpression, IrType, RuntimeNamespace, StringCall,
-    ValueCall,
+    ArrayCall, ConsoleCall, IrArrayKind, IrExpression, IrType, MathCall, RuntimeNamespace,
+    StringCall, ValueCall,
 };
 
 pub(crate) fn lower_member_expr(member: &ast::MemberExpr) -> IrExpression {
@@ -42,33 +42,71 @@ fn detect_runtime_call(
         return Some(RuntimeNamespace::String(string_call));
     }
 
+    if matches!(object, IrExpression::Identifier(name) if name == "Math") {
+        match property {
+            "random" if args.is_empty() => {
+                return Some(RuntimeNamespace::Math(MathCall::Random));
+            }
+            "sqrt" if args.len() == 1 => {
+                return Some(RuntimeNamespace::Math(MathCall::Sqrt {
+                    arg: Box::new(args[0].clone()),
+                }));
+            }
+            _ => {}
+        }
+    }
+
     match (object, property) {
         (IrExpression::Identifier(name), "log") if name == "console" => {
             Some(RuntimeNamespace::Console(ConsoleCall::Log(args.to_vec())))
         }
         (IrExpression::Identifier(_), "push") => {
-            let coerced_args = args
-                .iter()
-                .cloned()
-                .map(coerce_to_value)
-                .collect::<Vec<_>>();
+            if let IrExpression::Identifier(name) = object {
+                context::mark_mutated(name);
+            }
+
+            let target_ty = infer_array_kind(object).map(IrType::Array);
+
+            let args = if matches!(
+                target_ty,
+                Some(IrType::Array(IrArrayKind::Any | IrArrayKind::Value | IrArrayKind::Unknown))
+                    | Some(IrType::Any)
+                    | Some(IrType::Value)
+                    | None
+            ) {
+                args.iter()
+                    .cloned()
+                    .map(coerce_to_value)
+                    .collect::<Vec<_>>()
+            } else {
+                args.to_vec()
+            };
+
             Some(RuntimeNamespace::Array(ArrayCall::Push {
                 target: Box::new(object.clone()),
-                args: coerced_args,
+                args,
             }))
         }
-        (_, "map") => args.first().cloned().map(|callback| {
-            RuntimeNamespace::Array(ArrayCall::Map {
-                target: Box::new(object.clone()),
-                callback: Box::new(callback),
+        (_, "map") => {
+            let element_kind = infer_array_kind(object);
+            args.first().cloned().map(|callback| {
+                let callback = annotate_array_callback(callback, element_kind);
+                RuntimeNamespace::Array(ArrayCall::Map {
+                    target: Box::new(object.clone()),
+                    callback: Box::new(callback),
+                })
             })
-        }),
-        (_, "filter") => args.first().cloned().map(|callback| {
-            RuntimeNamespace::Array(ArrayCall::Filter {
-                target: Box::new(object.clone()),
-                callback: Box::new(callback),
+        }
+        (_, "filter") => {
+            let element_kind = infer_array_kind(object);
+            args.first().cloned().map(|callback| {
+                let callback = annotate_array_callback(callback, element_kind);
+                RuntimeNamespace::Array(ArrayCall::Filter {
+                    target: Box::new(object.clone()),
+                    callback: Box::new(callback),
+                })
             })
-        }),
+        }
         (_, "pop") if args.is_empty() => Some(RuntimeNamespace::Array(ArrayCall::Pop {
             target: Box::new(object.clone()),
             args: vec![],
@@ -192,12 +230,53 @@ fn lower_computed_member(object: IrExpression, property: &ast::Expr) -> IrExpres
 }
 
 fn infer_array_kind(expr: &IrExpression) -> Option<IrArrayKind> {
-    match expr {
-        IrExpression::Identifier(name) => match context::lookup(name) {
-            Some(IrType::Array(kind)) => Some(kind),
+    match infer::infer_expression_type(expr) {
+        Some(IrType::Array(kind)) => Some(kind),
+        _ => match expr {
+            IrExpression::Identifier(name) => match context::lookup(name) {
+                Some(IrType::Array(kind)) => Some(kind),
+                _ => None,
+            },
             _ => None,
         },
-        _ => None,
+    }
+}
+
+fn annotate_array_callback(callback: IrExpression, element_kind: Option<IrArrayKind>) -> IrExpression {
+    let desired = element_kind.and_then(array_kind_to_type);
+
+    match callback {
+        IrExpression::Arrow { mut params, body } => {
+            if let Some(param) = params.first_mut() {
+                if matches!(param.ty, IrType::Any | IrType::Value) {
+                    if let Some(ty) = desired {
+                        param.ty = ty;
+                    }
+                }
+            }
+            IrExpression::Arrow { params, body }
+        }
+        IrExpression::Function(mut func) => {
+            if let Some(param) = func.params.first_mut() {
+                if matches!(param.ty, IrType::Any | IrType::Value) {
+                    if let Some(ty) = desired {
+                        param.ty = ty;
+                    }
+                }
+            }
+            IrExpression::Function(func)
+        }
+        other => other,
+    }
+}
+
+fn array_kind_to_type(kind: IrArrayKind) -> Option<IrType> {
+    match kind {
+        IrArrayKind::Number => Some(IrType::Number),
+        IrArrayKind::Str => Some(IrType::Str),
+        IrArrayKind::Bool => Some(IrType::Bool),
+        IrArrayKind::Value | IrArrayKind::Any => Some(IrType::Value),
+        IrArrayKind::Unknown => None,
     }
 }
 
@@ -205,7 +284,9 @@ fn infer_array_kind(expr: &IrExpression) -> Option<IrArrayKind> {
 mod tests {
     use super::*;
     use crate::test_utils::lower;
-    use ir::{IrExpression, IrItem, IrLiteral, RuntimeNamespace, StringCall, ValueCall};
+    use ir::{
+        IrExpression, IrItem, IrLiteral, MathCall, RuntimeNamespace, StringCall, ValueCall,
+    };
     use swc_common::{DUMMY_SP, SyntaxContext};
     use swc_ecma_ast as swc_ast;
 
@@ -511,6 +592,16 @@ mod tests {
                 );
             }
             other => panic!("expected array.filter runtime call, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn detects_math_random_runtime_call() {
+        let lowered = lower_expression("Math.random()");
+
+        match lowered {
+            IrExpression::RuntimeCall(RuntimeNamespace::Math(MathCall::Random)) => {}
+            other => panic!("expected Math.random runtime call, got {other:?}"),
         }
     }
 }

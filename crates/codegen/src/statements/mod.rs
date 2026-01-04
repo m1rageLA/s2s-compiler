@@ -120,7 +120,7 @@ mod tests {
         let stmt = IrStmt::VarDecl(vars.clone());
         let tokens = stmt.codegen();
         let expected = quote::quote! {
-            let a: runtime::value::Value = runtime::value::Value::Number(1.0);
+            let a: f64 = 1.0;
             let mut b: bool = false;
         };
 

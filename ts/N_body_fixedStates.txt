@@ -1,5 +1,13 @@
-function compile_ts2rust(): void {
-    let count: number = 100;
+function go(): void {
+    const deterministicCount: number = 5;
+    const deterministicX: number[] = [10, 35, 60, 80, 55];
+    const deterministicY: number[] = [15, 45, 75, 20, 90];
+    const deterministicVx: number[] = [0.05, -0.02, 0.01, -0.04, 0.03];
+    const deterministicVy: number[] = [0.04, 0.0, -0.03, 0.02, -0.05];
+    const deterministicMass: number[] = [5, 4, 3, 6, 2];
+
+    const useDeterministicState: boolean = true;
+    let count: number = 300;
 
     let x: number[] = [];
     let y: number[] = [];
@@ -7,18 +15,34 @@ function compile_ts2rust(): void {
     let vy: number[] = [];
     let mass: number[] = [];
 
-    let i: number = 0;
-    while (i < count) {
-        x.push(Math.random() * 100);
-        y.push(Math.random() * 100);
-        vx.push(0);
-        vy.push(0);
-        mass.push(Math.random() * 10 + 1);
+    // инициализация через push — безопасно для Rust
+    if (useDeterministicState) {
+        count = deterministicCount;
 
-        i = i + 1;
+        let i: number = 0;
+        while (i < count) {
+            x.push(deterministicX[i]);
+            y.push(deterministicY[i]);
+            vx.push(deterministicVx[i]);
+            vy.push(deterministicVy[i]);
+            mass.push(deterministicMass[i]);
+
+            i = i + 1;
+        }
+    } else {
+        let i: number = 0;
+        while (i < count) {
+            x.push(Math.random() * 100);
+            y.push(Math.random() * 100);
+            vx.push(0);
+            vy.push(0);
+            mass.push(Math.random() * 10 + 1);
+
+            i = i + 1;
+        }
     }
 
-    // step of simulation
+    // шаг симуляции БЕЗ arr[i] = ...
     let step = function (dt: number): void {
 
         // новые массивы скоростей
@@ -50,14 +74,14 @@ function compile_ts2rust(): void {
                 j = j + 1;
             }
 
-
+            // вместо vx[i] = ... → пушим в новый массив
             newVx.push(vx[i] + fx * dt);
             newVy.push(vy[i] + fy * dt);
 
             i = i + 1;
         }
 
-        // new positions
+        // новые массивы позиций
         let newX: number[] = [];
         let newY: number[] = [];
 
@@ -69,6 +93,7 @@ function compile_ts2rust(): void {
             k = k + 1;
         }
 
+        // теперь просто заменяем старые массивы новыми
         x = newX;
         y = newY;
         vx = newVx;
@@ -77,7 +102,7 @@ function compile_ts2rust(): void {
 
     // 100000 шагов
     let t: number = 0;
-    while (t < 400000) {
+    while (t < 100000) {
         step(0.01);
         t = t + 1;
     }
@@ -93,4 +118,4 @@ function compile_ts2rust(): void {
     }
 }
 
-compile_ts2rust();
+go();

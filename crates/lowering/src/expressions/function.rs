@@ -36,12 +36,15 @@ pub(crate) fn function_decl_to_expr(fn_decl: &ast::FnDecl) -> IrExpression {
 
 fn function_from_parts(name: Option<String>, function: &ast::Function) -> IrExpression {
     let params = params_to_ir(&function.params);
-    let ret = function
+    let annotated_ret = function
         .return_type
         .as_ref()
-        .map(|ann| ts_type_ann_to_ir(ann))
-        .unwrap_or(IrType::Any);
+        .map(|ann| ts_type_ann_to_ir(ann));
+    let ret = annotated_ret.unwrap_or(IrType::Unit);
     context::push_scope();
+    if let Some(ref fn_name) = name {
+        context::define_function_return(fn_name, ret);
+    }
     for param in &params {
         context::define(&param.name, param.ty);
     }
@@ -57,7 +60,7 @@ fn function_from_parts(name: Option<String>, function: &ast::Function) -> IrExpr
         body,
     };
 
-    if matches!(ir_fn_expr.ret, IrType::Any) {
+    if annotated_ret.is_none() {
         if let Some(inferred) = infer_function_return_type(&ir_fn_expr.body) {
             ir_fn_expr.ret = inferred;
         }

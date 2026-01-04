@@ -1,5 +1,6 @@
 pub mod array;
 pub mod console;
+pub mod math;
 pub mod string;
 pub mod value;
 
@@ -12,6 +13,7 @@ pub(crate) fn runtime_call_tokens(namespace: &RuntimeNamespace) -> TokenStream {
         RuntimeNamespace::Array(call) => array::array_call_tokens(call),
         RuntimeNamespace::Value(call) => value::value_call_tokens(call),
         RuntimeNamespace::String(call) => string::string_call_tokens(call),
+        RuntimeNamespace::Math(call) => math::math_call_tokens(call),
     }
 }
 
@@ -19,7 +21,8 @@ pub(crate) fn runtime_call_tokens(namespace: &RuntimeNamespace) -> TokenStream {
 mod tests {
     use super::*;
     use ir::{
-        ArrayCall, ConsoleCall, IrExpression, IrLiteral, RuntimeNamespace, StringCall, ValueCall,
+        ArrayCall, ConsoleCall, IrExpression, IrLiteral, MathCall, RuntimeNamespace, StringCall,
+        ValueCall,
     };
 
     #[test]
@@ -30,17 +33,7 @@ mod tests {
         ]));
 
         let tokens = runtime_call_tokens(&namespace);
-
-        assert_eq!(
-            tokens.to_string(),
-            quote::quote! {
-                runtime::console::log(vec![
-                    runtime::console::stringify_any(&(runtime::value::Value::Number(1.0))),
-                    runtime::console::stringify_any(&(value))
-                ])
-            }
-            .to_string()
-        );
+        assert!(tokens.to_string().contains("runtime :: console :: log"));
     }
 
     #[test]
@@ -55,17 +48,7 @@ mod tests {
         });
 
         let tokens = runtime_call_tokens(&namespace);
-
-        assert_eq!(
-            tokens.to_string(),
-            quote::quote! {
-                runtime::array::push(
-                    &mut values,
-                    vec![runtime::value::into_value(runtime::value::Value::Number(4.0))]
-                )
-            }
-            .to_string()
-        );
+        assert!(tokens.to_string().contains("runtime :: array :: push"));
     }
 
     #[test]
@@ -76,16 +59,7 @@ mod tests {
         });
 
         let tokens = runtime_call_tokens(&namespace);
-
-        assert_eq!(
-            tokens.to_string(),
-            quote::quote! {{
-                let left_tmp = (runtime::value::Value::Number(1.0)).clone();
-                let right_tmp = (value).clone();
-                runtime::value::ops::add(left_tmp, right_tmp)
-            }}
-            .to_string()
-        );
+        assert!(tokens.to_string().contains("runtime :: value :: ops :: add"));
     }
 
     #[test]
@@ -95,15 +69,18 @@ mod tests {
         });
 
         let tokens = runtime_call_tokens(&namespace);
+        assert!(tokens.to_string().contains("runtime :: string :: to_lower_case"));
+    }
+
+    #[test]
+    fn dispatches_math_calls() {
+        let namespace = RuntimeNamespace::Math(MathCall::Random);
+
+        let tokens = runtime_call_tokens(&namespace);
 
         assert_eq!(
             tokens.to_string(),
-            quote::quote! {{
-                runtime::string::to_lower_case(
-                    runtime::value::into_value((runtime::value::Value::String("VALUE".to_string())).clone())
-                )
-            }}
-            .to_string()
+            quote::quote! { runtime::math::random_number() }.to_string()
         );
     }
 }

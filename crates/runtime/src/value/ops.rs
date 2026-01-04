@@ -132,6 +132,33 @@ where
     }
 }
 
+/// Sets a property on a value in place. Returns the value that was assigned so
+/// the caller can propagate assignment expression semantics.
+pub fn set_property_in_place(target: &mut Value, property: &str, value: Value) -> Value {
+    match target {
+        Value::Object(map) => {
+            map.insert(property.to_string(), value.clone());
+        }
+        Value::Array(values) => {
+            // Support numeric-like property names for arrays to mimic indexed writes.
+            if let Ok(index) = property.parse::<usize>() {
+                if index >= values.len() {
+                    values.resize(index + 1, Value::Undefined);
+                }
+                values[index] = value.clone();
+            }
+        }
+        // For primitives, property writes are ignored (matching JS semantics loosely).
+        Value::Number(_)
+        | Value::String(_)
+        | Value::Bool(_)
+        | Value::Null
+        | Value::Undefined => {}
+    }
+
+    value
+}
+
 pub fn less_than<L, R>(lhs: L, rhs: R) -> bool
 where
     L: Into<Value>,

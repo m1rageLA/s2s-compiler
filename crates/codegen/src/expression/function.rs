@@ -2,9 +2,15 @@ use ir::{IrFunctionExpr, IrType};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::{Codegen, function::render_type};
+use crate::{Codegen, function::render_type, typing};
 
 pub(crate) fn function_expr_tokens(function: &IrFunctionExpr) -> TokenStream {
+    typing::push_scope();
+    for param in &function.params {
+        typing::define(&param.name, param.ty);
+    }
+    typing::push_return_type(function.ret);
+
     let params: Vec<TokenStream> = function
         .params
         .iter()
@@ -17,10 +23,13 @@ pub(crate) fn function_expr_tokens(function: &IrFunctionExpr) -> TokenStream {
 
     let body_tokens: Vec<TokenStream> = function.body.iter().map(|stmt| stmt.codegen()).collect();
 
+    typing::pop_return_type();
+    typing::pop_scope();
+
     if matches!(function.ret, IrType::Any) {
         let params = &params;
         quote! {
-            move | #( #params ),* | {
+            | #( #params ),* | {
                 #( #body_tokens )*
             }
         }
@@ -28,7 +37,7 @@ pub(crate) fn function_expr_tokens(function: &IrFunctionExpr) -> TokenStream {
         let params = &params;
         let ret_ty = render_type(&function.ret);
         quote! {
-            move | #( #params ),* | -> #ret_ty {
+            | #( #params ),* | -> #ret_ty {
                 #( #body_tokens )*
             }
         }
@@ -65,7 +74,7 @@ mod tests {
         };
 
         let closure = parse_closure(function_expr_tokens(&func));
-        assert!(closure.capture.is_some(), "closure should use move capture");
+        assert!(closure.capture.is_none(), "closure should not force move capture");
         assert_eq!(closure.inputs.len(), 1);
 
         let typed_param = match &closure.inputs[0] {

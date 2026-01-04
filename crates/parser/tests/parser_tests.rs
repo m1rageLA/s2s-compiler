@@ -60,13 +60,13 @@ fn lowers_arrow_functions_and_restores_param_types() {
         .as_ref()
         .expect("expected initializer expression");
 
-    let Expr::Fn(fn_expr) = init.as_ref() else {
-        panic!("expected arrow to lower into function expression, got {init:?}");
+    let Expr::Arrow(arrow) = init.as_ref() else {
+        panic!("expected arrow expression, got {init:?}");
     };
 
-    assert_eq!(fn_expr.function.params.len(), 1, "expected single param");
+    assert_eq!(arrow.params.len(), 1, "expected single param");
 
-    let param_pat = &fn_expr.function.params[0].pat;
+    let param_pat = &arrow.params[0];
     let Pat::Ident(binding) = param_pat else {
         panic!("expected ident param, got {param_pat:?}");
     };

@@ -31,10 +31,10 @@ fn main() {
                 run_ir();
                 return;
             }
-            "js" => {
-                run_js();
-                return;
-            }
+            // "js" => {
+            //     run_js();
+            //     return;
+            // }
             _ => {
                 run_pipeline();
                 return;
@@ -87,17 +87,17 @@ fn run_ir() {
     println!("{:#?}", ir);
 }
 
-fn run_js() {
-    let ts_source = match load_typescript_source() {
-        Ok(result) => result,
-        Err(err) => {
-            eprintln!("    [error] {err}");
-            std::process::exit(1);
-        }
-    };
-    let js = ts2rust_core::normalize_js(&ts_source);
-    println!("{js}");
-}
+// fn run_js() {
+//     let ts_source = match load_typescript_source() {
+//         Ok(result) => result,
+//         Err(err) => {
+//             eprintln!("    [error] {err}");
+//             std::process::exit(1);
+//         }
+//     };
+//     let js = ts2rust_core::normalize_js(&ts_source);
+//     println!("{js}");
+// }
 fn run_pipeline() {
     let ts_source = match load_typescript_source() {
         Ok(result) => result,

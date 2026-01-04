@@ -17,10 +17,8 @@ mod tests {
         let expr = var.value.as_ref().expect("expected initializer");
 
         match expr {
-            IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Add {
-                ..
-            })) => {}
-            other => panic!("expected runtime add inside paren, got {other:?}"),
+            IrExpression::Binary { op, .. } if *op == ir::IrBinOp::Add => {}
+            other => panic!("expected binary add inside paren, got {other:?}"),
         }
     }
 }

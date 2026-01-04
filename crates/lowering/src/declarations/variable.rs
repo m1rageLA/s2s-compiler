@@ -25,6 +25,11 @@ pub(crate) fn var_decl_to_ir(
     };
 
     let mut value = decl.init.as_ref().map(|expr| expr_to_ir(expr));
+    if let Some(ref init_expr) = value {
+        if let Some(ret) = function_like_return_type(init_expr) {
+            context::define_function_return(&name, ret);
+        }
+    }
 
     if matches!(ty, IrType::Any) {
         if let Some(expr) = value.as_ref() {
@@ -34,11 +39,11 @@ pub(crate) fn var_decl_to_ir(
         }
     }
 
-    // If the declared/final variable type is Value or Str, coerce the initializer
-    // to Value so runtime semantics live in IR (and codegen emits Value usage).
-    if matches!(ty, IrType::Value | IrType::Str) {
+    // If the declared/final variable type is dynamic (`Any`/`Value`), coerce the initializer
+    // to `Value` so runtime semantics live in IR (and codegen emits Value usage).
+    if matches!(ty, IrType::Value | IrType::Any) {
         if let Some(init_expr) = value.take() {
-            let preserve_literal = matches!(ty, IrType::Value | IrType::Str)
+            let preserve_literal = matches!(ty, IrType::Value | IrType::Any)
                 && matches!(
                     init_expr,
                     IrExpression::Literal(_)
@@ -60,7 +65,18 @@ pub(crate) fn var_decl_to_ir(
             }
         }
     }
-    let mutable = !matches!(kind, ast::VarDeclKind::Const);
+
+    let mut mutable = !matches!(kind, ast::VarDeclKind::Const);
+    if matches!(
+        ty,
+        IrType::Number | IrType::Str | IrType::Any | IrType::Value | IrType::Array(_)
+    ) && !matches!(kind, ast::VarDeclKind::Const)
+    {
+        mutable = true;
+    }
+    if context::is_mutated(&name) {
+        mutable = true;
+    }
 
     context::define(&name, ty);
 
@@ -70,4 +86,25 @@ pub(crate) fn var_decl_to_ir(
         ty,
         value,
     })
+}
+
+fn function_like_return_type(expr: &IrExpression) -> Option<IrType> {
+    match expr {
+        IrExpression::Function(func) => Some(func.ret),
+        IrExpression::Arrow { params, body } => infer_arrow_return(params, body),
+        _ => None,
+    }
+}
+
+fn infer_arrow_return(params: &[ir::IrParam], body: &ir::IrArrowBody) -> Option<IrType> {
+    context::push_scope();
+    for param in params {
+        context::define(&param.name, param.ty);
+    }
+    let ty = match body {
+        ir::IrArrowBody::Expr(expr) => infer::infer_expression_type(expr),
+        ir::IrArrowBody::Block(stmts) => infer::infer_function_return_type(stmts),
+    };
+    context::pop_scope();
+    ty
 }
