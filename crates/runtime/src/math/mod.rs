@@ -1,4 +1,28 @@
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use crate::value::Value;
+
+// Simple thread-local LCG to avoid pulling in external RNG crates.
+fn next_random_bits() -> u64 {
+    static STATE: AtomicU64 = AtomicU64::new(0);
+
+    let mut state = STATE.load(Ordering::Relaxed);
+    if state == 0 {
+        let seed = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|dur| dur.as_nanos() as u64)
+            .unwrap_or(1);
+        state = seed | 1; // keep it odd and non-zero to avoid a stuck LCG.
+    }
+
+    // https://en.wikipedia.org/wiki/Linear_congruential_generator
+    state = state
+        .wrapping_mul(6364136223846793005)
+        .wrapping_add(1);
+    STATE.store(state, Ordering::Relaxed);
+    state
+}
 
 /// Mirrors `Math.random()` returning a floating point in the range [0, 1).
 pub fn random() -> Value {
@@ -6,7 +30,9 @@ pub fn random() -> Value {
 }
 
 pub fn random_number() -> f64 {
-    rand::random::<f64>()
+    // Use the upper 53 bits for an f64 mantissa to stay within [0, 1).
+    let bits = next_random_bits() >> 11;
+    (bits as f64) / ((1u64 << 53) as f64)
 }
 
 pub fn sqrt<V>(value: V) -> Value

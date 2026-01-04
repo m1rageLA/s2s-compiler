@@ -2,11 +2,14 @@
     "name": "transpiller",
     "version": "1.0.0",
     "main": "index.js",
+    "types": "index.d.ts",
     "scripts": {
         "dev": "cargo run --release",
         "gui": "cd gui && npm run tauri dev",
         "ast": "ts-node src/index.ts",
-        "test": "vitest"
+        "test": "vitest",
+        "build:native": "cargo build --release -p ts2rust-node && node scripts/copy-node-artifact.js",
+        "build:native:debug": "cargo build -p ts2rust-node && PROFILE=debug node scripts/copy-node-artifact.js"
     },
     "keywords": [],
     "author": "",
@@ -26,6 +29,7 @@
     },
     "dependencies": {
         "@types/npm": "^7.19.3",
+        "express": "^5.2.1",
         "js-yaml": "^4.1.0",
         "ts-node": "^10.9.2"
     },

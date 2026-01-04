@@ -31,6 +31,10 @@ fn main() {
                 run_ir();
                 return;
             }
+            "build-node" => {
+                build_node();
+                return;
+            }
             // "js" => {
             //     run_js();
             //     return;
@@ -85,6 +89,10 @@ fn run_ir() {
     };
     let ir = lower_ast(&parse_typescript(&ts_source));
     println!("{:#?}", ir);
+}
+
+fn build_node() {
+    napi_build::setup();
 }
 
 // fn run_js() {
