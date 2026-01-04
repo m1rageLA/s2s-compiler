@@ -19,6 +19,7 @@ runtime = { path = "../crates/runtime" }
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
+    //entry point of compiler
     if args.len() > 1 {
         match args[1].as_str() {
             "ast" => {
@@ -57,6 +58,8 @@ fn main() {
             }
         }
     }
+
+    pipeline::run_pipeline();
 }
 
 fn launch_release_run() -> std::io::Result<std::process::ExitStatus> {

@@ -111,15 +111,13 @@ mod tests {
         assert_eq!(function.params[0].name, "value");
         assert_eq!(function.params[0].ty, IrType::Number);
 
-        assert_eq!(function.ret, IrType::Value);
+        assert_eq!(function.ret, IrType::Number);
         assert_eq!(function.body.len(), 1);
 
         match &function.body[0] {
             IrStmt::Return(Some(expr)) => match unwrap_value(expr) {
-                IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Add {
-                    ..
-                })) => {}
-                other => panic!("expected runtime add in return, got {other:?}"),
+                IrExpression::Binary { op, .. } if *op == ir::IrBinOp::Add => {}
+                other => panic!("expected binary add in return, got {other:?}"),
             },
             other => panic!("expected return statement, got {other:?}"),
         }
@@ -148,9 +146,7 @@ mod tests {
 
         match &function.body[0] {
             IrStmt::Return(Some(expr)) => match unwrap_value(expr) {
-                IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(ir::ValueCall::Mul {
-                    ..
-                })) => {}
+                IrExpression::Binary { op, .. } if *op == ir::IrBinOp::Mul => {}
                 other => panic!("expected multiplication return, got {other:?}"),
             },
             other => panic!("expected return statement, got {other:?}"),

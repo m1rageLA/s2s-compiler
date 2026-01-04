@@ -7,7 +7,7 @@ edition = "2024"
 codegen = { path = "../codegen" }
 lowering = { path = "../lowering" }
 parser = { path = "../parser" }
-ir = { path = "../ir" }
+ir = { path = "../ir_types" }
 runtime = { path = "../runtime" }
 proc-macro2 = "1"
 swc_ecma_ast = "16.0.0"

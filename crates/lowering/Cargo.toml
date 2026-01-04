@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 parser = { path = "../parser" }
 swc_ecma_ast = "16.0.0"
-ir = { path = "../ir" }
+ir = { path = "../ir_types" }
 
 [dev-dependencies]
 swc_common = "15.0.0"

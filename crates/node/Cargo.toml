@@ -11,7 +11,7 @@ bench = false
 [dependencies]
 napi = { workspace = true, features = ["napi4"] }
 napi-derive = { workspace = true }
-ts2rust-core = { path = "../core" }
+ts2rust-core = { path = "../core_api" }
 uuid = { workspace = true }
 
 [build-dependencies]

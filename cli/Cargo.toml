@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-ts2rust-core = { path = "../crates/core" }
+ts2rust-core = { path = "../crates/core_api" }
 napi-build = { workspace = true }
 uuid = { workspace = true }
 

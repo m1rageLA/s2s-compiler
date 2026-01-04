@@ -2,9 +2,9 @@
 resolver = "2"
 members = [
     "cli",
-    "crates/core",
+    "crates/core_api",
     "crates/parser",
-    "crates/ir",
+    "crates/ir_types",
     "crates/codegen",
     "crates/lowering",
     "crates/runtime",
