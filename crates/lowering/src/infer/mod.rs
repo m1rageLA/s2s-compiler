@@ -34,6 +34,18 @@ pub(crate) fn infer_expression_type(expr: &IrExpression) -> Option<IrType> {
         IrExpression::Template(parts) => expression_template::infer_template(parts),
         IrExpression::RuntimeCall(call) => expression_runtime::infer_runtime(call),
         IrExpression::Call { callee, .. } => infer_call(callee),
+        IrExpression::Sequence(exprs) => exprs
+            .last()
+            .and_then(|expr| infer_expression_type(expr)),
+        IrExpression::Unary { op, expr } => match op {
+            ir::IrUnaryOp::TypeOf => Some(IrType::Str),
+            ir::IrUnaryOp::Void => Some(IrType::Value),
+            ir::IrUnaryOp::BitwiseNot => Some(IrType::Number),
+        }
+        .or_else(|| infer_expression_type(expr)),
+        IrExpression::PrefixUnary { arg, .. } => infer_expression_type(arg),
+        IrExpression::PostfixUnary { left, .. } => infer_expression_type(left),
+        IrExpression::Delete(_) => Some(IrType::Bool),
         _ => expression_trivial::infer_default(expr),
     }
 }

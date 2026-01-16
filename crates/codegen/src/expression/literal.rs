@@ -24,6 +24,9 @@ impl Codegen for IrLiteral {
                     quote! { false }
                 }
             }
+            IrLiteral::Null => {
+                quote! { runtime::value::Value::Null }
+            }
         }
     }
 }
@@ -59,6 +62,15 @@ mod tests {
         assert_eq!(
             tokens_false.to_string(),
             quote::quote! { false }.to_string()
+        );
+    }
+
+    #[test]
+    fn null_literal_codegen_emits_runtime_value() {
+        let tokens = IrLiteral::Null.codegen();
+        assert_eq!(
+            tokens.to_string(),
+            quote::quote! { runtime::value::Value::Null }.to_string()
         );
     }
 }

@@ -109,6 +109,7 @@ pub fn infer_expression_type(expr: &IrExpression) -> Option<IrType> {
             IrLiteral::Number(_) => Some(IrType::Number),
             IrLiteral::Str(_) => Some(IrType::Str),
             IrLiteral::Bool(_) => Some(IrType::Bool),
+            IrLiteral::Null => Some(IrType::Value),
         },
         IrExpression::Identifier(name) => {
             if name == "undefined" {
@@ -136,6 +137,15 @@ pub fn infer_expression_type(expr: &IrExpression) -> Option<IrType> {
         IrExpression::ArrayExpr(elements) => Some(IrType::Array(infer_array_kind(elements))),
         IrExpression::PostfixUnary { left, .. } => infer_expression_type(left),
         IrExpression::Paren(inner) => infer_expression_type(inner),
+        IrExpression::PrefixUnary { arg, .. } => infer_expression_type(arg),
+        IrExpression::Unary { op, expr } => match op {
+            ir::IrUnaryOp::TypeOf => Some(IrType::Str),
+            ir::IrUnaryOp::Void => Some(IrType::Value),
+            ir::IrUnaryOp::BitwiseNot => Some(IrType::Number),
+        }
+        .or_else(|| infer_expression_type(expr)),
+        IrExpression::Sequence(exprs) => exprs.last().and_then(|expr| infer_expression_type(expr)),
+        IrExpression::Delete(_) => Some(IrType::Bool),
     }
 }
 
@@ -194,11 +204,68 @@ fn infer_return_types(stmts: &[IrStmt]) -> Option<IrType> {
                     _ => {}
                 }
             }
+            IrStmt::Switch { cases, .. } => {
+                for case in cases {
+                    if let Some(case_ty) = infer_return_types(&case.consequent) {
+                        if !unify(&mut inferred, Some(case_ty)) {
+                            return None;
+                        }
+                        saw_return = true;
+                    }
+                }
+            }
+            IrStmt::Try {
+                try_block,
+                catch,
+                finally,
+            } => {
+                if let Some(try_ty) = infer_return_types(try_block) {
+                    if !unify(&mut inferred, Some(try_ty)) {
+                        return None;
+                    }
+                    saw_return = true;
+                }
+                if let Some(catch) = catch {
+                    if let Some(catch_ty) = infer_return_types(&catch.body) {
+                        if !unify(&mut inferred, Some(catch_ty)) {
+                            return None;
+                        }
+                        saw_return = true;
+                    }
+                }
+                if let Some(finally) = finally {
+                    if let Some(finally_ty) = infer_return_types(finally) {
+                        if !unify(&mut inferred, Some(finally_ty)) {
+                            return None;
+                        }
+                        saw_return = true;
+                    }
+                }
+            }
+            IrStmt::While(_, body)
+            | IrStmt::DoWhile(body, _)
+            | IrStmt::For { body, .. }
+            | IrStmt::ForIn { body, .. } => {
+                if let Some(body_ty) = infer_return_types(body) {
+                    if !unify(&mut inferred, Some(body_ty)) {
+                        return None;
+                    }
+                    saw_return = true;
+                }
+            }
+            IrStmt::Labeled { body, .. } => {
+                if let Some(label_ty) = infer_return_types(std::slice::from_ref(body)) {
+                    if !unify(&mut inferred, Some(label_ty)) {
+                        return None;
+                    }
+                    saw_return = true;
+                }
+            }
             _ => {}
         }
     }
 
-    if saw_return { inferred } else { Some(IrType::Unit) }
+    if saw_return { inferred } else { None }
 }
 
 fn infer_binary(op: IrBinOp, left: &IrExpression, right: &IrExpression) -> Option<IrType> {
@@ -352,6 +419,7 @@ fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
                 }
             }
             ValueCall::GetProperty { .. } => Some(IrType::Value),
+            ValueCall::GetPropertyDynamic { .. } => Some(IrType::Value),
             ValueCall::Sub { .. }
             | ValueCall::Mul { .. }
             | ValueCall::Div { .. }

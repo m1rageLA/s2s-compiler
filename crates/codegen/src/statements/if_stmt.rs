@@ -37,7 +37,7 @@ mod tests {
         let tokens = if_tokens(&condition, &then_branch, Some(&else_branch));
         let expected = quote! {
             if true {
-                return;
+                return ();
             } else {
                 fallback;
             }

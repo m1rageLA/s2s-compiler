@@ -222,11 +222,18 @@ fn lower_computed_member(object: IrExpression, property: &ast::Expr) -> IrExpres
 
     let element_kind = infer_array_kind(&object);
 
-    IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Index {
-        target: Box::new(object),
-        index: Box::new(property_ir),
-        element: element_kind,
-    }))
+    if element_kind.is_some() {
+        IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Index {
+            target: Box::new(object),
+            index: Box::new(property_ir),
+            element: element_kind,
+        }))
+    } else {
+        IrExpression::RuntimeCall(RuntimeNamespace::Value(ValueCall::GetPropertyDynamic {
+            target: Box::new(object),
+            property: Box::new(property_ir),
+        }))
+    }
 }
 
 fn infer_array_kind(expr: &IrExpression) -> Option<IrArrayKind> {

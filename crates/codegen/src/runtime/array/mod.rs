@@ -96,8 +96,8 @@ mod tests {
         assert_eq!(
             tokens.to_string(),
             quote::quote! {{
-                let idx = (i) as usize;
-                values[idx]
+                let index_tmp = (i).clone();
+                runtime::array::index_number(&values, index_tmp)
             }}
             .to_string()
         );

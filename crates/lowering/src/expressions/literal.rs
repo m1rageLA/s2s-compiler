@@ -12,6 +12,10 @@ pub(crate) fn bool_lit_to_ir(b: &ast::Bool) -> IrExpression {
     IrExpression::Literal(IrLiteral::Bool(b.value))
 }
 
+pub(crate) fn null_lit_to_ir() -> IrExpression {
+    IrExpression::Literal(IrLiteral::Null)
+}
+
 pub(crate) fn ident_to_ir(i: &ast::Ident) -> IrExpression {
     IrExpression::Identifier(i.sym.to_string())
 }
@@ -57,6 +61,14 @@ mod tests {
         match bool_lit_to_ir(&literal) {
             IrExpression::Literal(IrLiteral::Bool(value)) => assert!(value),
             other => panic!("expected boolean literal, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn converts_null_literal() {
+        match null_lit_to_ir() {
+            IrExpression::Literal(IrLiteral::Null) => {}
+            other => panic!("expected null literal, got {other:?}"),
         }
     }
 

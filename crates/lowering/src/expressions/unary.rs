@@ -1,34 +1,79 @@
-use super::expr_to_ir;
 use super::*;
-use ir::{RuntimeNamespace, ValueCall};
+use crate::context;
+use ir::{
+    IrDeleteProperty, IrDeleteTarget, IrExpression, IrUnaryOp, RuntimeNamespace, ValueCall,
+};
 
 pub fn unary_expr_to_ir(u: &ast::UnaryExpr) -> IrExpression {
-    let inner = expr_to_ir(&u.arg);
     match u.op {
-        ast::UnaryOp::Minus => match inner {
+        ast::UnaryOp::Minus => match expr_to_ir(&u.arg) {
             IrExpression::Literal(IrLiteral::Number(value)) => {
                 IrExpression::Literal(IrLiteral::Number(-value))
             }
             _ => IrExpression::Binary {
                 op: IrBinOp::Sub,
                 left: Box::new(IrExpression::Literal(IrLiteral::Number(0.0))),
-                right: Box::new(inner),
+                right: Box::new(expr_to_ir(&u.arg)),
             },
         },
-        ast::UnaryOp::Plus => inner,
+        ast::UnaryOp::Plus => expr_to_ir(&u.arg),
         ast::UnaryOp::Bang => {
             IrExpression::RuntimeCall(RuntimeNamespace::Value(ValueCall::LogicalNot {
-                expr: Box::new(inner),
+                expr: Box::new(expr_to_ir(&u.arg)),
             }))
         }
-        _ => IrExpression::Identifier("unsupported_unary".to_string()),
+        ast::UnaryOp::Tilde => IrExpression::Unary {
+            op: IrUnaryOp::BitwiseNot,
+            expr: Box::new(expr_to_ir(&u.arg)),
+        },
+        ast::UnaryOp::TypeOf => IrExpression::Unary {
+            op: IrUnaryOp::TypeOf,
+            expr: Box::new(expr_to_ir(&u.arg)),
+        },
+        ast::UnaryOp::Void => IrExpression::Unary {
+            op: IrUnaryOp::Void,
+            expr: Box::new(expr_to_ir(&u.arg)),
+        },
+        ast::UnaryOp::Delete => delete_expr_to_ir(&u.arg),
+    }
+}
+
+fn delete_expr_to_ir(expr: &ast::Expr) -> IrExpression {
+    match expr {
+        ast::Expr::Member(member) => {
+            if let ast::Expr::Ident(ident) = member.obj.as_ref() {
+                context::mark_mutated(&ident.sym.to_string());
+            }
+            let object = expr_to_ir(&member.obj);
+
+            let property = match &member.prop {
+                ast::MemberProp::Ident(ident) => {
+                    IrDeleteProperty::Static(ident.sym.to_string())
+                }
+                ast::MemberProp::PrivateName(name) => {
+                    IrDeleteProperty::Static(format!("#{}", name.name))
+                }
+                ast::MemberProp::Computed(comp) => {
+                    IrDeleteProperty::Dynamic(Box::new(expr_to_ir(&comp.expr)))
+                }
+            };
+
+            IrExpression::Delete(IrDeleteTarget::Property {
+                object: Box::new(object),
+                property,
+            })
+        }
+        other => IrExpression::Delete(IrDeleteTarget::Expr(Box::new(expr_to_ir(other)))),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::test_utils::{assert_identifier, expect_variable, lower};
-    use ir::{IrBinOp, IrExpression, IrLiteral, RuntimeNamespace, ValueCall};
+    use ir::{
+        IrBinOp, IrDeleteProperty, IrDeleteTarget, IrExpression, IrLiteral, RuntimeNamespace,
+        ValueCall,
+    };
 
     fn unwrap_value(expr: &IrExpression) -> &IrExpression {
         match expr {
@@ -47,11 +92,15 @@ mod tests {
             const computed = -value;
             const positive = +value;
             const negated = !value;
-            const unsupported = typeof value;
+            const bitwise = ~value;
+            const typeofed = typeof value;
+            const voided = void value;
+            const record = { name: "ok" };
+            const removed = delete record.name;
         "#,
         );
 
-        assert_eq!(ir_module.items.len(), 5);
+        assert_eq!(ir_module.items.len(), 9);
 
         let literal = expect_variable(&ir_module.items[0], "literal");
         match literal
@@ -109,16 +158,37 @@ mod tests {
             other => panic!("expected logical not runtime call, got {other:?}"),
         }
 
-        let unsupported = expect_variable(&ir_module.items[4], "unsupported");
-        let unsupported_value = unwrap_value(
-            unsupported
-                .value
-                .as_ref()
-                .expect("unsupported should have initializer"),
-        );
-        match unsupported_value {
-            IrExpression::Identifier(name) => assert_eq!(name, "unsupported_unary"),
-            other => panic!("expected unsupported sentinel, got {other:?}"),
+        let bitwise = expect_variable(&ir_module.items[4], "bitwise");
+        match bitwise.value.as_ref().expect("bitwise should exist") {
+            IrExpression::Unary { op, .. } => assert!(matches!(op, ir::IrUnaryOp::BitwiseNot)),
+            other => panic!("expected bitwise unary, got {other:?}"),
+        }
+
+        let typeofed = expect_variable(&ir_module.items[5], "typeofed");
+        match typeofed.value.as_ref().expect("typeofed should exist") {
+            IrExpression::Unary { op, .. } => assert!(matches!(op, ir::IrUnaryOp::TypeOf)),
+            other => panic!("expected typeof unary, got {other:?}"),
+        }
+
+        let voided = expect_variable(&ir_module.items[6], "voided");
+        match voided.value.as_ref().expect("voided should exist") {
+            IrExpression::Unary { op, .. } => assert!(matches!(op, ir::IrUnaryOp::Void)),
+            other => panic!("expected void unary, got {other:?}"),
+        }
+
+        let removed = expect_variable(&ir_module.items[8], "removed");
+        match removed.value.as_ref().expect("removed should exist") {
+            IrExpression::Delete(target) => match target {
+                IrDeleteTarget::Property { object, property } => {
+                    assert_identifier(object, "record");
+                    match property {
+                        IrDeleteProperty::Static(name) => assert_eq!(name, "name"),
+                        other => panic!("expected static property delete, got {other:?}"),
+                    }
+                }
+                other => panic!("expected property delete target, got {other:?}"),
+            },
+            other => panic!("expected delete expression, got {other:?}"),
         }
     }
 

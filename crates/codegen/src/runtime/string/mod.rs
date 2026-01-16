@@ -5,7 +5,12 @@ use quote::{format_ident, quote};
 
 pub(crate) fn string_call_tokens(call: &StringCall) -> TokenStream {
     match call {
-        StringCall::Length { target } => unary_value_call("length", target),
+        StringCall::Length { target } => {
+            let target_tokens = value_arg_tokens(target);
+            quote! {{
+                runtime::string::length(#target_tokens).into_number()
+            }}
+        }
         StringCall::ToUpperCase { target } => unary_value_call("to_upper_case", target),
         StringCall::ToLowerCase { target } => unary_value_call("to_lower_case", target),
         StringCall::Split {

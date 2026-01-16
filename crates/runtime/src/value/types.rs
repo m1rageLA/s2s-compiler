@@ -5,6 +5,7 @@ use std::fmt;
 /// Describes the shape of a [`Value`] without consuming it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValueKind {
+    Int,
     Number,
     String,
     Bool,
@@ -17,6 +18,7 @@ pub enum ValueKind {
 impl fmt::Display for ValueKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let repr = match self {
+            ValueKind::Int => "int",
             ValueKind::Number => "number",
             ValueKind::String => "string",
             ValueKind::Bool => "bool",
@@ -66,6 +68,7 @@ pub type ValueResult<T> = Result<T, ValueCastError>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
+    Int(i64),
     Number(f64),
     String(String),
     Bool(bool),
@@ -100,6 +103,7 @@ impl Value {
     /// Returns the [`ValueKind`] describing this variant.
     pub fn kind(&self) -> ValueKind {
         match self {
+            Value::Int(_) => ValueKind::Int,
             Value::Number(_) => ValueKind::Number,
             Value::String(_) => ValueKind::String,
             Value::Bool(_) => ValueKind::Bool,
@@ -113,6 +117,7 @@ impl Value {
     /// Fallible borrow-based conversion into `f64`.
     pub fn as_number(&self) -> ValueResult<f64> {
         match self {
+            Value::Int(value) => Ok(*value as f64),
             Value::Number(value) => Ok(*value),
             _ => Err(ValueCastError::new("number", self.kind())),
         }
@@ -121,6 +126,7 @@ impl Value {
     /// Fallible owned conversion into `f64`.
     pub fn try_into_number(self) -> ValueResult<f64> {
         match self {
+            Value::Int(value) => Ok(value as f64),
             Value::Number(value) => Ok(value),
             value => Err(ValueCastError::new("number", value.kind())),
         }
@@ -132,8 +138,9 @@ impl Value {
             .expect("expected runtime::value::Value::Number")
     }
 
-    pub(crate) fn to_number(&self) -> f64 {
+    pub fn to_number(&self) -> f64 {
         match self {
+            Value::Int(n) => *n as f64,
             Value::Number(n) => *n,
             Value::Bool(true) => 1.0,
             Value::Bool(false) => 0.0,
@@ -145,11 +152,12 @@ impl Value {
         }
     }
 
-    pub(crate) fn to_boolean(&self) -> bool {
+    pub fn to_boolean(&self) -> bool {
         match self {
             Value::Bool(value) => *value,
             Value::Null | Value::Undefined => false,
             Value::Number(value) => *value != 0.0 && !value.is_nan(),
+            Value::Int(value) => *value != 0,
             Value::String(value) => !value.is_empty(),
             Value::Array(_) | Value::Object(_) => true,
         }
@@ -180,15 +188,22 @@ impl From<f32> for Value {
 
 impl From<i32> for Value {
     fn from(value: i32) -> Self {
-        Value::Number(value as f64)
+        Value::Int(value as i64)
     }
 }
 
 impl From<i64> for Value {
     fn from(value: i64) -> Self {
-        Value::Number(value as f64)
+        Value::Int(value)
     }
 }
+
+impl From<usize> for Value {
+    fn from(value: usize) -> Self {
+        Value::Int(value as i64)
+    }
+}
+
 
 impl From<bool> for Value {
     fn from(value: bool) -> Self {
@@ -211,6 +226,24 @@ impl From<&str> for Value {
 impl From<Vec<Value>> for Value {
     fn from(value: Vec<Value>) -> Self {
         Value::Array(value)
+    }
+}
+
+impl From<Vec<f64>> for Value {
+    fn from(values: Vec<f64>) -> Self {
+        Value::Array(values.into_iter().map(Value::Number).collect())
+    }
+}
+
+impl From<Vec<String>> for Value {
+    fn from(values: Vec<String>) -> Self {
+        Value::Array(values.into_iter().map(Value::String).collect())
+    }
+}
+
+impl From<Vec<bool>> for Value {
+    fn from(values: Vec<bool>) -> Self {
+        Value::Array(values.into_iter().map(Value::Bool).collect())
     }
 }
 

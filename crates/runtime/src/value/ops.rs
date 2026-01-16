@@ -1,4 +1,5 @@
 use super::types::Value;
+use std::any::Any;
 
 pub fn add<L, R>(lhs: L, rhs: R) -> Value
 where
@@ -132,6 +133,16 @@ where
     }
 }
 
+pub fn get_property_value<V, P>(value: V, property: P) -> Value
+where
+    V: Into<Value>,
+    P: Into<Value>,
+{
+    let property_value: Value = property.into();
+    let property_str = property_value.to_string();
+    get_property(value, &property_str)
+}
+
 /// Sets a property on a value in place. Returns the value that was assigned so
 /// the caller can propagate assignment expression semantics.
 pub fn set_property_in_place(target: &mut Value, property: &str, value: Value) -> Value {
@@ -157,6 +168,41 @@ pub fn set_property_in_place(target: &mut Value, property: &str, value: Value) -
     }
 
     value
+}
+
+pub fn delete_property<V>(target: &mut Value, property: V) -> bool
+where
+    V: Into<Value>,
+{
+    let key = into_property_key(property.into());
+    delete_property_str(target, &key)
+}
+
+pub fn delete_property_str(target: &mut Value, property: &str) -> bool {
+    match target {
+        Value::Object(map) => {
+            map.remove(property);
+            true
+        }
+        Value::Array(values) => {
+            if let Ok(index) = property.parse::<usize>() {
+                if index < values.len() {
+                    values[index] = Value::Undefined;
+                }
+            }
+            true
+        }
+        Value::String(_) | Value::Number(_) | Value::Bool(_) | Value::Null | Value::Undefined => {
+            true
+        }
+    }
+}
+
+fn into_property_key(value: Value) -> String {
+    match value {
+        Value::String(text) => text,
+        other => other.to_string(),
+    }
 }
 
 pub fn less_than<L, R>(lhs: L, rhs: R) -> bool
@@ -199,6 +245,50 @@ where
     let left: Value = lhs.into();
     let right: Value = rhs.into();
     left.to_number() - right.to_number()
+}
+
+pub fn type_of<V>(value: V) -> String
+where
+    V: Into<Value>,
+{
+    match value.into() {
+        Value::Number(_) => "number".into(),
+        Value::String(_) => "string".into(),
+        Value::Bool(_) => "boolean".into(),
+        Value::Null => "object".into(),
+        Value::Undefined => "undefined".into(),
+        Value::Array(_) | Value::Object(_) => "object".into(),
+    }
+}
+
+pub fn for_in_keys<V>(value: V) -> Vec<String>
+where
+    V: Into<Value>,
+{
+    match value.into() {
+        Value::Object(map) => map.keys().cloned().collect(),
+        Value::Array(values) => values
+            .iter()
+            .enumerate()
+            .map(|(idx, _)| idx.to_string())
+            .collect(),
+        Value::String(text) => text.chars().enumerate().map(|(idx, _)| idx.to_string()).collect(),
+        Value::Number(_) | Value::Bool(_) | Value::Null | Value::Undefined => Vec::new(),
+    }
+}
+
+pub fn panic_to_value(err: &Box<dyn Any + Send>) -> Value {
+    if let Some(value) = err.downcast_ref::<Value>() {
+        return value.clone();
+    }
+    if let Some(text) = err.downcast_ref::<String>() {
+        return Value::String(text.clone());
+    }
+    if let Some(text) = err.downcast_ref::<&str>() {
+        return Value::String(text.to_string());
+    }
+
+    Value::Undefined
 }
 
 pub fn mul_number<L, R>(lhs: L, rhs: R) -> f64

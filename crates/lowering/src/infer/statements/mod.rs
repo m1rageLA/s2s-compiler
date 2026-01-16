@@ -27,6 +27,28 @@ pub(crate) fn collect_return_types(
             IrStmt::While(_, body) => while_loop::handle(body, inferred, saw_return),
             IrStmt::DoWhile(body, _) => do_while_loop::handle(body, inferred, saw_return),
             IrStmt::For { body, .. } => for_loop::handle(body, inferred, saw_return),
+            IrStmt::ForIn { body, .. } => for_loop::handle(body, inferred, saw_return),
+            IrStmt::Labeled { body, .. } => {
+                collect_return_types(std::slice::from_ref(body), inferred, saw_return)
+            }
+            IrStmt::Switch { cases, .. } => cases.iter().all(|case| {
+                collect_return_types(&case.consequent, inferred, saw_return)
+            }),
+            IrStmt::Try {
+                try_block,
+                catch,
+                finally,
+            } => {
+                let mut ok = collect_return_types(try_block, inferred, saw_return);
+                if let Some(handler) = catch {
+                    ok &= collect_return_types(&handler.body, inferred, saw_return);
+                }
+                if let Some(finally) = finally {
+                    ok &= collect_return_types(finally, inferred, saw_return);
+                }
+                ok
+            }
+            IrStmt::Empty | IrStmt::Break(_) | IrStmt::Continue(_) => noop::handle(),
             _ => noop::handle(),
         } {
             return false;

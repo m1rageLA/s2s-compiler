@@ -30,6 +30,7 @@ pub enum IrExpression {
         object: Box<IrExpression>,
         property: String,
     },
+    Delete(IrDeleteTarget),
     Template(Vec<IrTemplatePart>),
     SuperCall {
         args: Vec<IrExpression>,
@@ -45,8 +46,17 @@ pub enum IrExpression {
         left: Box<IrExpression>,
         op: IrPostfixOp,
     },
+    PrefixUnary {
+        arg: Box<IrExpression>,
+        op: IrPrefixOp,
+    },
+    Unary {
+        op: IrUnaryOp,
+        expr: Box<IrExpression>,
+    },
     Object(Vec<IrObjectProperty>),
     Paren(Box<IrExpression>),
+    Sequence(Vec<IrExpression>),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -59,6 +69,34 @@ pub enum IrArrowBody {
 pub enum IrPostfixOp {
     Increment,
     Decrement,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IrPrefixOp {
+    Increment,
+    Decrement,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IrUnaryOp {
+    TypeOf,
+    Void,
+    BitwiseNot,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum IrDeleteTarget {
+    Property {
+        object: Box<IrExpression>,
+        property: IrDeleteProperty,
+    },
+    Expr(Box<IrExpression>),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum IrDeleteProperty {
+    Static(String),
+    Dynamic(Box<IrExpression>),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -79,6 +117,7 @@ pub enum IrLiteral {
     Number(f64),
     Str(String),
     Bool(bool),
+    Null,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -240,6 +279,10 @@ pub enum ValueCall {
     GetProperty {
         target: Box<IrExpression>,
         property: String,
+    },
+    GetPropertyDynamic {
+        target: Box<IrExpression>,
+        property: Box<IrExpression>,
     },
 }
 

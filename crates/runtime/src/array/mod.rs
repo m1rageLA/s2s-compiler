@@ -30,6 +30,36 @@ impl ArrayLike for Vec<Value> {
     }
 }
 
+impl ArrayLike for Vec<f64> {
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn get(&self, index: usize) -> Option<Value> {
+        self.as_slice().get(index).copied().map(Value::Number)
+    }
+}
+
+impl ArrayLike for Vec<String> {
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn get(&self, index: usize) -> Option<Value> {
+        self.as_slice().get(index).cloned().map(Value::String)
+    }
+}
+
+impl ArrayLike for Vec<bool> {
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn get(&self, index: usize) -> Option<Value> {
+        self.as_slice().get(index).copied().map(Value::Bool)
+    }
+}
+
 impl ArrayLike for Box<dyn Any> {
     fn len(&self) -> usize {
         cast_to_values(self.as_ref()).len()

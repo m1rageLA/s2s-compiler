@@ -11,9 +11,9 @@ quote = "1"
 ir = { path = "../ir_types" }
 runtime = { path = "../runtime"}
 anyhow = "1.0.100"
+syn = { version = "2", features = ["full"] }
 
 [dev-dependencies]
-syn = { version = "2", features = ["full"] }
 prettyplease = "0.2"
 
 [lib]

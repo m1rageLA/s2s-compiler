@@ -6,9 +6,8 @@ use crate::{Codegen, function::render_type, typing};
 
 pub(crate) fn arrow_tokens(params: &[IrParam], body: &IrArrowBody) -> TokenStream {
     typing::push_scope();
-    if let Some(ret) = typing::infer_arrow_body_type(body) {
-        typing::push_return_type(ret);
-    }
+    let ret = typing::infer_arrow_body_type(body).unwrap_or(ir::IrType::Any);
+    typing::push_return_type(ret);
     let param_bindings: Vec<TokenStream> = params
         .iter()
         .map(|param| {

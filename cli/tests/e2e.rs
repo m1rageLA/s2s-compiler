@@ -38,3 +38,8 @@ mod arrow_functions;
 #[allow(unused)]
 #[path = "e2e/binary.rs"]
 mod binary;
+
+#[cfg(test)]
+#[allow(unused)]
+#[path = "e2e/new_nodes.rs"]
+mod new_nodes;

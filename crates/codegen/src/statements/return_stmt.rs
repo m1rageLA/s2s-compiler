@@ -10,14 +10,15 @@ pub fn return_tokens(expr: Option<&IrExpression>) -> TokenStream {
         Some(expr) => {
             let expr_type = typing::infer_expression_type(expr);
             let expr_tokens = expr.codegen();
-            let expr_tokens = if let Some(ret) = expected {
-                typing::coerce_to_type(expr_tokens, &ret, expr_type)
-            } else {
-                expr_tokens
+            let expr_tokens = match expected {
+                Some(ir::IrType::Unit) | None => expr_tokens,
+                Some(ret) => typing::coerce_to_type(expr_tokens, &ret, expr_type),
             };
             quote! { return #expr_tokens; }
         }
-        None => quote! { return; },
+        // Always emit an explicit unit so the return expression has a value in
+        // expression-context blocks.
+        None => quote! { return (); },
     }
 }
 
@@ -34,6 +35,6 @@ mod tests {
     #[test]
     fn return_without_value_emits_bare_return() {
         let tokens = return_tokens(None);
-        assert_eq!(tokens.to_string(), quote! { return; }.to_string());
+        assert_eq!(tokens.to_string(), quote! { return (); }.to_string());
     }
 }

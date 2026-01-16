@@ -52,6 +52,9 @@ pub(crate) fn value_call_tokens(call: &ValueCall) -> TokenStream {
         ValueCall::GreaterThanOrEqual { left, right } => greater_than_or_equal_tokens(left, right),
         ValueCall::LogicalNot { expr } => logical_not_tokens(expr),
         ValueCall::GetProperty { target, property } => get_property_tokens(target, property),
+        ValueCall::GetPropertyDynamic { target, property } => {
+            get_property_dynamic_tokens(target, property)
+        }
     }
 }
 
@@ -98,5 +101,15 @@ fn get_property_tokens(target: &IrExpression, property: &str) -> TokenStream {
     quote! {{
         let target_tmp = runtime::value::into_value((#target_tokens).clone());
         runtime::value::ops::get_property(target_tmp, #property_literal)
+    }}
+}
+
+fn get_property_dynamic_tokens(target: &IrExpression, property: &IrExpression) -> TokenStream {
+    let target_tokens = target.codegen();
+    let property_tokens = property.codegen();
+    quote! {{
+        let target_tmp = runtime::value::into_value((#target_tokens).clone());
+        let property_tmp = runtime::value::into_value((#property_tokens).clone());
+        runtime::value::ops::get_property_value(target_tmp, property_tmp)
     }}
 }

@@ -14,9 +14,13 @@ pub(crate) fn lower(stmt: &ast::Stmt, items: &mut Vec<IrItem>) {
         ast::Stmt::Decl(ast::Decl::Fn(fn_decl)) => function_decl::lower(fn_decl, items),
         ast::Stmt::Expr(expr_stmt) => expression_item::lower(expr_stmt, items),
         ast::Stmt::Block(block) => block_item::lower(block, items),
-        ast::Stmt::While(_) | ast::Stmt::DoWhile(_) | ast::Stmt::For(_) => {
-            loop_stmt::lower(stmt, items)
-        }
+        ast::Stmt::While(_)
+        | ast::Stmt::DoWhile(_)
+        | ast::Stmt::For(_)
+        | ast::Stmt::ForIn(_)
+        | ast::Stmt::Switch(_)
+        | ast::Stmt::Try(_)
+        | ast::Stmt::Labeled(_) => loop_stmt::lower(stmt, items),
         _ => unsupported_stmt::handle(),
     }
 }

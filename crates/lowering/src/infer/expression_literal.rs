@@ -5,5 +5,6 @@ pub(crate) fn infer_literal(literal: &IrLiteral) -> Option<IrType> {
         IrLiteral::Number(_) => Some(IrType::Number),
         IrLiteral::Str(_) => Some(IrType::Str),
         IrLiteral::Bool(_) => Some(IrType::Bool),
+        IrLiteral::Null => Some(IrType::Value),
     }
 }

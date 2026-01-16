@@ -3,19 +3,33 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use super::collect_stmt_tokens;
+use super::label::label_lifetime;
 use crate::Codegen;
 
-pub fn do_while_tokens(body: &[IrStmt], condition: &IrExpression) -> TokenStream {
+pub fn do_while_tokens(body: &[IrStmt], condition: &IrExpression, label: Option<&str>) -> TokenStream {
     let body_tokens = collect_stmt_tokens(body);
     let condition_tokens = condition.codegen();
 
-    quote! {
-        loop {
-            #(#body_tokens)*
-            if !(#condition_tokens) {
-                break;
+    match label {
+        Some(name) => {
+            let lifetime = label_lifetime(name);
+            quote! {
+                #lifetime: loop {
+                    #(#body_tokens)*
+                    if !(#condition_tokens) {
+                        break #lifetime;
+                    }
+                }
             }
         }
+        None => quote! {
+            loop {
+                #(#body_tokens)*
+                if !(#condition_tokens) {
+                    break;
+                }
+            }
+        },
     }
 }
 
@@ -29,10 +43,10 @@ mod tests {
         let body = vec![IrStmt::Return(None)];
         let condition = IrExpression::Literal(IrLiteral::Bool(true));
 
-        let tokens = do_while_tokens(&body, &condition);
+        let tokens = do_while_tokens(&body, &condition, None);
         let expected = quote! {
             loop {
-                return;
+                return ();
                 if !(true) {
                     break;
                 }

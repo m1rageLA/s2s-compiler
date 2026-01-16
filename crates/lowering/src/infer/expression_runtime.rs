@@ -70,6 +70,7 @@ pub(crate) fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
                 }
             }
             ValueCall::GetProperty { .. } => Some(IrType::Value),
+            ValueCall::GetPropertyDynamic { .. } => Some(IrType::Value),
             ValueCall::Sub { .. }
             | ValueCall::Mul { .. }
             | ValueCall::Div { .. }

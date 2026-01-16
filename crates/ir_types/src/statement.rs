@@ -8,6 +8,13 @@ pub enum IrStmt {
     Expression(IrExpression),
     Return(Option<IrExpression>),
     Block(Vec<IrStmt>),
+    Empty,
+    Labeled {
+        label: String,
+        body: Box<IrStmt>,
+    },
+    Break(Option<String>),
+    Continue(Option<String>),
     If {
         condition: IrExpression,
         then_branch: Vec<IrStmt>,
@@ -21,7 +28,22 @@ pub enum IrStmt {
         update: Option<IrExpression>,
         body: Vec<IrStmt>,
     },
+    ForIn {
+        left: IrForInLeft,
+        right: IrExpression,
+        body: Vec<IrStmt>,
+    },
+    Throw(IrExpression),
     VarDecl(Vec<IrVariable>),
+    Switch {
+        discriminant: IrExpression,
+        cases: Vec<IrSwitchCase>,
+    },
+    Try {
+        try_block: Vec<IrStmt>,
+        catch: Option<IrCatchClause>,
+        finally: Option<Vec<IrStmt>>,
+    },
     Unsupported(String),
 }
 
@@ -29,4 +51,23 @@ pub enum IrStmt {
 pub enum IrForInit {
     VarDecl(Vec<IrVariable>),
     Expr(IrExpression),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct IrSwitchCase {
+    pub test: Option<IrExpression>,
+    pub consequent: Vec<IrStmt>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct IrCatchClause {
+    pub param: Option<String>,
+    pub body: Vec<IrStmt>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum IrForInLeft {
+    Var(IrVariable),
+    Identifier(String),
+    Pattern(IrExpression),
 }

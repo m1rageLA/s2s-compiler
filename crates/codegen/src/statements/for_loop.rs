@@ -4,6 +4,7 @@ use quote::quote;
 
 use super::collect_stmt_tokens;
 use super::var_decl::var_decl_tokens;
+use super::label::label_lifetime;
 use crate::{Codegen, typing};
 
 pub fn for_loop_tokens(
@@ -11,6 +12,7 @@ pub fn for_loop_tokens(
     condition: Option<&IrExpression>,
     update: Option<&IrExpression>,
     body: &[IrStmt],
+    label: Option<&str>,
 ) -> TokenStream {
     typing::push_scope();
     let init_tokens = render_for_init(init);
@@ -25,24 +27,52 @@ pub fn for_loop_tokens(
     typing::pop_scope();
 
     if let Some(condition_tokens) = condition_tokens {
-        quote! {
-            {
-                #init_tokens
-                while #condition_tokens {
-                    #(#body_tokens)*
-                    #update_tokens
+        match label {
+            Some(name) => {
+                let lifetime = label_lifetime(name);
+                quote! {
+                    {
+                        #init_tokens
+                        #lifetime: while #condition_tokens {
+                            #(#body_tokens)*
+                            #update_tokens
+                        }
+                    }
                 }
             }
+            None => quote! {
+                {
+                    #init_tokens
+                    while #condition_tokens {
+                        #(#body_tokens)*
+                        #update_tokens
+                    }
+                }
+            },
         }
     } else {
-        quote! {
-            {
-                #init_tokens
-                loop {
-                    #(#body_tokens)*
-                    #update_tokens
+        match label {
+            Some(name) => {
+                let lifetime = label_lifetime(name);
+                quote! {
+                    {
+                        #init_tokens
+                        #lifetime: loop {
+                            #(#body_tokens)*
+                            #update_tokens
+                        }
+                    }
                 }
             }
+            None => quote! {
+                {
+                    #init_tokens
+                    loop {
+                        #(#body_tokens)*
+                        #update_tokens
+                    }
+                }
+            },
         }
     }
 }
@@ -88,6 +118,7 @@ mod tests {
                 op: IrPostfixOp::Increment,
             }),
             &body,
+            None,
         );
 
         let output = tokens.to_string();

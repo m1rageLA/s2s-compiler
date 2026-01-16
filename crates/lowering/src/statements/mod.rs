@@ -3,13 +3,21 @@ use swc_ecma_ast::{self as ast};
 
 mod block;
 mod block_like;
+mod break_stmt;
+mod continue_stmt;
 mod do_while_stmt;
+mod empty_stmt;
+mod for_in_stmt;
 mod expr_stmt;
 mod for_stmt;
 mod function_stmt;
 mod if_stmt;
+mod labeled_stmt;
 mod return_stmt;
+mod throw_stmt;
+mod switch_stmt;
 mod unsupported;
+mod try_stmt;
 mod var_decl_stmt;
 mod while_stmt;
 
@@ -27,6 +35,14 @@ pub(crate) fn stmt_to_ir(stmt: &ast::Stmt) -> IrStmt {
         ast::Stmt::While(while_stmt) => while_stmt::lower(while_stmt),
         ast::Stmt::DoWhile(do_while_stmt) => do_while_stmt::lower(do_while_stmt),
         ast::Stmt::For(for_stmt) => for_stmt::lower(for_stmt),
+        ast::Stmt::ForIn(for_in) => for_in_stmt::lower(for_in),
+        ast::Stmt::Empty(_) => empty_stmt::lower(),
+        ast::Stmt::Labeled(label) => labeled_stmt::lower(label),
+        ast::Stmt::Break(brk) => break_stmt::lower(brk),
+        ast::Stmt::Continue(cont) => continue_stmt::lower(cont),
+        ast::Stmt::Switch(sw) => switch_stmt::lower(sw),
+        ast::Stmt::Try(try_stmt) => try_stmt::lower(try_stmt),
+        ast::Stmt::Throw(throw_stmt) => throw_stmt::lower(throw_stmt),
         _ => unsupported::lower(stmt),
     }
 }

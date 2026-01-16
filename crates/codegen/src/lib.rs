@@ -192,6 +192,87 @@ fn infer_returns(stmts: &[ir::IrStmt]) -> Option<IrType> {
                     _ => {}
                 }
             }
+            ir::IrStmt::While(_, body)
+            | ir::IrStmt::DoWhile(body, _)
+            | ir::IrStmt::For { body, .. }
+            | ir::IrStmt::ForIn { body, .. } => {
+                if let Some(inner_ty) = infer_returns(body) {
+                    if let Some(existing) = inferred {
+                        if existing != inner_ty {
+                            return None;
+                        }
+                    } else {
+                        inferred = Some(inner_ty);
+                    }
+                    saw_return = true;
+                }
+            }
+            ir::IrStmt::Switch { cases, .. } => {
+                for case in cases {
+                    if let Some(inner_ty) = infer_returns(&case.consequent) {
+                        if let Some(existing) = inferred {
+                            if existing != inner_ty {
+                                return None;
+                            }
+                        } else {
+                            inferred = Some(inner_ty);
+                        }
+                        saw_return = true;
+                    }
+                }
+            }
+            ir::IrStmt::Labeled { body, .. } => {
+                if let Some(inner_ty) = infer_returns(std::slice::from_ref(body)) {
+                    if let Some(existing) = inferred {
+                        if existing != inner_ty {
+                            return None;
+                        }
+                    } else {
+                        inferred = Some(inner_ty);
+                    }
+                    saw_return = true;
+                }
+            }
+            ir::IrStmt::Try {
+                try_block,
+                catch,
+                finally,
+            } => {
+                if let Some(inner_ty) = infer_returns(try_block) {
+                    if let Some(existing) = inferred {
+                        if existing != inner_ty {
+                            return None;
+                        }
+                    } else {
+                        inferred = Some(inner_ty);
+                    }
+                    saw_return = true;
+                }
+                if let Some(handler) = catch {
+                    if let Some(inner_ty) = infer_returns(&handler.body) {
+                        if let Some(existing) = inferred {
+                            if existing != inner_ty {
+                                return None;
+                            }
+                        } else {
+                            inferred = Some(inner_ty);
+                        }
+                        saw_return = true;
+                    }
+                }
+                if let Some(finally) = finally {
+                    if let Some(inner_ty) = infer_returns(finally) {
+                        if let Some(existing) = inferred {
+                            if existing != inner_ty {
+                                return None;
+                            }
+                        } else {
+                            inferred = Some(inner_ty);
+                        }
+                        saw_return = true;
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -269,12 +350,12 @@ mod tests {
             .expect("expected main function to be generated");
 
         match helper_fn.block.stmts.first() {
-            Some(syn::Stmt::Expr(expr, _)) => match expr {
-                syn::Expr::Return(ret) => {
-                    assert!(ret.expr.is_none(), "helper should return without value");
-                }
-                _ => panic!("expected return expression inside helper"),
-            },
+            Some(syn::Stmt::Expr(expr, _)) => {
+                assert!(
+                    matches!(expr, syn::Expr::Return(_)),
+                    "expected return expression inside helper"
+                );
+            }
             _ => panic!("expected return statement inside helper"),
         }
 
