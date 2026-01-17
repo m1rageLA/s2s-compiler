@@ -171,7 +171,8 @@ mod tests {
         }
 
         let voided = expect_variable(&ir_module.items[6], "voided");
-        match voided.value.as_ref().expect("voided should exist") {
+        let void_expr = unwrap_value(voided.value.as_ref().expect("voided should exist"));
+        match void_expr {
             IrExpression::Unary { op, .. } => assert!(matches!(op, ir::IrUnaryOp::Void)),
             other => panic!("expected void unary, got {other:?}"),
         }

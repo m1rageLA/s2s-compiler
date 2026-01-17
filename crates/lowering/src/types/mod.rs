@@ -37,7 +37,7 @@ fn ts_type_to_ir(ty: &ast::TsType) -> IrType {
 
 fn array_kind_from_type(element_ty: IrType) -> IrArrayKind {
     match element_ty {
-        IrType::Number => IrArrayKind::Number,
+        IrType::Number | IrType::UInt => IrArrayKind::Number,
         IrType::Str => IrArrayKind::Str,
         IrType::Bool => IrArrayKind::Bool,
         IrType::Value => IrArrayKind::Value,

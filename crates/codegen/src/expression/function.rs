@@ -2,10 +2,11 @@ use ir::{IrFunctionExpr, IrType};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::{Codegen, function::render_type, typing};
+use crate::{analysis, Codegen, function::render_type, typing};
 
 pub(crate) fn function_expr_tokens(function: &IrFunctionExpr) -> TokenStream {
     typing::push_scope();
+    let param_usages = analysis::infer_param_usages(&function.params, &function.body);
     for param in &function.params {
         typing::define(&param.name, param.ty);
     }
@@ -14,10 +15,13 @@ pub(crate) fn function_expr_tokens(function: &IrFunctionExpr) -> TokenStream {
     let params: Vec<TokenStream> = function
         .params
         .iter()
-        .map(|param| {
+        .zip(param_usages.iter())
+        .map(|(param, usage)| {
             let ident = format_ident!("{}", param.name);
-            let ty = render_type(&param.ty);
-            quote! { #ident: #ty }
+            let ty = render_param_type(&param.ty, usage.pass);
+            let mutability = (usage.mutated && matches!(usage.pass, typing::ParamPass::Value))
+                .then(|| quote! { mut });
+            quote! { #mutability #ident: #ty }
         })
         .collect();
 
@@ -41,6 +45,19 @@ pub(crate) fn function_expr_tokens(function: &IrFunctionExpr) -> TokenStream {
                 #( #body_tokens )*
             }
         }
+    }
+}
+
+fn render_param_type(ty: &IrType, pass: typing::ParamPass) -> TokenStream {
+    if let IrType::Array(_) = ty {
+        let inner = render_type(ty);
+        match pass {
+            typing::ParamPass::MutRef => quote! { &mut #inner },
+            typing::ParamPass::Ref => quote! { & #inner },
+            typing::ParamPass::Value => inner,
+        }
+    } else {
+        render_type(ty)
     }
 }
 

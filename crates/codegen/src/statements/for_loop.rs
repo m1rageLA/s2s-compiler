@@ -122,8 +122,14 @@ mod tests {
         );
 
         let output = tokens.to_string();
-        assert!(output.contains("let mut i : f64 = 0.0"), "unexpected init: {output}");
-        assert!(output.contains("(i) < (5.0)"), "unexpected condition: {output}");
+        assert!(
+            output.contains("let mut i : f64 = (0) as f64"),
+            "unexpected init: {output}"
+        );
+        assert!(
+            output.contains("(i) < ((5) as f64)"),
+            "unexpected condition: {output}"
+        );
         assert!(output.contains("+ 1.0"), "unexpected increment: {output}");
     }
 }

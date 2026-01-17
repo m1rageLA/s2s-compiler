@@ -1,10 +1,22 @@
-use crate::Codegen;
-use ir::IrExpression;
+use crate::{Codegen, typing};
+use ir::{IrArrayKind, IrExpression, IrType};
 use proc_macro2::TokenStream;
 use quote::quote;
 
 pub(crate) fn array_tokens(items: &[IrExpression]) -> TokenStream {
-    let item_tokens: Vec<TokenStream> = items.iter().map(|item| item.codegen()).collect();
+    let kind = typing::infer_array_kind(items);
+    let item_tokens: Vec<TokenStream> = items
+        .iter()
+        .map(|item| {
+            let tokens = item.codegen();
+            if matches!(kind, IrArrayKind::Number)
+                && !matches!(item, IrExpression::RuntimeCall(ir::RuntimeNamespace::Value(_)))
+            {
+                return typing::coerce_to_type(tokens, &IrType::Number, typing::infer_expression_type(item));
+            }
+            tokens
+        })
+        .collect();
     quote! { vec![ #( #item_tokens ),* ] }
 }
 
@@ -51,15 +63,15 @@ mod tests {
 
         let rendered = render_expr(tokens);
         assert!(
-            rendered.contains("runtime::value::into_value(1.0)"),
+            rendered.contains("runtime::value::into_value(1)"),
             "formatted output:\n{rendered}"
         );
         assert!(
-            rendered.contains("runtime::value::into_value(2.0)"),
+            rendered.contains("runtime::value::into_value(2)"),
             "formatted output:\n{rendered}"
         );
         assert!(
-            rendered.contains("runtime::value::into_value(3.0)"),
+            rendered.contains("runtime::value::into_value(3)"),
             "formatted output:\n{rendered}"
         );
     }

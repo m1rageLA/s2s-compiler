@@ -1,5 +1,7 @@
 use crate::context;
-use ir::{IrItem, IrModule};
+use ir::{
+    IrCatchClause, IrForInLeft, IrForInit, IrItem, IrModule, IrStmt, IrVariable,
+};
 use swc_ecma_ast::{self as ast};
 
 mod stmt;
@@ -16,7 +18,91 @@ pub fn ast_to_ir(module: &ast::Module) -> IrModule {
         }
     }
 
+    apply_mutations(&mut items);
+
     IrModule { items }
+}
+
+fn apply_mutations(items: &mut [IrItem]) {
+    for item in items {
+        match item {
+            IrItem::Variable(var) => apply_mutation_to_var(var),
+            IrItem::Function(func) => apply_mutation_to_stmts(&mut func.body),
+            IrItem::Block(stmts) => apply_mutation_to_stmts(stmts),
+            IrItem::Expression(_) => {}
+        }
+    }
+}
+
+fn apply_mutation_to_stmts(stmts: &mut [IrStmt]) {
+    for stmt in stmts {
+        apply_mutation_to_stmt(stmt);
+    }
+}
+
+fn apply_mutation_to_stmt(stmt: &mut IrStmt) {
+    match stmt {
+        IrStmt::VarDecl(vars) => {
+            for var in vars {
+                apply_mutation_to_var(var);
+            }
+        }
+        IrStmt::Leteral(var) => apply_mutation_to_var(var),
+        IrStmt::Block(stmts) => apply_mutation_to_stmts(stmts),
+        IrStmt::Labeled { body, .. } => apply_mutation_to_stmt(body),
+        IrStmt::If {
+            then_branch,
+            else_branch,
+            ..
+        } => {
+            apply_mutation_to_stmts(then_branch);
+            if let Some(branch) = else_branch {
+                apply_mutation_to_stmts(branch);
+            }
+        }
+        IrStmt::While(_, body) | IrStmt::DoWhile(body, _) => apply_mutation_to_stmts(body),
+        IrStmt::For { init, body, .. } => {
+            if let Some(init) = init {
+                if let IrForInit::VarDecl(vars) = init {
+                    for var in vars {
+                        apply_mutation_to_var(var);
+                    }
+                }
+            }
+            apply_mutation_to_stmts(body);
+        }
+        IrStmt::ForIn { left, body, .. } => {
+            if let IrForInLeft::Var(var) = left {
+                apply_mutation_to_var(var);
+            }
+            apply_mutation_to_stmts(body);
+        }
+        IrStmt::Switch { cases, .. } => {
+            for case in cases {
+                apply_mutation_to_stmts(&mut case.consequent);
+            }
+        }
+        IrStmt::Try {
+            try_block,
+            catch,
+            finally,
+        } => {
+            apply_mutation_to_stmts(try_block);
+            if let Some(IrCatchClause { body, .. }) = catch {
+                apply_mutation_to_stmts(body);
+            }
+            if let Some(finally) = finally {
+                apply_mutation_to_stmts(finally);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn apply_mutation_to_var(var: &mut IrVariable) {
+    if context::is_mutated(&var.name) {
+        var.mutable = true;
+    }
 }
 
 #[cfg(test)]

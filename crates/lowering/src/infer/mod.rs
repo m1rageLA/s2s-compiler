@@ -58,7 +58,7 @@ fn infer_array_kind(elements: &[IrExpression]) -> IrArrayKind {
     let mut kind = IrArrayKind::Unknown;
     for element in elements {
         match infer_expression_type(element) {
-            Some(IrType::Number) => {
+            Some(IrType::Number | IrType::UInt) => {
                 kind = match kind {
                     IrArrayKind::Unknown | IrArrayKind::Number => IrArrayKind::Number,
                     _ => return IrArrayKind::Any,
@@ -120,7 +120,7 @@ mod tests {
 
     #[test]
     fn infers_expression_types_across_variants() {
-        assert_eq!(infer_expression_type(&number(1.0)), Some(IrType::Number));
+        assert_eq!(infer_expression_type(&number(1.0)), Some(IrType::UInt));
         assert_eq!(infer_expression_type(&string("hi")), Some(IrType::Str));
         assert_eq!(infer_expression_type(&bool_lit(true)), Some(IrType::Bool));
         assert_eq!(
@@ -141,7 +141,7 @@ mod tests {
             left: Box::new(number(1.0)),
             right: Box::new(number(2.0)),
         };
-        assert_eq!(infer_expression_type(&numeric_add), Some(IrType::Number));
+        assert_eq!(infer_expression_type(&numeric_add), Some(IrType::UInt));
 
         let bool_add = IrExpression::Binary {
             op: IrBinOp::Add,
@@ -164,7 +164,7 @@ mod tests {
         };
         assert_eq!(
             infer_expression_type(&conditional_same),
-            Some(IrType::Number)
+            Some(IrType::UInt)
         );
 
         let conditional_diff = IrExpression::Conditional {
@@ -218,8 +218,8 @@ mod tests {
     #[test]
     fn unify_type_respects_existing_inference() {
         let mut inferred = None;
-        assert!(unify_type(&mut inferred, IrType::Number));
-        assert_eq!(inferred, Some(IrType::Number));
+        assert!(unify_type(&mut inferred, IrType::UInt));
+        assert_eq!(inferred, Some(IrType::UInt));
 
         assert!(unify_type(&mut inferred, IrType::Number));
         assert_eq!(inferred, Some(IrType::Number));
@@ -259,8 +259,8 @@ mod tests {
 
         assert_eq!(
             infer_function_return_type(&body),
-            Some(IrType::Number),
-            "expected number type inference across control-flow constructs"
+            Some(IrType::UInt),
+            "expected integer type inference across control-flow constructs"
         );
     }
 

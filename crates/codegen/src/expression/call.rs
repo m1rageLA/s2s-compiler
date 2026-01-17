@@ -2,18 +2,101 @@ use ir::IrExpression;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::Codegen;
+use crate::{analysis, typing, Codegen};
 
 pub(crate) fn call_tokens(callee: &IrExpression, args: &[IrExpression]) -> TokenStream {
     let callee_tokens = callee.codegen();
-    let arg_tokens: Vec<TokenStream> = args
-        .iter()
+    let callee_ty = typing::infer_expression_type(callee);
+    let arg_tokens: Vec<TokenStream> = if let IrExpression::Identifier(name) = callee {
+        if let Some(param_types) = typing::lookup_function_params(name) {
+            let param_passes = typing::lookup_function_param_passes(name);
+            args.iter()
+                .enumerate()
+                .map(|(idx, arg)| {
+                    let tokens = arg.codegen();
+                    let base = match param_passes
+                        .as_ref()
+                        .and_then(|passes| passes.get(idx).copied())
+                    {
+                        Some(typing::ParamPass::MutRef) => quote! { &mut (#tokens) },
+                        Some(typing::ParamPass::Ref) => quote! { & (#tokens) },
+                        _ => quote! { (#tokens).clone() },
+                    };
+
+                    if let Some(target_ty) = param_types.get(idx) {
+                        let expr_ty = typing::infer_expression_type(arg);
+                        if matches!(
+                            param_passes.as_ref().and_then(|passes| passes.get(idx).copied()),
+                            Some(typing::ParamPass::Ref | typing::ParamPass::MutRef)
+                        ) {
+                            base
+                        } else {
+                            typing::coerce_to_type(base, target_ty, expr_ty)
+                        }
+                    } else {
+                        base
+                    }
+                })
+                .collect()
+        } else {
+            default_args(args, callee_ty)
+        }
+    } else if let IrExpression::Arrow { params, body } = callee {
+        let usages = analysis::infer_param_usages_for_arrow(params, body);
+        call_args_with_passes(args, params, &usages)
+    } else if let IrExpression::Function(func) = callee {
+        let usages = analysis::infer_param_usages(&func.params, &func.body);
+        call_args_with_passes(args, &func.params, &usages)
+    } else {
+        default_args(args, callee_ty)
+    };
+
+    quote! { (#callee_tokens)( #( #arg_tokens ),* ) }
+}
+
+fn call_args_with_passes(
+    args: &[IrExpression],
+    params: &[ir::IrParam],
+    usages: &[analysis::ParamUsage],
+) -> Vec<TokenStream> {
+    args.iter()
+        .enumerate()
+        .map(|(idx, arg)| {
+            let tokens = arg.codegen();
+            let pass = usages.get(idx).map(|usage| usage.pass).unwrap_or(typing::ParamPass::Value);
+            let base = match pass {
+                typing::ParamPass::MutRef => quote! { &mut (#tokens) },
+                typing::ParamPass::Ref => quote! { & (#tokens) },
+                typing::ParamPass::Value => quote! { (#tokens).clone() },
+            };
+
+            if let Some(target_ty) = params.get(idx).map(|param| param.ty) {
+                let expr_ty = typing::infer_expression_type(arg);
+                if matches!(pass, typing::ParamPass::Ref | typing::ParamPass::MutRef) {
+                    base
+                } else {
+                    typing::coerce_to_type(base, &target_ty, expr_ty)
+                }
+            } else {
+                base
+            }
+        })
+        .collect()
+}
+
+fn default_args(args: &[IrExpression], callee_ty: Option<ir::IrType>) -> Vec<TokenStream> {
+    let coerce_value = matches!(callee_ty, Some(ir::IrType::Any | ir::IrType::Value));
+    args.iter()
         .map(|arg| {
             let tokens = arg.codegen();
-            quote! { (#tokens).clone() }
+            let base = quote! { (#tokens).clone() };
+            if coerce_value {
+                typing::coerce_to_type(base, &ir::IrType::Value, typing::infer_expression_type(arg))
+            } else {
+                base
+            }
         })
-        .collect();
-    quote! { (#callee_tokens)( #( #arg_tokens ),* ) }
+        .collect()
 }
 
 #[cfg(test)]

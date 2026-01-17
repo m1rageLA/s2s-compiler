@@ -20,15 +20,25 @@ where
 {
     match index(array, position) {
         Value::Number(number) => number,
+        Value::Int(value) => value as f64,
         _ => panic!("expected numeric array element"),
     }
 }
 
 fn value_to_index(value: Value) -> Option<usize> {
     match value {
+        Value::Int(value) => normalize_int_index(value),
         Value::Number(number) => normalize_index(number),
         Value::String(string) => string.parse::<f64>().ok().and_then(normalize_index),
         _ => None,
+    }
+}
+
+fn normalize_int_index(value: i64) -> Option<usize> {
+    if value < 0 {
+        None
+    } else {
+        usize::try_from(value).ok()
     }
 }
 

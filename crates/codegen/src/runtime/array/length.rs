@@ -9,8 +9,24 @@ pub(crate) fn length_tokens(target: &IrExpression) -> TokenStream {
         Some(IrType::Array(IrArrayKind::Number))
         | Some(IrType::Array(IrArrayKind::Str))
         | Some(IrType::Array(IrArrayKind::Bool)) => {
-            quote! { (#target_tokens.len() as f64) }
+            quote! { #target_tokens.len() }
         }
         _ => quote! { runtime::array::length(&#target_tokens) },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::typing;
+    use quote::quote;
+
+    #[test]
+    fn typed_length_uses_usize_len() {
+        typing::reset();
+        typing::define("values", IrType::Array(IrArrayKind::Number));
+
+        let tokens = length_tokens(&IrExpression::Identifier("values".into()));
+        assert_eq!(tokens.to_string(), quote! { values.len() }.to_string());
     }
 }

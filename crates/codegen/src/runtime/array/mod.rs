@@ -77,7 +77,7 @@ mod tests {
         assert_eq!(
             tokens.to_string(),
             quote::quote! {{
-                let index_tmp = (1.0).clone();
+                let index_tmp = (1).clone();
                 runtime::array::index(&values, index_tmp)
             }}
             .to_string()

@@ -10,6 +10,8 @@ where
     let right = rhs.into();
     if left.is_string_like() || right.is_string_like() {
         Value::String(format!("{}{}", left.to_string(), right.to_string()))
+    } else if let (Value::Int(a), Value::Int(b)) = (&left, &right) {
+        int_result(*a, *b, |l, r| l + r)
     } else {
         Value::Number(left.to_number() + right.to_number())
     }
@@ -25,7 +27,13 @@ where
     L: Into<Value>,
     R: Into<Value>,
 {
-    Value::Number(sub_number(lhs, rhs))
+    let left: Value = lhs.into();
+    let right: Value = rhs.into();
+    if let (Value::Int(a), Value::Int(b)) = (&left, &right) {
+        int_result(*a, *b, |l, r| l - r)
+    } else {
+        Value::Number(sub_number(left, right))
+    }
 }
 
 pub fn mul<L, R>(lhs: L, rhs: R) -> Value
@@ -33,7 +41,13 @@ where
     L: Into<Value>,
     R: Into<Value>,
 {
-    Value::Number(lhs.into().to_number() * rhs.into().to_number())
+    let left: Value = lhs.into();
+    let right: Value = rhs.into();
+    if let (Value::Int(a), Value::Int(b)) = (&left, &right) {
+        int_result(*a, *b, |l, r| l * r)
+    } else {
+        Value::Number(left.to_number() * right.to_number())
+    }
 }
 
 pub fn div<L, R>(lhs: L, rhs: R) -> Value
@@ -41,7 +55,9 @@ where
     L: Into<Value>,
     R: Into<Value>,
 {
-    Value::Number(div_number(lhs, rhs))
+    let left: Value = lhs.into();
+    let right: Value = rhs.into();
+    Value::Number(div_number(left, right))
 }
 
 pub fn modulo<L, R>(lhs: L, rhs: R) -> Value
@@ -49,7 +65,17 @@ where
     L: Into<Value>,
     R: Into<Value>,
 {
-    Value::Number(mod_number(lhs, rhs))
+    let left: Value = lhs.into();
+    let right: Value = rhs.into();
+    if let (Value::Int(a), Value::Int(b)) = (&left, &right) {
+        if *b == 0 {
+            Value::Number(f64::NAN)
+        } else {
+            int_result(*a, *b, |l, r| l % r)
+        }
+    } else {
+        Value::Number(mod_number(left, right))
+    }
 }
 
 pub fn loose_equal<L, R>(lhs: L, rhs: R) -> bool
@@ -97,7 +123,14 @@ pub fn loose_equal_refs(left: &Value, right: &Value) -> bool {
 }
 
 pub fn strict_equal_refs(left: &Value, right: &Value) -> bool {
-    left == right
+    match (left, right) {
+        (Value::Int(a), Value::Int(b)) => a == b,
+        (Value::Number(a), Value::Number(b)) => numbers_equal(*a, *b),
+        (Value::Int(a), Value::Number(b)) | (Value::Number(b), Value::Int(a)) => {
+            numbers_equal(*a as f64, *b)
+        }
+        _ => left == right,
+    }
 }
 
 pub fn loose_not_equal_refs(left: &Value, right: &Value) -> bool {
@@ -122,14 +155,16 @@ where
     match value.into() {
         Value::Object(map) => map.get(property).cloned().unwrap_or(Value::Undefined),
         Value::Array(values) => match property {
-            "length" => Value::Number(values.len() as f64),
+            "length" => Value::Int(values.len() as i64),
             _ => Value::Undefined,
         },
         Value::String(text) => match property {
-            "length" => Value::Number(text.chars().count() as f64),
+            "length" => Value::Int(text.chars().count() as i64),
             _ => Value::Undefined,
         },
-        Value::Number(_) | Value::Bool(_) | Value::Null | Value::Undefined => Value::Undefined,
+        Value::Number(_) | Value::Int(_) | Value::Bool(_) | Value::Null | Value::Undefined => {
+            Value::Undefined
+        }
     }
 }
 
@@ -161,6 +196,7 @@ pub fn set_property_in_place(target: &mut Value, property: &str, value: Value) -
         }
         // For primitives, property writes are ignored (matching JS semantics loosely).
         Value::Number(_)
+        | Value::Int(_)
         | Value::String(_)
         | Value::Bool(_)
         | Value::Null
@@ -192,7 +228,7 @@ pub fn delete_property_str(target: &mut Value, property: &str) -> bool {
             }
             true
         }
-        Value::String(_) | Value::Number(_) | Value::Bool(_) | Value::Null | Value::Undefined => {
+        Value::String(_) | Value::Number(_) | Value::Int(_) | Value::Bool(_) | Value::Null | Value::Undefined => {
             true
         }
     }
@@ -252,7 +288,7 @@ where
     V: Into<Value>,
 {
     match value.into() {
-        Value::Number(_) => "number".into(),
+        Value::Number(_) | Value::Int(_) => "number".into(),
         Value::String(_) => "string".into(),
         Value::Bool(_) => "boolean".into(),
         Value::Null => "object".into(),
@@ -273,7 +309,7 @@ where
             .map(|(idx, _)| idx.to_string())
             .collect(),
         Value::String(text) => text.chars().enumerate().map(|(idx, _)| idx.to_string()).collect(),
-        Value::Number(_) | Value::Bool(_) | Value::Null | Value::Undefined => Vec::new(),
+        Value::Number(_) | Value::Int(_) | Value::Bool(_) | Value::Null | Value::Undefined => Vec::new(),
     }
 }
 
@@ -329,12 +365,23 @@ enum Ordering {
     GreaterOrEqual,
 }
 
+fn int_result(a: i64, b: i64, op: impl Fn(i128, i128) -> i128) -> Value {
+    let result = op(a as i128, b as i128);
+    if let Ok(n) = i64::try_from(result) {
+        Value::Int(n)
+    } else {
+        Value::Number(result as f64)
+    }
+}
+
 fn loose_equal_values(left: &Value, right: &Value) -> bool {
     use Value::*;
 
     match (left, right) {
         (Null, Undefined) | (Undefined, Null) => true,
+        (Int(a), Int(b)) => *a == *b,
         (Number(a), Number(b)) => numbers_equal(*a, *b),
+        (Int(a), Number(b)) | (Number(b), Int(a)) => numbers_equal(*a as f64, *b),
         (String(a), String(b)) => a == b,
         (Bool(a), Bool(b)) => a == b,
         _ => numbers_equal(left.to_number(), right.to_number()),
@@ -376,12 +423,23 @@ mod tests {
     #[test]
     fn get_property_handles_length_for_collections() {
         let array = Value::Array(vec![Value::Number(1.0), Value::Number(2.0)]);
-        assert_eq!(get_property(array, "length"), Value::Number(2.0));
+        assert_eq!(get_property(array, "length"), Value::Int(2));
 
         let text = Value::String("hi".into());
-        assert_eq!(get_property(text, "length"), Value::Number(2.0));
+        assert_eq!(get_property(text, "length"), Value::Int(2));
 
         assert_eq!(get_property(Value::Number(1.0), "length"), Value::Undefined);
+    }
+
+    #[test]
+    fn add_preserves_int_variants() {
+        let sum = add(Value::Int(1), Value::Int(2));
+        assert_eq!(sum, Value::Int(3));
+    }
+
+    #[test]
+    fn strict_equal_matches_int_and_number() {
+        assert!(strict_equal_refs(&Value::Int(5), &Value::Number(5.0)));
     }
 }
 

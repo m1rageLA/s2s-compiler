@@ -1,12 +1,12 @@
 use crate::value::Value;
 
 pub fn push(array: &mut Vec<Value>, values: Vec<Value>) -> Value {
-    Value::Number(push_number(array, values))
+    Value::Int(push_number(array, values) as i64)
 }
 
-pub fn push_number(array: &mut Vec<Value>, mut values: Vec<Value>) -> f64 {
+pub fn push_number(array: &mut Vec<Value>, mut values: Vec<Value>) -> usize {
     array.append(&mut values);
-    array.len() as f64
+    array.len()
 }
 
 #[cfg(test)]
@@ -20,7 +20,7 @@ mod tests {
 
         let result = push_number(&mut array, vec![Value::Number(3.0)]);
 
-        assert_eq!(result, 3.0);
+        assert_eq!(result, 3);
         assert_eq!(
             array,
             vec![Value::Number(1.0), Value::Number(2.0), Value::Number(3.0)]
@@ -36,7 +36,7 @@ mod tests {
             vec![Value::Number(42.0), Value::String("rust".to_string())],
         );
 
-        assert_eq!(len, 4.0);
+        assert_eq!(len, 4);
         assert_eq!(
             array,
             vec![
@@ -54,8 +54,8 @@ mod tests {
         let len1 = push_number(&mut array, vec![Value::Bool(false)]);
         let len2 = push_number(&mut array, vec![Value::Bool(true), Value::Number(3.0)]);
 
-        assert_eq!(len1, 1.0);
-        assert_eq!(len2, 3.0);
+        assert_eq!(len1, 1);
+        assert_eq!(len2, 3);
         assert_eq!(
             array,
             vec![Value::Bool(false), Value::Bool(true), Value::Number(3.0)]

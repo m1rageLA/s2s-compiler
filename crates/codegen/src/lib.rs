@@ -3,11 +3,12 @@ pub mod function;
 pub mod statements;
 pub use statements as stmt;
 pub mod runtime;
+mod analysis;
 mod typing;
 
 use std::fmt;
 
-use ir::{IrExpression, IrItem, IrModule, IrType};
+use ir::{IrExpression, IrItem, IrModule, IrParam, IrType};
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -91,12 +92,23 @@ impl Codegen for IrModule {
             match item {
                 IrItem::Variable(var) => {
                     typing::define(&var.name, var.ty);
-                    if let Some(ret) = function_return_from_initializer(var.value.as_ref()) {
+                    if let Some((params, ret)) = function_signature_from_initializer(var.value.as_ref()) {
+                        typing::define_function_params(&var.name, &params);
+                        typing::define_function_return(&var.name, ret);
+                        if let Some(passes) = function_param_passes_from_initializer(var.value.as_ref()) {
+                            typing::define_function_param_passes(&var.name, &passes);
+                        }
+                    } else if let Some(ret) = function_return_from_initializer(var.value.as_ref()) {
                         typing::define_function_return(&var.name, ret);
                     }
                 }
                 IrItem::Function(func) => {
                     typing::define_function_return(&func.name, func.ret);
+                    typing::define_function_params(&func.name, &func.params);
+                    let param_usages = analysis::infer_param_usages(&func.params, &func.body);
+                    let passes: Vec<typing::ParamPass> =
+                        param_usages.iter().map(|usage| usage.pass).collect();
+                    typing::define_function_param_passes(&func.name, &passes);
                     typing::define(&func.name, IrType::Value);
                 }
                 _ => {}
@@ -111,6 +123,32 @@ fn function_return_from_initializer(expr: Option<&IrExpression>) -> Option<IrTyp
     match expr {
         Some(IrExpression::Function(func)) => Some(func.ret),
         Some(IrExpression::Arrow { params, body }) => infer_arrow_return(params, body),
+        _ => None,
+    }
+}
+
+fn function_param_passes_from_initializer(expr: Option<&IrExpression>) -> Option<Vec<typing::ParamPass>> {
+    match expr {
+        Some(IrExpression::Function(func)) => {
+            let usages = analysis::infer_param_usages(&func.params, &func.body);
+            Some(usages.iter().map(|usage| usage.pass).collect())
+        }
+        Some(IrExpression::Arrow { params, body }) => {
+            let usages = analysis::infer_param_usages_for_arrow(params, body);
+            Some(usages.iter().map(|usage| usage.pass).collect())
+        }
+        _ => None,
+    }
+}
+
+fn function_signature_from_initializer(
+    expr: Option<&IrExpression>,
+) -> Option<(Vec<IrParam>, IrType)> {
+    match expr {
+        Some(IrExpression::Function(func)) => Some((func.params.clone(), func.ret)),
+        Some(IrExpression::Arrow { params, body }) => {
+            infer_arrow_return(params, body).map(|ret| (params.clone(), ret))
+        }
         _ => None,
     }
 }
@@ -137,12 +175,8 @@ fn infer_returns(stmts: &[ir::IrStmt]) -> Option<IrType> {
             ir::IrStmt::Return(Some(expr)) => {
                 let ty = typing::infer_expression_type(expr);
                 if let Some(found) = ty {
-                    if let Some(existing) = inferred {
-                        if existing != found {
-                            return None;
-                        }
-                    } else {
-                        inferred = Some(found);
+                    if !unify_return(&mut inferred, found) {
+                        return None;
                     }
                 } else {
                     return None;
@@ -150,23 +184,15 @@ fn infer_returns(stmts: &[ir::IrStmt]) -> Option<IrType> {
                 saw_return = true;
             }
             ir::IrStmt::Return(None) => {
-                if let Some(existing) = inferred {
-                    if existing != IrType::Unit {
-                        return None;
-                    }
-                } else {
-                    inferred = Some(IrType::Unit);
+                if !unify_return(&mut inferred, IrType::Unit) {
+                    return None;
                 }
                 saw_return = true;
             }
             ir::IrStmt::Block(inner) => {
                 if let Some(inner_ty) = infer_returns(inner) {
-                    if let Some(existing) = inferred {
-                        if existing != inner_ty {
-                            return None;
-                        }
-                    } else {
-                        inferred = Some(inner_ty);
+                    if !unify_return(&mut inferred, inner_ty) {
+                        return None;
                     }
                     saw_return = true;
                 }
@@ -180,12 +206,8 @@ fn infer_returns(stmts: &[ir::IrStmt]) -> Option<IrType> {
                 let else_ty = else_branch.as_deref().and_then(infer_returns);
                 match (then_ty, else_ty) {
                     (Some(a), Some(b)) if a == b => {
-                        if let Some(existing) = inferred {
-                            if existing != a {
-                                return None;
-                            }
-                        } else {
-                            inferred = Some(a);
+                        if !unify_return(&mut inferred, a) {
+                            return None;
                         }
                         saw_return = true;
                     }
@@ -197,12 +219,8 @@ fn infer_returns(stmts: &[ir::IrStmt]) -> Option<IrType> {
             | ir::IrStmt::For { body, .. }
             | ir::IrStmt::ForIn { body, .. } => {
                 if let Some(inner_ty) = infer_returns(body) {
-                    if let Some(existing) = inferred {
-                        if existing != inner_ty {
-                            return None;
-                        }
-                    } else {
-                        inferred = Some(inner_ty);
+                    if !unify_return(&mut inferred, inner_ty) {
+                        return None;
                     }
                     saw_return = true;
                 }
@@ -210,12 +228,8 @@ fn infer_returns(stmts: &[ir::IrStmt]) -> Option<IrType> {
             ir::IrStmt::Switch { cases, .. } => {
                 for case in cases {
                     if let Some(inner_ty) = infer_returns(&case.consequent) {
-                        if let Some(existing) = inferred {
-                            if existing != inner_ty {
-                                return None;
-                            }
-                        } else {
-                            inferred = Some(inner_ty);
+                        if !unify_return(&mut inferred, inner_ty) {
+                            return None;
                         }
                         saw_return = true;
                     }
@@ -223,12 +237,8 @@ fn infer_returns(stmts: &[ir::IrStmt]) -> Option<IrType> {
             }
             ir::IrStmt::Labeled { body, .. } => {
                 if let Some(inner_ty) = infer_returns(std::slice::from_ref(body)) {
-                    if let Some(existing) = inferred {
-                        if existing != inner_ty {
-                            return None;
-                        }
-                    } else {
-                        inferred = Some(inner_ty);
+                    if !unify_return(&mut inferred, inner_ty) {
+                        return None;
                     }
                     saw_return = true;
                 }
@@ -239,35 +249,23 @@ fn infer_returns(stmts: &[ir::IrStmt]) -> Option<IrType> {
                 finally,
             } => {
                 if let Some(inner_ty) = infer_returns(try_block) {
-                    if let Some(existing) = inferred {
-                        if existing != inner_ty {
-                            return None;
-                        }
-                    } else {
-                        inferred = Some(inner_ty);
+                    if !unify_return(&mut inferred, inner_ty) {
+                        return None;
                     }
                     saw_return = true;
                 }
                 if let Some(handler) = catch {
                     if let Some(inner_ty) = infer_returns(&handler.body) {
-                        if let Some(existing) = inferred {
-                            if existing != inner_ty {
-                                return None;
-                            }
-                        } else {
-                            inferred = Some(inner_ty);
+                        if !unify_return(&mut inferred, inner_ty) {
+                            return None;
                         }
                         saw_return = true;
                     }
                 }
                 if let Some(finally) = finally {
                     if let Some(inner_ty) = infer_returns(finally) {
-                        if let Some(existing) = inferred {
-                            if existing != inner_ty {
-                                return None;
-                            }
-                        } else {
-                            inferred = Some(inner_ty);
+                        if !unify_return(&mut inferred, inner_ty) {
+                            return None;
                         }
                         saw_return = true;
                     }
@@ -278,6 +276,26 @@ fn infer_returns(stmts: &[ir::IrStmt]) -> Option<IrType> {
     }
 
     if saw_return { inferred } else { Some(IrType::Unit) }
+}
+
+fn unify_return(current: &mut Option<IrType>, new_ty: IrType) -> bool {
+    match current {
+        Some(existing) if *existing == new_ty => true,
+        Some(existing)
+            if matches!(
+                (*existing, new_ty),
+                (IrType::Number, IrType::UInt) | (IrType::UInt, IrType::Number)
+            ) =>
+        {
+            *existing = IrType::Number;
+            true
+        }
+        Some(_) => false,
+        None => {
+            *current = Some(new_ty);
+            true
+        }
+    }
 }
 
 impl Codegen for IrItem {

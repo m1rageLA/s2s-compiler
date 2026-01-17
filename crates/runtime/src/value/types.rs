@@ -82,6 +82,7 @@ pub enum Value {
 impl ToString for Value {
     fn to_string(&self) -> String {
         match self {
+            Value::Int(n) => n.to_string(),
             Value::Number(n) => n.to_string(),
             Value::String(s) => s.clone(),
             Value::Bool(b) => b.to_string(),
@@ -272,6 +273,7 @@ mod tests {
 
     #[test]
     fn kind_reflects_value_variant() {
+        assert_eq!(Value::Int(1).kind(), ValueKind::Int);
         assert_eq!(Value::Number(1.23).kind(), ValueKind::Number);
         assert_eq!(Value::String("hi".into()).kind(), ValueKind::String);
         assert_eq!(Value::Bool(true).kind(), ValueKind::Bool);

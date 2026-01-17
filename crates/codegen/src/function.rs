@@ -2,7 +2,7 @@ use ir::{IrArrayKind, IrExpression, IrFunction, IrType, IrVariable};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::{Codegen, typing};
+use crate::{analysis, Codegen, typing};
 
 impl Codegen for IrFunction {
     type Output = TokenStream;
@@ -10,15 +10,18 @@ impl Codegen for IrFunction {
     fn codegen(&self) -> TokenStream {
         let name = format_ident!("{}", self.name);
         typing::push_scope();
+        let param_usages = analysis::infer_param_usages(&self.params, &self.body);
         for param in &self.params {
             typing::define(&param.name, param.ty);
         }
         typing::push_return_type(self.ret);
 
-        let params = self.params.iter().map(|param| {
+        let params = self.params.iter().zip(param_usages.iter()).map(|(param, usage)| {
             let ident = format_ident!("{}", param.name);
-            let ty = render_type(&param.ty);
-            quote! { #ident: #ty }
+            let ty = render_param_type(&param.ty, usage.pass);
+            let mutability = (usage.mutated && matches!(usage.pass, typing::ParamPass::Value))
+                .then(|| quote! { mut });
+            quote! { #mutability #ident: #ty }
         });
         let return_ty = render_type(&self.ret);
         let body: Vec<_> = self.body.iter().map(|stmt| stmt.codegen()).collect();
@@ -72,6 +75,7 @@ impl Codegen for IrVariable {
 pub(crate) fn render_type(ty: &IrType) -> TokenStream {
     match ty {
         IrType::Number => quote! { f64 },
+        IrType::UInt => quote! { usize },
         IrType::Str => quote! { ::std::string::String },
         IrType::Bool => quote! { bool },
         IrType::Unit => quote! { () },
@@ -88,9 +92,23 @@ pub(crate) fn render_type(ty: &IrType) -> TokenStream {
     }
 }
 
+fn render_param_type(ty: &IrType, pass: typing::ParamPass) -> TokenStream {
+    if let IrType::Array(_) = ty {
+        let inner = render_type(ty);
+        match pass {
+            typing::ParamPass::MutRef => quote! { &mut #inner },
+            typing::ParamPass::Ref => quote! { & #inner },
+            typing::ParamPass::Value => inner,
+        }
+    } else {
+        render_type(ty)
+    }
+}
+
 fn default_value(ty: &IrType) -> TokenStream {
     match ty {
         IrType::Number => quote! { 0.0f64 },
+        IrType::UInt => quote! { 0usize },
         IrType::Str => quote! { ::std::string::String::new() },
         IrType::Bool => quote! { false },
         IrType::Unit => quote! { () },
@@ -240,6 +258,7 @@ mod tests {
     fn render_type_maps_all_variants() {
         let cases = vec![
             (IrType::Number, quote! { f64 }),
+            (IrType::UInt, quote! { usize }),
             (IrType::Str, quote! { ::std::string::String }),
             (IrType::Bool, quote! { bool }),
             (IrType::Unit, quote! { () }),

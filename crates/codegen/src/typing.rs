@@ -2,8 +2,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use ir::{
-    ArrayCall, ConsoleCall, IrArrayKind, IrArrowBody, IrBinOp, IrExpression, IrLiteral, IrStmt,
-    IrTemplatePart, IrType, MathCall, RuntimeNamespace, StringCall, ValueCall,
+    ArrayCall, ConsoleCall, IrArrayKind, IrArrowBody, IrBinOp, IrExpression, IrLiteral, IrParam,
+    IrStmt, IrTemplatePart, IrType, MathCall, RuntimeNamespace, StringCall, ValueCall,
 };
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -11,7 +11,17 @@ use quote::quote;
 thread_local! {
     static TYPE_STACK: RefCell<Vec<HashMap<String, IrType>>> = RefCell::new(vec![HashMap::new()]);
     static FN_RETURNS: RefCell<Vec<HashMap<String, IrType>>> = RefCell::new(vec![HashMap::new()]);
+    static FN_PARAMS: RefCell<Vec<HashMap<String, Vec<IrType>>>> = RefCell::new(vec![HashMap::new()]);
+    static FN_PARAM_PASSES: RefCell<Vec<HashMap<String, Vec<ParamPass>>>> =
+        RefCell::new(vec![HashMap::new()]);
     static RETURN_STACK: RefCell<Vec<IrType>> = RefCell::new(vec![]);
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParamPass {
+    Value,
+    Ref,
+    MutRef,
 }
 
 pub fn reset() {
@@ -25,12 +35,24 @@ pub fn reset() {
         stack.clear();
         stack.push(HashMap::new());
     });
+    FN_PARAMS.with(|stack| {
+        let mut stack = stack.borrow_mut();
+        stack.clear();
+        stack.push(HashMap::new());
+    });
+    FN_PARAM_PASSES.with(|stack| {
+        let mut stack = stack.borrow_mut();
+        stack.clear();
+        stack.push(HashMap::new());
+    });
     RETURN_STACK.with(|stack| stack.borrow_mut().clear());
 }
 
 pub fn push_scope() {
     TYPE_STACK.with(|stack| stack.borrow_mut().push(HashMap::new()));
     FN_RETURNS.with(|stack| stack.borrow_mut().push(HashMap::new()));
+    FN_PARAMS.with(|stack| stack.borrow_mut().push(HashMap::new()));
+    FN_PARAM_PASSES.with(|stack| stack.borrow_mut().push(HashMap::new()));
 }
 
 pub fn pop_scope() {
@@ -41,6 +63,18 @@ pub fn pop_scope() {
         }
     });
     FN_RETURNS.with(|stack| {
+        let mut stack = stack.borrow_mut();
+        if stack.len() > 1 {
+            stack.pop();
+        }
+    });
+    FN_PARAMS.with(|stack| {
+        let mut stack = stack.borrow_mut();
+        if stack.len() > 1 {
+            stack.pop();
+        }
+    });
+    FN_PARAM_PASSES.with(|stack| {
         let mut stack = stack.borrow_mut();
         if stack.len() > 1 {
             stack.pop();
@@ -60,6 +94,22 @@ pub fn define_function_return(name: &str, ty: IrType) {
     FN_RETURNS.with(|stack| {
         if let Some(scope) = stack.borrow_mut().last_mut() {
             scope.insert(name.to_string(), ty);
+        }
+    });
+}
+
+pub fn define_function_params(name: &str, params: &[IrParam]) {
+    FN_PARAMS.with(|stack| {
+        if let Some(scope) = stack.borrow_mut().last_mut() {
+            scope.insert(name.to_string(), params.iter().map(|p| p.ty).collect());
+        }
+    });
+}
+
+pub fn define_function_param_passes(name: &str, passes: &[ParamPass]) {
+    FN_PARAM_PASSES.with(|stack| {
+        if let Some(scope) = stack.borrow_mut().last_mut() {
+            scope.insert(name.to_string(), passes.to_vec());
         }
     });
 }
@@ -86,6 +136,28 @@ pub fn lookup_function_return(name: &str) -> Option<IrType> {
     })
 }
 
+pub fn lookup_function_params(name: &str) -> Option<Vec<IrType>> {
+    FN_PARAMS.with(|stack| {
+        for scope in stack.borrow().iter().rev() {
+            if let Some(params) = scope.get(name) {
+                return Some(params.clone());
+            }
+        }
+        None
+    })
+}
+
+pub fn lookup_function_param_passes(name: &str) -> Option<Vec<ParamPass>> {
+    FN_PARAM_PASSES.with(|stack| {
+        for scope in stack.borrow().iter().rev() {
+            if let Some(passes) = scope.get(name) {
+                return Some(passes.clone());
+            }
+        }
+        None
+    })
+}
+
 pub fn push_return_type(ty: IrType) {
     RETURN_STACK.with(|stack| stack.borrow_mut().push(ty));
 }
@@ -106,7 +178,7 @@ pub fn current_return_type() -> Option<IrType> {
 pub fn infer_expression_type(expr: &IrExpression) -> Option<IrType> {
     match expr {
         IrExpression::Literal(literal) => match literal {
-            IrLiteral::Number(_) => Some(IrType::Number),
+            IrLiteral::Number(value) => Some(infer_number_literal(*value)),
             IrLiteral::Str(_) => Some(IrType::Str),
             IrLiteral::Bool(_) => Some(IrType::Bool),
             IrLiteral::Null => Some(IrType::Value),
@@ -269,28 +341,32 @@ fn infer_return_types(stmts: &[IrStmt]) -> Option<IrType> {
 }
 
 fn infer_binary(op: IrBinOp, left: &IrExpression, right: &IrExpression) -> Option<IrType> {
+    let left_ty = infer_expression_type(left);
+    let right_ty = infer_expression_type(right);
+    let left_numeric = matches!(left_ty, Some(IrType::Number | IrType::UInt));
+    let right_numeric = matches!(right_ty, Some(IrType::Number | IrType::UInt));
+    let both_uint = matches!(left_ty, Some(IrType::UInt)) && matches!(right_ty, Some(IrType::UInt));
+
     match op {
         IrBinOp::Add => {
-            let left_ty = infer_expression_type(left);
-            let right_ty = infer_expression_type(right);
-
             if left_ty == Some(IrType::Str) || right_ty == Some(IrType::Str) {
                 Some(IrType::Str)
             } else if left_ty == Some(IrType::Bool) || right_ty == Some(IrType::Bool) {
                 None
-            } else if left_ty == Some(IrType::Number)
-                || right_ty == Some(IrType::Number)
-                || (left_ty.is_none() && right_ty.is_none())
-            {
+            } else if left_numeric && right_numeric {
+                if both_uint {
+                    Some(IrType::UInt)
+                } else {
+                    Some(IrType::Number)
+                }
+            } else if left_numeric || right_numeric || (left_ty.is_none() && right_ty.is_none()) {
                 Some(IrType::Number)
             } else {
                 None
             }
         }
         IrBinOp::Sub
-        | IrBinOp::Mul
         | IrBinOp::Div
-        | IrBinOp::Mod
         | IrBinOp::Exp
         | IrBinOp::LeftShift
         | IrBinOp::RightShift
@@ -298,6 +374,20 @@ fn infer_binary(op: IrBinOp, left: &IrExpression, right: &IrExpression) -> Optio
         | IrBinOp::BitwiseXor
         | IrBinOp::BitwiseAnd
         | IrBinOp::UnsignedRightShift => Some(IrType::Number),
+        IrBinOp::Mul => {
+            if both_uint {
+                Some(IrType::UInt)
+            } else {
+                Some(IrType::Number)
+            }
+        }
+        IrBinOp::Mod => {
+            if left_numeric && right_numeric && both_uint {
+                Some(IrType::UInt)
+            } else {
+                Some(IrType::Number)
+            }
+        }
         IrBinOp::Equal
         | IrBinOp::StrictEqual
         | IrBinOp::NotEqual
@@ -321,7 +411,7 @@ fn infer_conditional(consequent: &IrExpression, alternate: &IrExpression) -> Opt
     }
 }
 
-fn infer_array_kind(elements: &[IrExpression]) -> IrArrayKind {
+pub(crate) fn infer_array_kind(elements: &[IrExpression]) -> IrArrayKind {
     if elements.is_empty() {
         return IrArrayKind::Unknown;
     }
@@ -329,7 +419,7 @@ fn infer_array_kind(elements: &[IrExpression]) -> IrArrayKind {
     let mut kind = IrArrayKind::Unknown;
     for element in elements {
         match infer_expression_type(element) {
-            Some(IrType::Number) => {
+            Some(IrType::Number | IrType::UInt) => {
                 kind = match kind {
                     IrArrayKind::Unknown | IrArrayKind::Number => IrArrayKind::Number,
                     _ => return IrArrayKind::Any,
@@ -368,10 +458,15 @@ fn infer_call_return(callee: &IrExpression) -> Option<IrType> {
 fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
     match call {
         RuntimeNamespace::Console(ConsoleCall::Log(_)) => Some(IrType::Unit),
-        RuntimeNamespace::Array(ArrayCall::Push { .. }) => Some(IrType::Number),
+        RuntimeNamespace::Array(ArrayCall::Push { target, .. }) => match infer_expression_type(target) {
+            Some(IrType::Array(IrArrayKind::Number | IrArrayKind::Str | IrArrayKind::Bool)) => {
+                Some(IrType::UInt)
+            }
+            _ => Some(IrType::Value),
+        },
         RuntimeNamespace::Array(ArrayCall::Length { target }) => match infer_expression_type(target) {
             Some(IrType::Array(IrArrayKind::Number | IrArrayKind::Str | IrArrayKind::Bool)) => {
-                Some(IrType::Number)
+                Some(IrType::UInt)
             }
             _ => Some(IrType::Value),
         },
@@ -408,11 +503,13 @@ fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
         }
         RuntimeNamespace::Array(ArrayCall::Join { .. }) => Some(IrType::Str),
         RuntimeNamespace::Value(value_call) => match value_call {
-            ValueCall::Coerce { expr } => infer_expression_type(expr).or(Some(IrType::Value)),
+            ValueCall::Coerce { .. } => Some(IrType::Value),
             ValueCall::Add { left, right } => {
                 let left_ty = infer_expression_type(left);
                 let right_ty = infer_expression_type(right);
-                if left_ty == Some(IrType::Number) && right_ty == Some(IrType::Number) {
+                let numeric = matches!(left_ty, Some(IrType::Number | IrType::UInt))
+                    && matches!(right_ty, Some(IrType::Number | IrType::UInt));
+                if numeric {
                     Some(IrType::Number)
                 } else {
                     Some(IrType::Value)
@@ -435,7 +532,7 @@ fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
             | ValueCall::LogicalNot { .. } => Some(IrType::Bool),
         },
         RuntimeNamespace::String(call) => match call {
-            StringCall::Length { .. } => Some(IrType::Number),
+            StringCall::Length { .. } => Some(IrType::UInt),
             StringCall::ToUpperCase { .. }
             | StringCall::ToLowerCase { .. }
             | StringCall::Replace { .. }
@@ -454,7 +551,14 @@ fn unify(current: &mut Option<IrType>, new_ty: Option<IrType>) -> bool {
     match new_ty {
         Some(ty) => {
             if let Some(existing) = current {
-                *existing == ty
+                if *existing == ty {
+                    true
+                } else if numeric_pair(*existing, ty) {
+                    *current = Some(IrType::Number);
+                    true
+                } else {
+                    false
+                }
             } else {
                 *current = Some(ty);
                 true
@@ -496,8 +600,19 @@ pub fn coerce_to_type(
         IrType::Number => {
             if matches!(expr_type, Some(IrType::Number)) {
                 expr_tokens
+            } else if matches!(expr_type, Some(IrType::UInt)) {
+                quote! { (#expr_tokens) as f64 }
             } else {
                 quote! { runtime::value::into_value(#expr_tokens).into_number() }
+            }
+        }
+        IrType::UInt => {
+            if matches!(expr_type, Some(IrType::UInt)) {
+                expr_tokens
+            } else if matches!(expr_type, Some(IrType::Number)) {
+                quote! { (#expr_tokens) as usize }
+            } else {
+                quote! { runtime::value::into_value(#expr_tokens).to_number() as usize }
             }
         }
         IrType::Str => {
@@ -515,6 +630,32 @@ pub fn coerce_to_type(
             }
         }
         IrType::Unit => quote!({ #expr_tokens; () }),
-        IrType::Array(_) | IrType::Any | IrType::Value => expr_tokens,
+        IrType::Array(_) | IrType::Any => expr_tokens,
+        IrType::Value => {
+            if matches!(expr_type, Some(IrType::Value)) {
+                expr_tokens
+            } else {
+                quote! { runtime::value::into_value(#expr_tokens) }
+            }
+        }
     }
+}
+
+fn numeric_pair(a: IrType, b: IrType) -> bool {
+    matches!(
+        (a, b),
+        (IrType::Number, IrType::UInt) | (IrType::UInt, IrType::Number)
+    )
+}
+
+fn infer_number_literal(value: f64) -> IrType {
+    if is_non_negative_int(value) {
+        IrType::UInt
+    } else {
+        IrType::Number
+    }
+}
+
+fn is_non_negative_int(value: f64) -> bool {
+    value.is_finite() && value >= 0.0 && value.fract() == 0.0
 }

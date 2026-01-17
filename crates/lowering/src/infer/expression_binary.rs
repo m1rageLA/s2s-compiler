@@ -5,28 +5,32 @@ pub(crate) fn infer_binary(
     left: &IrExpression,
     right: &IrExpression,
 ) -> Option<IrType> {
+    let left_ty = super::infer_expression_type(left);
+    let right_ty = super::infer_expression_type(right);
+    let left_numeric = matches!(left_ty, Some(IrType::Number | IrType::UInt));
+    let right_numeric = matches!(right_ty, Some(IrType::Number | IrType::UInt));
+    let both_uint = matches!(left_ty, Some(IrType::UInt)) && matches!(right_ty, Some(IrType::UInt));
+
     match op {
         IrBinOp::Add => {
-            let left_ty = super::infer_expression_type(left);
-            let right_ty = super::infer_expression_type(right);
-
             if left_ty == Some(IrType::Str) || right_ty == Some(IrType::Str) {
                 Some(IrType::Str)
             } else if left_ty == Some(IrType::Bool) || right_ty == Some(IrType::Bool) {
                 None
-            } else if left_ty == Some(IrType::Number)
-                || right_ty == Some(IrType::Number)
-                || (left_ty.is_none() && right_ty.is_none())
-            {
+            } else if left_numeric && right_numeric {
+                if both_uint {
+                    Some(IrType::UInt)
+                } else {
+                    Some(IrType::Number)
+                }
+            } else if left_numeric || right_numeric || (left_ty.is_none() && right_ty.is_none()) {
                 Some(IrType::Number)
             } else {
                 None
             }
         }
         IrBinOp::Sub
-        | IrBinOp::Mul
         | IrBinOp::Div
-        | IrBinOp::Mod
         | IrBinOp::Exp
         | IrBinOp::LeftShift
         | IrBinOp::RightShift
@@ -34,6 +38,20 @@ pub(crate) fn infer_binary(
         | IrBinOp::BitwiseXor
         | IrBinOp::BitwiseAnd
         | IrBinOp::UnsignedRightShift => Some(IrType::Number),
+        IrBinOp::Mul => {
+            if both_uint {
+                Some(IrType::UInt)
+            } else {
+                Some(IrType::Number)
+            }
+        }
+        IrBinOp::Mod => {
+            if left_numeric && right_numeric && both_uint {
+                Some(IrType::UInt)
+            } else {
+                Some(IrType::Number)
+            }
+        }
         IrBinOp::Equal
         | IrBinOp::StrictEqual
         | IrBinOp::NotEqual

@@ -24,7 +24,7 @@ mod tests {
         let tokens = let_tokens(&variable);
         assert_eq!(
             tokens.to_string(),
-            quote::quote! { let value: f64 = 1.0; }
+            quote::quote! { let value: f64 = (1) as f64; }
                 .to_string()
         );
     }

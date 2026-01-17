@@ -10,8 +10,22 @@ impl Codegen for IrLiteral {
     fn codegen(&self) -> TokenStream {
         match self {
             IrLiteral::Number(value) => {
-                let lit = Literal::f64_unsuffixed(*value);
-                quote! { #lit }
+                let is_uint = value.is_finite()
+                    && *value >= 0.0
+                    && *value <= (usize::MAX as f64)
+                    && value.fract() == 0.0;
+                if is_uint {
+                    let use_suffix = *value > (i32::MAX as f64);
+                    let lit = if use_suffix {
+                        Literal::usize_suffixed(*value as usize)
+                    } else {
+                        Literal::usize_unsuffixed(*value as usize)
+                    };
+                    quote! { #lit }
+                } else {
+                    let lit = Literal::f64_unsuffixed(*value);
+                    quote! { #lit }
+                }
             }
             IrLiteral::Str(value) => {
                 let lit = Literal::string(value);
@@ -41,6 +55,21 @@ mod tests {
         assert_eq!(
             tokens.to_string(),
             quote::quote! { 42.5 }.to_string()
+        );
+    }
+
+    #[test]
+    fn integer_literal_codegen_emits_usize_for_uints() {
+        let tokens = IrLiteral::Number(3.0).codegen();
+        assert_eq!(tokens.to_string(), quote::quote! { 3 }.to_string());
+    }
+
+    #[test]
+    fn large_integer_literal_codegen_emits_usize_suffix() {
+        let tokens = IrLiteral::Number(4294967296.0).codegen();
+        assert_eq!(
+            tokens.to_string(),
+            quote::quote! { 4294967296usize }.to_string()
         );
     }
 

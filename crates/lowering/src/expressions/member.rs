@@ -242,6 +242,7 @@ fn infer_array_kind(expr: &IrExpression) -> Option<IrArrayKind> {
         _ => match expr {
             IrExpression::Identifier(name) => match context::lookup(name) {
                 Some(IrType::Array(kind)) => Some(kind),
+                Some(IrType::Any | IrType::Value) | None => Some(IrArrayKind::Unknown),
                 _ => None,
             },
             _ => None,
@@ -517,7 +518,7 @@ mod tests {
                     index.as_ref(),
                     IrExpression::Literal(IrLiteral::Number(value)) if (*value - 0.0).abs() < f64::EPSILON
                 ));
-                assert!(element.is_none());
+                assert!(matches!(element, None | Some(IrArrayKind::Unknown)));
             }
             other => panic!("expected runtime index call, got {other:?}"),
         }
@@ -541,7 +542,7 @@ mod tests {
                     index.as_ref(),
                     IrExpression::Identifier(name) if name == "i"
                 ));
-                assert!(element.is_none());
+                assert!(matches!(element, None | Some(IrArrayKind::Unknown)));
             }
             other => panic!("expected runtime index call, got {other:?}"),
         }

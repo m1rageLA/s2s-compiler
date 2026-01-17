@@ -11,6 +11,9 @@ pub(crate) fn binary_op_tokens(op: IrBinOp, left: &ir::IrExpression, right: &ir:
 
     let left_ty = typing::infer_expression_type(left);
     let right_ty = typing::infer_expression_type(right);
+    let left_numeric = matches!(left_ty, Some(IrType::Number | IrType::UInt));
+    let right_numeric = matches!(right_ty, Some(IrType::Number | IrType::UInt));
+    let both_uint = matches!(left_ty, Some(IrType::UInt)) && matches!(right_ty, Some(IrType::UInt));
 
     let dynamic_any = matches!(left_ty, Some(IrType::Any | IrType::Value))
         || matches!(right_ty, Some(IrType::Any | IrType::Value));
@@ -22,126 +25,248 @@ pub(crate) fn binary_op_tokens(op: IrBinOp, left: &ir::IrExpression, right: &ir:
                 quote! { runtime::value::ops::add(#left_tokens, #right_tokens) }
             } else if matches!(left_ty, Some(IrType::Str)) || matches!(right_ty, Some(IrType::Str)) {
                 quote! { format!("{}{}", #left_tokens, #right_tokens) }
-            } else if matches!(left_ty, Some(IrType::Number)) && matches!(right_ty, Some(IrType::Number)) {
+            } else if both_uint {
                 quote! { (#left_tokens) + (#right_tokens) }
+            } else if left_numeric && right_numeric {
+                let left_num = if matches!(left_ty, Some(IrType::UInt)) {
+                    quote! { (#left_tokens) as f64 }
+                } else {
+                    quote! { #left_tokens }
+                };
+                let right_num = if matches!(right_ty, Some(IrType::UInt)) {
+                    quote! { (#right_tokens) as f64 }
+                } else {
+                    quote! { #right_tokens }
+                };
+                quote! { (#left_num) + (#right_num) }
             } else {
                 quote! { runtime::value::ops::add(#left_tokens, #right_tokens) }
             }
         }
         IrBinOp::Sub => {
-            let dynamic = dynamic_any
-                || !matches!(left_ty, Some(IrType::Number))
-                || !matches!(right_ty, Some(IrType::Number));
+            let dynamic = dynamic_any || !left_numeric || !right_numeric;
             if dynamic {
                 quote! { runtime::value::ops::sub(#left_tokens, #right_tokens) }
             } else {
-                quote! { (#left_tokens) - (#right_tokens) }
+                let left_num = if matches!(left_ty, Some(IrType::UInt)) {
+                    quote! { (#left_tokens) as f64 }
+                } else {
+                    quote! { #left_tokens }
+                };
+                let right_num = if matches!(right_ty, Some(IrType::UInt)) {
+                    quote! { (#right_tokens) as f64 }
+                } else {
+                    quote! { #right_tokens }
+                };
+                quote! { (#left_num) - (#right_num) }
             }
         }
         IrBinOp::Mul => {
-            let dynamic = dynamic_any
-                || !matches!(left_ty, Some(IrType::Number))
-                || !matches!(right_ty, Some(IrType::Number));
+            let dynamic = dynamic_any || !left_numeric || !right_numeric;
             if dynamic {
                 quote! { runtime::value::ops::mul(#left_tokens, #right_tokens) }
-            } else {
+            } else if both_uint {
                 quote! { (#left_tokens) * (#right_tokens) }
+            } else {
+                let left_num = if matches!(left_ty, Some(IrType::UInt)) {
+                    quote! { (#left_tokens) as f64 }
+                } else {
+                    quote! { #left_tokens }
+                };
+                let right_num = if matches!(right_ty, Some(IrType::UInt)) {
+                    quote! { (#right_tokens) as f64 }
+                } else {
+                    quote! { #right_tokens }
+                };
+                quote! { (#left_num) * (#right_num) }
             }
         }
         IrBinOp::Div => {
-            let dynamic = dynamic_any
-                || !matches!(left_ty, Some(IrType::Number))
-                || !matches!(right_ty, Some(IrType::Number));
+            let dynamic = dynamic_any || !left_numeric || !right_numeric;
             if dynamic {
                 quote! { runtime::value::ops::div(#left_tokens, #right_tokens) }
             } else {
-                quote! { (#left_tokens) / (#right_tokens) }
+                let left_num = if matches!(left_ty, Some(IrType::UInt)) {
+                    quote! { (#left_tokens) as f64 }
+                } else {
+                    quote! { #left_tokens }
+                };
+                let right_num = if matches!(right_ty, Some(IrType::UInt)) {
+                    quote! { (#right_tokens) as f64 }
+                } else {
+                    quote! { #right_tokens }
+                };
+                quote! { (#left_num) / (#right_num) }
             }
         }
         IrBinOp::Mod => {
-            let dynamic = dynamic_any
-                || !matches!(left_ty, Some(IrType::Number))
-                || !matches!(right_ty, Some(IrType::Number));
+            let dynamic = dynamic_any || !left_numeric || !right_numeric;
             if dynamic {
                 quote! { runtime::value::ops::modulo(#left_tokens, #right_tokens) }
-            } else {
+            } else if both_uint {
                 quote! { (#left_tokens) % (#right_tokens) }
+            } else {
+                let left_num = if matches!(left_ty, Some(IrType::UInt)) {
+                    quote! { (#left_tokens) as f64 }
+                } else {
+                    quote! { #left_tokens }
+                };
+                let right_num = if matches!(right_ty, Some(IrType::UInt)) {
+                    quote! { (#right_tokens) as f64 }
+                } else {
+                    quote! { #right_tokens }
+                };
+                quote! { (#left_num) % (#right_num) }
             }
         }
         IrBinOp::Equal | IrBinOp::StrictEqual => {
-            let dynamic = dynamic_any
-                || left_ty.is_none()
-                || right_ty.is_none()
-                || left_ty != right_ty;
+            let numeric_compatible = (matches!(left_ty, Some(IrType::Number))
+                && matches!(right_ty, Some(IrType::UInt)))
+                || (matches!(left_ty, Some(IrType::UInt))
+                    && matches!(right_ty, Some(IrType::Number)))
+                || both_uint;
+            let same_type = left_ty.is_some() && left_ty == right_ty;
+            let dynamic =
+                dynamic_any || left_ty.is_none() || right_ty.is_none() || (!same_type && !numeric_compatible);
             if dynamic {
                 if matches!(op, IrBinOp::StrictEqual) {
                     quote! { runtime::value::ops::strict_equal(#left_tokens, #right_tokens) }
                 } else {
                     quote! { runtime::value::ops::loose_equal(#left_tokens, #right_tokens) }
                 }
+            } else if both_uint {
+                quote! { (#left_tokens) == (#right_tokens) }
+            } else if numeric_compatible {
+                let left_num = if matches!(left_ty, Some(IrType::UInt)) {
+                    quote! { (#left_tokens) as f64 }
+                } else {
+                    quote! { #left_tokens }
+                };
+                let right_num = if matches!(right_ty, Some(IrType::UInt)) {
+                    quote! { (#right_tokens) as f64 }
+                } else {
+                    quote! { #right_tokens }
+                };
+                quote! { (#left_num) == (#right_num) }
             } else {
                 quote! { (#left_tokens) == (#right_tokens) }
             }
         }
         IrBinOp::NotEqual | IrBinOp::StrictNotEqual => {
-            let dynamic = dynamic_any
-                || left_ty.is_none()
-                || right_ty.is_none()
-                || left_ty != right_ty;
+            let numeric_compatible = (matches!(left_ty, Some(IrType::Number))
+                && matches!(right_ty, Some(IrType::UInt)))
+                || (matches!(left_ty, Some(IrType::UInt))
+                    && matches!(right_ty, Some(IrType::Number)))
+                || both_uint;
+            let same_type = left_ty.is_some() && left_ty == right_ty;
+            let dynamic =
+                dynamic_any || left_ty.is_none() || right_ty.is_none() || (!same_type && !numeric_compatible);
             if dynamic {
                 if matches!(op, IrBinOp::StrictNotEqual) {
                     quote! { runtime::value::ops::strict_not_equal(#left_tokens, #right_tokens) }
                 } else {
                     quote! { runtime::value::ops::loose_not_equal(#left_tokens, #right_tokens) }
                 }
+            } else if both_uint {
+                quote! { (#left_tokens) != (#right_tokens) }
+            } else if numeric_compatible {
+                let left_num = if matches!(left_ty, Some(IrType::UInt)) {
+                    quote! { (#left_tokens) as f64 }
+                } else {
+                    quote! { #left_tokens }
+                };
+                let right_num = if matches!(right_ty, Some(IrType::UInt)) {
+                    quote! { (#right_tokens) as f64 }
+                } else {
+                    quote! { #right_tokens }
+                };
+                quote! { (#left_num) != (#right_num) }
             } else {
                 quote! { (#left_tokens) != (#right_tokens) }
             }
         }
         IrBinOp::LessThan => {
-            let dynamic = dynamic_any
-                || !matches!(left_ty, Some(IrType::Number))
-                || !matches!(right_ty, Some(IrType::Number));
+            let dynamic = dynamic_any || !left_numeric || !right_numeric;
             if dynamic {
                 quote! { runtime::value::ops::less_than(#left_tokens, #right_tokens) }
-            } else {
+            } else if both_uint {
                 quote! { (#left_tokens) < (#right_tokens) }
+            } else {
+                let left_num = if matches!(left_ty, Some(IrType::UInt)) {
+                    quote! { (#left_tokens) as f64 }
+                } else {
+                    quote! { #left_tokens }
+                };
+                let right_num = if matches!(right_ty, Some(IrType::UInt)) {
+                    quote! { (#right_tokens) as f64 }
+                } else {
+                    quote! { #right_tokens }
+                };
+                quote! { (#left_num) < (#right_num) }
             }
         }
         IrBinOp::LessThanOrEqual => {
-            let dynamic = dynamic_any
-                || !matches!(left_ty, Some(IrType::Number))
-                || !matches!(right_ty, Some(IrType::Number));
+            let dynamic = dynamic_any || !left_numeric || !right_numeric;
             if dynamic {
                 quote! { runtime::value::ops::less_than_or_equal(#left_tokens, #right_tokens) }
-            } else {
+            } else if both_uint {
                 quote! { (#left_tokens) <= (#right_tokens) }
+            } else {
+                let left_num = if matches!(left_ty, Some(IrType::UInt)) {
+                    quote! { (#left_tokens) as f64 }
+                } else {
+                    quote! { #left_tokens }
+                };
+                let right_num = if matches!(right_ty, Some(IrType::UInt)) {
+                    quote! { (#right_tokens) as f64 }
+                } else {
+                    quote! { #right_tokens }
+                };
+                quote! { (#left_num) <= (#right_num) }
             }
         }
         IrBinOp::GreaterThan => {
-            let dynamic = dynamic_any
-                || !matches!(left_ty, Some(IrType::Number))
-                || !matches!(right_ty, Some(IrType::Number));
+            let dynamic = dynamic_any || !left_numeric || !right_numeric;
             if dynamic {
                 quote! { runtime::value::ops::greater_than(#left_tokens, #right_tokens) }
-            } else {
+            } else if both_uint {
                 quote! { (#left_tokens) > (#right_tokens) }
+            } else {
+                let left_num = if matches!(left_ty, Some(IrType::UInt)) {
+                    quote! { (#left_tokens) as f64 }
+                } else {
+                    quote! { #left_tokens }
+                };
+                let right_num = if matches!(right_ty, Some(IrType::UInt)) {
+                    quote! { (#right_tokens) as f64 }
+                } else {
+                    quote! { #right_tokens }
+                };
+                quote! { (#left_num) > (#right_num) }
             }
         }
         IrBinOp::GreaterThanOrEqual => {
-            let dynamic = dynamic_any
-                || !matches!(left_ty, Some(IrType::Number))
-                || !matches!(right_ty, Some(IrType::Number));
+            let dynamic = dynamic_any || !left_numeric || !right_numeric;
             if dynamic {
                 quote! { runtime::value::ops::greater_than_or_equal(#left_tokens, #right_tokens) }
-            } else {
+            } else if both_uint {
                 quote! { (#left_tokens) >= (#right_tokens) }
+            } else {
+                let left_num = if matches!(left_ty, Some(IrType::UInt)) {
+                    quote! { (#left_tokens) as f64 }
+                } else {
+                    quote! { #left_tokens }
+                };
+                let right_num = if matches!(right_ty, Some(IrType::UInt)) {
+                    quote! { (#right_tokens) as f64 }
+                } else {
+                    quote! { #right_tokens }
+                };
+                quote! { (#left_num) >= (#right_num) }
             }
         }
         IrBinOp::LeftShift => {
-            let dynamic = dynamic_any
-                || !matches!(left_ty, Some(IrType::Number))
-                || !matches!(right_ty, Some(IrType::Number));
+            let dynamic = dynamic_any || !left_numeric || !right_numeric;
             if dynamic {
                 quote! {
                     ((runtime::value::into_value(#left_tokens).into_number() as i64)
@@ -152,9 +277,7 @@ pub(crate) fn binary_op_tokens(op: IrBinOp, left: &ir::IrExpression, right: &ir:
             }
         }
         IrBinOp::RightShift => {
-            let dynamic = dynamic_any
-                || !matches!(left_ty, Some(IrType::Number))
-                || !matches!(right_ty, Some(IrType::Number));
+            let dynamic = dynamic_any || !left_numeric || !right_numeric;
             if dynamic {
                 quote! {
                     ((runtime::value::into_value(#left_tokens).into_number() as i64)
@@ -165,9 +288,7 @@ pub(crate) fn binary_op_tokens(op: IrBinOp, left: &ir::IrExpression, right: &ir:
             }
         }
         IrBinOp::BitwiseOr => {
-            let dynamic = dynamic_any
-                || !matches!(left_ty, Some(IrType::Number))
-                || !matches!(right_ty, Some(IrType::Number));
+            let dynamic = dynamic_any || !left_numeric || !right_numeric;
             if dynamic {
                 quote! {
                     ((runtime::value::into_value(#left_tokens).into_number() as i64)
@@ -178,9 +299,7 @@ pub(crate) fn binary_op_tokens(op: IrBinOp, left: &ir::IrExpression, right: &ir:
             }
         }
         IrBinOp::BitwiseXor => {
-            let dynamic = dynamic_any
-                || !matches!(left_ty, Some(IrType::Number))
-                || !matches!(right_ty, Some(IrType::Number));
+            let dynamic = dynamic_any || !left_numeric || !right_numeric;
             if dynamic {
                 quote! {
                     ((runtime::value::into_value(#left_tokens).into_number() as i64)
@@ -191,9 +310,7 @@ pub(crate) fn binary_op_tokens(op: IrBinOp, left: &ir::IrExpression, right: &ir:
             }
         }
         IrBinOp::BitwiseAnd => {
-            let dynamic = dynamic_any
-                || !matches!(left_ty, Some(IrType::Number))
-                || !matches!(right_ty, Some(IrType::Number));
+            let dynamic = dynamic_any || !left_numeric || !right_numeric;
             if dynamic {
                 quote! {
                     ((runtime::value::into_value(#left_tokens).into_number() as i64)
@@ -231,17 +348,42 @@ pub(crate) fn binary_op_tokens(op: IrBinOp, left: &ir::IrExpression, right: &ir:
                 quote! { (#left_tokens) && (#right_tokens) }
             }
         }
-        IrBinOp::UnsignedRightShift => unsupported_bin_op("unsigned right shift"),
+        IrBinOp::UnsignedRightShift => {
+            let dynamic = dynamic_any || !left_numeric || !right_numeric;
+            if dynamic {
+                quote! {{
+                    let ts_2_rs_lhs =
+                        (runtime::value::into_value(#left_tokens).into_number() as i64) as u32;
+                    let ts_2_rs_rhs =
+                        (runtime::value::into_value(#right_tokens).into_number() as i64) as u32;
+                    ((ts_2_rs_lhs >> (ts_2_rs_rhs & 31)) as f64)
+                }}
+            } else {
+                quote! {{
+                    let ts_2_rs_lhs = ((#left_tokens) as i64) as u32;
+                    let ts_2_rs_rhs = ((#right_tokens) as i64) as u32;
+                    ((ts_2_rs_lhs >> (ts_2_rs_rhs & 31)) as f64)
+                }}
+            }
+        }
         IrBinOp::In => unsupported_bin_op("in"),
         IrBinOp::InstanceOf => unsupported_bin_op("instanceof"),
         IrBinOp::Exp => {
-            let dynamic = dynamic_any
-                || !matches!(left_ty, Some(IrType::Number))
-                || !matches!(right_ty, Some(IrType::Number));
+            let dynamic = dynamic_any || !left_numeric || !right_numeric;
             if dynamic {
                 unsupported_bin_op("exponentiation")
             } else {
-                quote! { (#left_tokens).powf(#right_tokens) }
+                let left_num = if matches!(left_ty, Some(IrType::UInt)) {
+                    quote! { (#left_tokens) as f64 }
+                } else {
+                    quote! { #left_tokens }
+                };
+                let right_num = if matches!(right_ty, Some(IrType::UInt)) {
+                    quote! { (#right_tokens) as f64 }
+                } else {
+                    quote! { #right_tokens }
+                };
+                quote! { (#left_num).powf(#right_num) }
             }
         }
         IrBinOp::Unsupported => unsupported_bin_op("unsupported"),
@@ -304,5 +446,36 @@ mod tests {
 
         let tokens = binary_op_tokens(IrBinOp::Add, &left, &right);
         assert!(tokens.to_string().contains("runtime :: value :: ops :: add"));
+    }
+
+    #[test]
+    fn uint_and_number_addition_coerces_without_runtime() {
+        typing::reset();
+        typing::define("lhs", IrType::UInt);
+        typing::define("rhs", IrType::Number);
+
+        let left = IrExpression::Identifier("lhs".into());
+        let right = IrExpression::Identifier("rhs".into());
+
+        let tokens = binary_op_tokens(IrBinOp::Add, &left, &right);
+        let rendered = tokens.to_string();
+        assert!(!rendered.contains("runtime :: value :: ops :: add"));
+        assert!(rendered.contains("as f64"));
+    }
+
+    #[test]
+    fn unsigned_right_shift_masks_rhs() {
+        typing::reset();
+        typing::define("lhs", IrType::Number);
+        typing::define("rhs", IrType::Number);
+
+        let left = IrExpression::Identifier("lhs".into());
+        let right = IrExpression::Identifier("rhs".into());
+
+        let tokens = binary_op_tokens(IrBinOp::UnsignedRightShift, &left, &right);
+        let rendered = norm(&tokens);
+        assert!(rendered.contains(">>"));
+        assert!(rendered.contains("&31"));
+        assert_parses(&tokens);
     }
 }

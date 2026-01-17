@@ -9,10 +9,15 @@ use crate::context;
 pub(crate) fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
     match call {
         RuntimeNamespace::Console(ConsoleCall::Log(_)) => Some(IrType::Unit),
-        RuntimeNamespace::Array(ArrayCall::Push { .. }) => Some(IrType::Number),
+        RuntimeNamespace::Array(ArrayCall::Push { target, .. }) => match infer_expression_type(target) {
+            Some(IrType::Array(IrArrayKind::Number | IrArrayKind::Str | IrArrayKind::Bool)) => {
+                Some(IrType::UInt)
+            }
+            _ => Some(IrType::Value),
+        },
         RuntimeNamespace::Array(ArrayCall::Length { target }) => match infer_expression_type(target) {
             Some(IrType::Array(IrArrayKind::Number | IrArrayKind::Str | IrArrayKind::Bool)) => {
-                Some(IrType::Number)
+                Some(IrType::UInt)
             }
             _ => Some(IrType::Value),
         },
@@ -63,7 +68,9 @@ pub(crate) fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
             ValueCall::Add { left, right } => {
                 let left_ty = infer_expression_type(left);
                 let right_ty = infer_expression_type(right);
-                if left_ty == Some(IrType::Number) && right_ty == Some(IrType::Number) {
+                let numeric = matches!(left_ty, Some(IrType::Number | IrType::UInt))
+                    && matches!(right_ty, Some(IrType::Number | IrType::UInt));
+                if numeric {
                     Some(IrType::Number)
                 } else {
                     Some(IrType::Value)
@@ -86,7 +93,7 @@ pub(crate) fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
             | ValueCall::LogicalNot { .. } => Some(IrType::Bool),
         },
         RuntimeNamespace::String(call) => match call {
-            StringCall::Length { .. } => Some(IrType::Number),
+            StringCall::Length { .. } => Some(IrType::UInt),
             StringCall::ToUpperCase { .. }
             | StringCall::ToLowerCase { .. }
             | StringCall::Replace { .. }
@@ -106,7 +113,7 @@ pub(crate) fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
 fn array_kind_from_type(ty: IrType) -> Option<IrArrayKind> {
     match ty {
         IrType::Array(kind) => Some(kind),
-        IrType::Number => Some(IrArrayKind::Number),
+        IrType::Number | IrType::UInt => Some(IrArrayKind::Number),
         IrType::Str => Some(IrArrayKind::Str),
         IrType::Bool => Some(IrArrayKind::Bool),
         IrType::Value | IrType::Any => Some(IrArrayKind::Value),

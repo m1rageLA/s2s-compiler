@@ -5,6 +5,11 @@ use quote::{format_ident, quote};
 use crate::{typing, Codegen};
 
 pub fn expression_stmt_tokens(expr: &IrExpression) -> TokenStream {
+    if let IrExpression::Sequence(exprs) = expr {
+        let tokens: Vec<TokenStream> = exprs.iter().map(expression_stmt_tokens).collect();
+        return quote! { #(#tokens)* };
+    }
+
     if let Some(optimized) = optimize_statement_expr(expr) {
         return optimized;
     }
@@ -74,13 +79,20 @@ fn optimize_prefix_stmt(arg: &IrExpression, op: IrPrefixOp) -> Option<TokenStrea
     };
 
     let ty = typing::infer_expression_type(arg)?;
-    if !matches!(ty, IrType::Number) {
-        return None;
+    match ty {
+        IrType::Number | IrType::UInt => {}
+        _ => return None,
     }
 
     let tokens = match op {
-        IrPrefixOp::Increment => quote!({ #ident = #ident + 1.0; }),
-        IrPrefixOp::Decrement => quote!({ #ident = #ident - 1.0; }),
+        IrPrefixOp::Increment => match ty {
+            IrType::UInt => quote!({ #ident += 1usize; }),
+            _ => quote!({ #ident += 1.0; }),
+        },
+        IrPrefixOp::Decrement => match ty {
+            IrType::UInt => quote!({ #ident = #ident.saturating_sub(1usize); }),
+            _ => quote!({ #ident -= 1.0; }),
+        },
     };
     Some(tokens)
 }
@@ -118,7 +130,10 @@ mod tests {
             right: Box::new(IrExpression::Literal(IrLiteral::Number(1.0))),
         };
         let tokens = expression_stmt_tokens(&expr);
-        assert_eq!(tokens.to_string(), quote!({ m = m + (1.0); }).to_string());
+        assert_eq!(
+            tokens.to_string(),
+            quote!({ m = m + ((1)) as f64; }).to_string()
+        );
     }
 
     #[test]
@@ -131,6 +146,19 @@ mod tests {
             op: IrPostfixOp::Increment,
         };
         let tokens = expression_stmt_tokens(&expr);
-        assert_eq!(tokens.to_string(), quote!({ i = i + 1.0; }).to_string());
+        assert_eq!(tokens.to_string(), quote!({ i += 1.0; }).to_string());
+    }
+
+    #[test]
+    fn optimizes_postfix_increment_statement_for_uint() {
+        typing::reset();
+        typing::push_scope();
+        typing::define("i", IrType::UInt);
+        let expr = IrExpression::PostfixUnary {
+            left: Box::new(IrExpression::Identifier("i".into())),
+            op: IrPostfixOp::Increment,
+        };
+        let tokens = expression_stmt_tokens(&expr);
+        assert_eq!(tokens.to_string(), quote!({ i += 1usize; }).to_string());
     }
 }

@@ -1,5 +1,6 @@
 use ir::{
-    IrDeleteProperty, IrDeleteTarget, IrExpression, IrPostfixOp, IrPrefixOp, IrUnaryOp, IrType,
+    ArrayCall, IrArrayKind, IrDeleteProperty, IrDeleteTarget, IrExpression, IrPostfixOp,
+    IrPrefixOp, IrUnaryOp, IrType, RuntimeNamespace,
 };
 use proc_macro2::{Literal, Span, TokenStream};
 use quote::{format_ident, quote};
@@ -7,6 +8,9 @@ use quote::{format_ident, quote};
 use crate::{Codegen, typing};
 
 pub(crate) fn postfixunary_tokens(left: Box<IrExpression>, op: IrPostfixOp) -> TokenStream {
+    if let Some((target, index, element)) = array_index_target(left.as_ref()) {
+        return array_index_postfix_tokens(target, index, element, op);
+    }
     if let IrExpression::Member { object, property } = left.as_ref() {
         return member_postfix_tokens(object.as_ref(), property, op);
     }
@@ -17,7 +21,14 @@ pub(crate) fn postfixunary_tokens(left: Box<IrExpression>, op: IrPostfixOp) -> T
 
     match op {
         IrPostfixOp::Increment => {
-            if matches!(inferred, Some(ir::IrType::Number)) {
+            if matches!(inferred, Some(ir::IrType::UInt)) {
+                quote! ({
+                    let ts_2_rs_target = &mut #left_tokens;
+                    let #temp = (*ts_2_rs_target);
+                    *ts_2_rs_target = #temp + 1usize;
+                    #temp
+                })
+            } else if matches!(inferred, Some(ir::IrType::Number)) {
                 quote! ({
                     let ts_2_rs_target = &mut #left_tokens;
                     let #temp = (*ts_2_rs_target);
@@ -38,7 +49,14 @@ pub(crate) fn postfixunary_tokens(left: Box<IrExpression>, op: IrPostfixOp) -> T
             }
         }
         IrPostfixOp::Decrement => {
-            if matches!(inferred, Some(ir::IrType::Number)) {
+            if matches!(inferred, Some(ir::IrType::UInt)) {
+                quote! ({
+                    let ts_2_rs_target = &mut #left_tokens;
+                    let #temp = (*ts_2_rs_target);
+                    *ts_2_rs_target = #temp.saturating_sub(1usize);
+                    #temp
+                })
+            } else if matches!(inferred, Some(ir::IrType::Number)) {
                 quote! ({
                     let ts_2_rs_target = &mut #left_tokens;
                     let #temp = (*ts_2_rs_target);
@@ -81,6 +99,9 @@ fn member_postfix_tokens(object: &IrExpression, property: &str, op: IrPostfixOp)
 }
 
 pub(crate) fn prefixunary_tokens(arg: &IrExpression, op: IrPrefixOp) -> TokenStream {
+    if let Some((target, index, element)) = array_index_target(arg) {
+        return array_index_prefix_tokens(target, index, element, op);
+    }
     if let IrExpression::Member { object, property } = arg {
         return member_prefix_tokens(object.as_ref(), property, op);
     }
@@ -90,7 +111,13 @@ pub(crate) fn prefixunary_tokens(arg: &IrExpression, op: IrPrefixOp) -> TokenStr
 
     match op {
         IrPrefixOp::Increment => {
-            if matches!(inferred, Some(IrType::Number)) {
+            if matches!(inferred, Some(IrType::UInt)) {
+                quote!({
+                    let ts_2_rs_target = &mut #target_tokens;
+                    *ts_2_rs_target = *ts_2_rs_target + 1usize;
+                    *ts_2_rs_target
+                })
+            } else if matches!(inferred, Some(IrType::Number)) {
                 quote!({
                     let ts_2_rs_target = &mut #target_tokens;
                     *ts_2_rs_target = *ts_2_rs_target + 1.0;
@@ -109,7 +136,13 @@ pub(crate) fn prefixunary_tokens(arg: &IrExpression, op: IrPrefixOp) -> TokenStr
             }
         }
         IrPrefixOp::Decrement => {
-            if matches!(inferred, Some(IrType::Number)) {
+            if matches!(inferred, Some(IrType::UInt)) {
+                quote!({
+                    let ts_2_rs_target = &mut #target_tokens;
+                    *ts_2_rs_target = ts_2_rs_target.saturating_sub(1usize);
+                    *ts_2_rs_target
+                })
+            } else if matches!(inferred, Some(IrType::Number)) {
                 quote!({
                     let ts_2_rs_target = &mut #target_tokens;
                     *ts_2_rs_target = *ts_2_rs_target - 1.0;
@@ -147,6 +180,149 @@ fn member_prefix_tokens(object: &IrExpression, property: &str, op: IrPrefixOp) -
         runtime::value::ops::set_property_in_place(ts_2_rs_target, #property_literal_for_set, ts_2_rs_new.clone());
         ts_2_rs_new
     })
+}
+
+fn array_index_target(left: &IrExpression) -> Option<(&IrExpression, &IrExpression, Option<IrArrayKind>)> {
+    match left {
+        IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Index {
+            target,
+            index,
+            element,
+        })) => Some((target.as_ref(), index.as_ref(), *element)),
+        IrExpression::Paren(inner) => array_index_target(inner.as_ref()),
+        _ => None,
+    }
+}
+
+fn array_index_postfix_tokens(
+    target: &IrExpression,
+    index: &IrExpression,
+    element: Option<IrArrayKind>,
+    op: IrPostfixOp,
+) -> TokenStream {
+    let target_tokens = target.codegen();
+    let index_tokens = index.codegen();
+    let element_ty = match typing::infer_expression_type(target).or_else(|| element.map(IrType::Array)) {
+        Some(IrType::Array(kind)) => array_element_type(kind),
+        _ => IrType::Value,
+    };
+    let index_ty = typing::infer_expression_type(index);
+    let idx_tokens = if matches!(index_ty, Some(IrType::UInt)) {
+        quote! { #index_tokens }
+    } else if matches!(index_ty, Some(IrType::Number)) {
+        quote! { (#index_tokens) as usize }
+    } else {
+        quote! { runtime::value::into_value(#index_tokens).to_number() as usize }
+    };
+
+    let idx_ident = format_ident!("ts_2_rs_idx", span = Span::mixed_site());
+    let target_ident = format_ident!("ts_2_rs_target", span = Span::mixed_site());
+    let temp_ident = format_ident!("ts_2_rs", span = Span::mixed_site());
+
+    match (op, element_ty) {
+        (IrPostfixOp::Increment, IrType::Number) => quote!({
+            let #idx_ident = #idx_tokens;
+            let #target_ident = &mut #target_tokens[#idx_ident];
+            let #temp_ident = *#target_ident;
+            *#target_ident = #temp_ident + 1.0;
+            #temp_ident
+        }),
+        (IrPostfixOp::Decrement, IrType::Number) => quote!({
+            let #idx_ident = #idx_tokens;
+            let #target_ident = &mut #target_tokens[#idx_ident];
+            let #temp_ident = *#target_ident;
+            *#target_ident = #temp_ident - 1.0;
+            #temp_ident
+        }),
+        _ => {
+            let op_fn = match op {
+                IrPostfixOp::Increment => quote!(runtime::value::ops::add),
+                IrPostfixOp::Decrement => quote!(runtime::value::ops::sub),
+            };
+            let new_value = quote! { #op_fn(runtime::value::into_value((*#target_ident).clone()), runtime::value::Value::Number(1.0)) };
+            let coerced = if matches!(element_ty, IrType::Value | IrType::Any) {
+                new_value
+            } else {
+                typing::coerce_to_type(new_value, &element_ty, Some(IrType::Value))
+            };
+            quote!({
+                let #idx_ident = #idx_tokens;
+                let #target_ident = &mut #target_tokens[#idx_ident];
+                let #temp_ident = (*#target_ident).clone();
+                let ts_2_rs_new = #coerced;
+                *#target_ident = ts_2_rs_new.clone();
+                #temp_ident
+            })
+        }
+    }
+}
+
+fn array_index_prefix_tokens(
+    target: &IrExpression,
+    index: &IrExpression,
+    element: Option<IrArrayKind>,
+    op: IrPrefixOp,
+) -> TokenStream {
+    let target_tokens = target.codegen();
+    let index_tokens = index.codegen();
+    let element_ty = match typing::infer_expression_type(target).or_else(|| element.map(IrType::Array)) {
+        Some(IrType::Array(kind)) => array_element_type(kind),
+        _ => IrType::Value,
+    };
+    let index_ty = typing::infer_expression_type(index);
+    let idx_tokens = if matches!(index_ty, Some(IrType::UInt)) {
+        quote! { #index_tokens }
+    } else if matches!(index_ty, Some(IrType::Number)) {
+        quote! { (#index_tokens) as usize }
+    } else {
+        quote! { runtime::value::into_value(#index_tokens).to_number() as usize }
+    };
+
+    let idx_ident = format_ident!("ts_2_rs_idx", span = Span::mixed_site());
+    let target_ident = format_ident!("ts_2_rs_target", span = Span::mixed_site());
+
+    match (op, element_ty) {
+        (IrPrefixOp::Increment, IrType::Number) => quote!({
+            let #idx_ident = #idx_tokens;
+            let #target_ident = &mut #target_tokens[#idx_ident];
+            *#target_ident = *#target_ident + 1.0;
+            *#target_ident
+        }),
+        (IrPrefixOp::Decrement, IrType::Number) => quote!({
+            let #idx_ident = #idx_tokens;
+            let #target_ident = &mut #target_tokens[#idx_ident];
+            *#target_ident = *#target_ident - 1.0;
+            *#target_ident
+        }),
+        _ => {
+            let op_fn = match op {
+                IrPrefixOp::Increment => quote!(runtime::value::ops::add),
+                IrPrefixOp::Decrement => quote!(runtime::value::ops::sub),
+            };
+            let new_value = quote! { #op_fn(runtime::value::into_value((*#target_ident).clone()), runtime::value::Value::Number(1.0)) };
+            let coerced = if matches!(element_ty, IrType::Value | IrType::Any) {
+                new_value
+            } else {
+                typing::coerce_to_type(new_value, &element_ty, Some(IrType::Value))
+            };
+            quote!({
+                let #idx_ident = #idx_tokens;
+                let #target_ident = &mut #target_tokens[#idx_ident];
+                let ts_2_rs_new = #coerced;
+                *#target_ident = ts_2_rs_new.clone();
+                ts_2_rs_new
+            })
+        }
+    }
+}
+
+fn array_element_type(kind: IrArrayKind) -> IrType {
+    match kind {
+        IrArrayKind::Number => IrType::Number,
+        IrArrayKind::Str => IrType::Str,
+        IrArrayKind::Bool => IrType::Bool,
+        IrArrayKind::Value | IrArrayKind::Any | IrArrayKind::Unknown => IrType::Value,
+    }
 }
 
 pub(crate) fn unary_tokens(op: &IrUnaryOp, expr: &IrExpression) -> TokenStream {
@@ -217,6 +393,7 @@ pub(crate) fn delete_tokens(target: &IrDeleteTarget) -> TokenStream {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::typing;
     use quote::quote;
 
     #[test]
@@ -259,5 +436,20 @@ mod tests {
             })
             .to_string()
         );
+    }
+
+    #[test]
+    fn prefix_increment_on_uint_uses_usize() {
+        typing::reset();
+        typing::define("counter", IrType::UInt);
+
+        let tokens = prefixunary_tokens(
+            &IrExpression::Identifier("counter".into()),
+            IrPrefixOp::Increment,
+        );
+
+        let rendered = tokens.to_string();
+        assert!(rendered.contains("1usize"));
+        assert!(!rendered.contains("runtime :: value :: ops :: add"));
     }
 }

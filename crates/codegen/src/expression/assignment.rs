@@ -1,4 +1,4 @@
-use ir::{IrAssignOp, IrExpression};
+use ir::{ArrayCall, IrArrayKind, IrAssignOp, IrExpression, IrType, RuntimeNamespace};
 use proc_macro2::{Literal, Span, TokenStream};
 use quote::{format_ident, quote};
 
@@ -11,6 +11,9 @@ pub(crate) fn assignment_tokens(
     left: &IrExpression,
     right: &IrExpression,
 ) -> TokenStream {
+    if let Some((target, index, element)) = array_index_target(left) {
+        return array_index_assignment_tokens(op, target, index, element, right);
+    }
     if let IrExpression::Member { object, property } = left {
         return member_assignment_tokens(op, object.as_ref(), property, right);
     }
@@ -83,6 +86,14 @@ pub(crate) fn assignment_tokens(
                     &left_tokens,
                     &right_tokens,
                 )
+            } else if matches!(left_ty, Some(ir::IrType::UInt)) {
+                let coerced_rhs = coerce_rhs(quote! { (#right_tokens) });
+                quote!({
+                    let #rhs_ident = #coerced_rhs;
+                    let #target_ident = &mut #left_tokens;
+                    *#target_ident = (*#target_ident).saturating_sub(#rhs_ident);
+                    (*#target_ident)
+                })
             } else {
                 let coerced_rhs = coerce_rhs(quote! { (#right_tokens) });
                 quote!({
@@ -192,6 +203,169 @@ pub(crate) fn assignment_tokens(
         IrAssignOp::LogicalOrAssign => unsupported_assign_op("logical or assignment"),
         IrAssignOp::LogicalAndAssign => unsupported_assign_op("logical and assignment"),
         IrAssignOp::NullishCoalesceAssign => unsupported_assign_op("nullish coalesce assignment"),
+    }
+}
+
+fn array_index_target(left: &IrExpression) -> Option<(&IrExpression, &IrExpression, Option<IrArrayKind>)> {
+    match left {
+        IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Index {
+            target,
+            index,
+            element,
+        })) => Some((target.as_ref(), index.as_ref(), *element)),
+        IrExpression::Paren(inner) => array_index_target(inner.as_ref()),
+        _ => None,
+    }
+}
+
+fn array_index_assignment_tokens(
+    op: IrAssignOp,
+    target: &IrExpression,
+    index: &IrExpression,
+    element: Option<IrArrayKind>,
+    right: &IrExpression,
+) -> TokenStream {
+    let target_tokens = target.codegen();
+    let index_tokens = index.codegen();
+    let right_tokens = right.codegen();
+
+    let target_ty = typing::infer_expression_type(target).or_else(|| element.map(IrType::Array));
+    let element_ty = match target_ty {
+        Some(IrType::Array(kind)) => array_element_type(kind),
+        _ => IrType::Value,
+    };
+    let right_ty = typing::infer_expression_type(right);
+
+    let index_ty = typing::infer_expression_type(index);
+    let idx_tokens = if matches!(index_ty, Some(IrType::UInt)) {
+        quote! { #index_tokens }
+    } else if matches!(index_ty, Some(IrType::Number)) {
+        quote! { (#index_tokens) as usize }
+    } else {
+        quote! { runtime::value::into_value(#index_tokens).to_number() as usize }
+    };
+
+    let idx_ident = format_ident!("ts_2_rs_idx", span = Span::mixed_site());
+    let target_ident = format_ident!("ts_2_rs_target", span = Span::mixed_site());
+    let rhs_ident = format_ident!("ts_2_rs_rhs", span = Span::mixed_site());
+    let value_ident = format_ident!("ts_2_rs_value", span = Span::mixed_site());
+
+    let number_op = |op_tokens: TokenStream| {
+        let coerced_rhs = typing::coerce_to_type(quote! { (#right_tokens) }, &IrType::Number, right_ty);
+        quote!({
+            let #idx_ident = #idx_tokens;
+            let #rhs_ident = #coerced_rhs;
+            let #target_ident = &mut #target_tokens[#idx_ident];
+            *#target_ident = (*#target_ident) #op_tokens (#rhs_ident);
+            (*#target_ident)
+        })
+    };
+
+    let value_op = |op_fn: TokenStream| {
+        let left_value = quote! { runtime::value::into_value((*#target_ident).clone()) };
+        let right_value = quote! { runtime::value::into_value(#right_tokens) };
+        let new_value = quote! { #op_fn(#left_value, #right_value) };
+        let coerced = if matches!(element_ty, IrType::Value | IrType::Any) {
+            new_value
+        } else {
+            typing::coerce_to_type(new_value, &element_ty, Some(IrType::Value))
+        };
+        quote!({
+            let #idx_ident = #idx_tokens;
+            let #target_ident = &mut #target_tokens[#idx_ident];
+            let #value_ident = #coerced;
+            *#target_ident = (#value_ident).clone();
+            #value_ident
+        })
+    };
+
+    match op {
+        IrAssignOp::Assign => {
+            let coerced_rhs = typing::coerce_to_type(quote! { (#right_tokens) }, &element_ty, right_ty);
+            quote!({
+                let #idx_ident = #idx_tokens;
+                let #value_ident = #coerced_rhs;
+                let #target_ident = &mut #target_tokens[#idx_ident];
+                *#target_ident = (#value_ident).clone();
+                #value_ident
+            })
+        }
+        IrAssignOp::AddAssign => {
+            if matches!(element_ty, IrType::Number) {
+                number_op(quote!(+))
+            } else if matches!(element_ty, IrType::Str) {
+                let rhs = typing::coerce_to_type(quote! { (#right_tokens) }, &IrType::Str, right_ty);
+                quote!({
+                    let #idx_ident = #idx_tokens;
+                    let #rhs_ident = #rhs;
+                    let #target_ident = &mut #target_tokens[#idx_ident];
+                    #target_ident.push_str(&#rhs_ident);
+                    (#target_ident).clone()
+                })
+            } else {
+                value_op(quote!(runtime::value::ops::add))
+            }
+        }
+        IrAssignOp::SubAssign => {
+            if matches!(element_ty, IrType::Number) {
+                number_op(quote!(-))
+            } else {
+                value_op(quote!(runtime::value::ops::sub))
+            }
+        }
+        IrAssignOp::MulAssign => {
+            if matches!(element_ty, IrType::Number) {
+                number_op(quote!(*))
+            } else {
+                value_op(quote!(runtime::value::ops::mul))
+            }
+        }
+        IrAssignOp::DivAssign => {
+            if matches!(element_ty, IrType::Number) {
+                number_op(quote!(/))
+            } else {
+                value_op(quote!(runtime::value::ops::div))
+            }
+        }
+        IrAssignOp::ModAssign => {
+            if matches!(element_ty, IrType::Number) {
+                number_op(quote!(%))
+            } else {
+                value_op(quote!(runtime::value::ops::modulo))
+            }
+        }
+        IrAssignOp::ExpAssign => {
+            if matches!(element_ty, IrType::Number) {
+                let coerced_rhs = typing::coerce_to_type(quote! { (#right_tokens) }, &IrType::Number, right_ty);
+                quote!({
+                    let #idx_ident = #idx_tokens;
+                    let #rhs_ident = #coerced_rhs;
+                    let #target_ident = &mut #target_tokens[#idx_ident];
+                    *#target_ident = (*#target_ident).powf(#rhs_ident);
+                    (*#target_ident)
+                })
+            } else {
+                unsupported_assign_op("exponentiation")
+            }
+        }
+        IrAssignOp::LeftShiftAssign
+        | IrAssignOp::RightShiftAssign
+        | IrAssignOp::UnsignedRightShiftAssign
+        | IrAssignOp::BitwiseOrAssign
+        | IrAssignOp::BitwiseXorAssign
+        | IrAssignOp::BitwiseAndAssign
+        | IrAssignOp::LogicalOrAssign
+        | IrAssignOp::LogicalAndAssign
+        | IrAssignOp::NullishCoalesceAssign => unsupported_assign_op("unsupported array assignment"),
+    }
+}
+
+fn array_element_type(kind: IrArrayKind) -> IrType {
+    match kind {
+        IrArrayKind::Number => IrType::Number,
+        IrArrayKind::Str => IrType::Str,
+        IrArrayKind::Bool => IrType::Bool,
+        IrArrayKind::Value | IrArrayKind::Any | IrArrayKind::Unknown => IrType::Value,
     }
 }
 
@@ -364,7 +538,7 @@ mod tests {
         );
 
         let expected = quote!({
-            let ts_2_rs_value = (5.0).clone();
+            let ts_2_rs_value = (5).clone();
             let ts_2_rs_target = &mut value;
             *ts_2_rs_target = (ts_2_rs_value).clone();
             ts_2_rs_value
@@ -382,7 +556,7 @@ mod tests {
         );
 
         let expected = quote!({
-            let ts_2_rs_rhs = (2.0).clone();
+            let ts_2_rs_rhs = (2).clone();
             let ts_2_rs_target = &mut counter;
             let ts_2_rs_new =
                 runtime::value::ops::add((*ts_2_rs_target).clone(), (ts_2_rs_rhs).clone());
@@ -402,7 +576,7 @@ mod tests {
         );
 
         let expected = quote!({
-            let ts_2_rs_rhs = (3.0).clone();
+            let ts_2_rs_rhs = (3).clone();
             let ts_2_rs_target = &mut base;
             let ts_2_rs_base = (*ts_2_rs_target).clone().into_number();
             let ts_2_rs_exp = (ts_2_rs_rhs).clone().into_number();

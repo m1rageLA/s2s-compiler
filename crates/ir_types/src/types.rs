@@ -50,3 +50,9 @@ pub enum BinOp {
     Xor,
     Not,
 }
+
+impl IrType {
+    pub fn is_numeric(self) -> bool {
+        matches!(self, IrType::Number | IrType::UInt)
+    }
+}

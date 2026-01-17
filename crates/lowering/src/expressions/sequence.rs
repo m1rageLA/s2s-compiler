@@ -29,7 +29,10 @@ mod tests {
         };
 
         assert_eq!(seq.len(), 3);
-        assert_identifier(&seq[0], "first");
+        match &seq[0] {
+            IrExpression::Call { callee, .. } => assert_identifier(callee, "first"),
+            other => panic!("expected call in sequence, got {other:?}"),
+        }
         match &seq[1] {
             IrExpression::Assignment { left, .. } => assert_identifier(left, "second"),
             other => panic!("expected assignment in sequence, got {other:?}"),

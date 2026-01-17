@@ -2,7 +2,7 @@ use crate::value::Value;
 
 pub fn length(target: Value) -> Value {
     let string = into_string(target);
-    Value::Number(string.chars().count() as f64)
+    Value::Int(string.chars().count() as i64)
 }
 
 pub fn to_upper_case(target: Value) -> Value {
@@ -207,8 +207,8 @@ mod tests {
 
     #[test]
     fn length_counts_characters() {
-        assert_eq!(length(string("hello")), Value::Number(5.0));
-        assert_eq!(length(string("")), Value::Number(0.0));
+        assert_eq!(length(string("hello")), Value::Int(5));
+        assert_eq!(length(string("")), Value::Int(0));
     }
 
     #[test]

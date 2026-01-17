@@ -5,7 +5,7 @@ pub fn length<T>(array: &T) -> Value
 where
     T: ArrayLike + ?Sized,
 {
-    Value::Number(length_number(array))
+    Value::Int(array.len() as i64)
 }
 
 pub fn length_number<T>(array: &T) -> f64
@@ -31,7 +31,7 @@ mod tests {
 
         let result = length(&array);
 
-        assert_eq!(result, Value::Number(3.0));
+        assert_eq!(result, Value::Int(3));
     }
 
     #[test]
@@ -40,7 +40,7 @@ mod tests {
 
         let result = length(&array);
 
-        assert_eq!(result, Value::Number(0.0));
+        assert_eq!(result, Value::Int(0));
     }
 
     #[test]

@@ -103,6 +103,30 @@ impl ConsoleArg for i128 {
     }
 }
 
+impl ConsoleArg for u32 {
+    fn to_value(&self) -> Value {
+        Value::Number(*self as f64)
+    }
+}
+
+impl ConsoleArg for u64 {
+    fn to_value(&self) -> Value {
+        Value::Number(*self as f64)
+    }
+}
+
+impl ConsoleArg for u128 {
+    fn to_value(&self) -> Value {
+        Value::Number(*self as f64)
+    }
+}
+
+impl ConsoleArg for usize {
+    fn to_value(&self) -> Value {
+        Value::Number(*self as f64)
+    }
+}
+
 impl ConsoleArg for f32 {
     fn to_value(&self) -> Value {
         Value::Number(*self as f64)
@@ -194,6 +218,10 @@ where
     downcast!(i32, |v: &i32| (*v as f64).to_string());
     downcast!(i64, |v: &i64| (*v as f64).to_string());
     downcast!(i128, |v: &i128| (*v as f64).to_string());
+    downcast!(u32, |v: &u32| (*v as f64).to_string());
+    downcast!(u64, |v: &u64| (*v as f64).to_string());
+    downcast!(u128, |v: &u128| (*v as f64).to_string());
+    downcast!(usize, |v: &usize| (*v as f64).to_string());
     downcast!(f32, |v: &f32| (*v as f64).to_string());
     downcast!(f64, |v: &f64| v.to_string());
     downcast!(String, |v: &String| v.clone());

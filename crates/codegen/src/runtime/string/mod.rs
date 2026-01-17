@@ -8,7 +8,7 @@ pub(crate) fn string_call_tokens(call: &StringCall) -> TokenStream {
         StringCall::Length { target } => {
             let target_tokens = value_arg_tokens(target);
             quote! {{
-                runtime::string::length(#target_tokens).into_number()
+                runtime::string::length(#target_tokens).to_number() as usize
             }}
         }
         StringCall::ToUpperCase { target } => unary_value_call("to_upper_case", target),
