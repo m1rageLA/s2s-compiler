@@ -1,0 +1,96 @@
+import { heavy, prepareArgs } from "./index.js";
+
+// // Готовим параметры на этапе трансформации: большой детерминированный массив.
+// const params = prepareArgs(() => {
+//     const data: number[] = [];
+//     for (let i = 0; i < 100; i++) {
+//         data.push((i * 7) % 100);
+//     }
+//     return { data };
+// });
+const result = await heavy(() => {
+    function go() {
+        // object_property_bench.ts
+
+        type Obj = {
+            a: number; b: number; c: number; d: number;
+            e: number; f: number; g: number; h: number;
+        };
+
+        function makeObj(): Obj {
+            return { a: 1, b: 2, c: 3, d: 4, e: 5, f: 6, g: 7, h: 8 };
+        }
+
+        function benchDirect(
+            o: Obj,
+            iters: number
+        ): number {
+            let acc: number = 0;
+            for (let i = 0; i < iters; i++) {
+                acc += o.a;
+                acc += o.b;
+                acc += o.c;
+                acc += o.d;
+                acc += o.e;
+                acc += o.f;
+                acc += o.g;
+                acc += o.h;
+            }
+            return acc;
+        }
+
+        function benchBracket(o: Obj, iters: number): number {
+            let acc: number = 0;
+            for (let i = 0; i < iters; i++) {
+                acc += o.a;
+                acc += o.b;
+                acc += o.c;
+                acc += o.d;
+                acc += o.e;
+                acc += o.f;
+                acc += o.g;
+                acc += o.h;
+            }
+            return acc;
+        }
+
+        function benchDestructure(
+            o: Obj,
+            iters: number
+        ): number {
+            let acc: number = 0;
+            for (let i = 0; i < iters; i++) {
+                acc += o.a;
+                acc += o.b;
+                acc += o.c;
+                acc += o.d;
+                acc += o.e;
+                acc += o.f;
+                acc += o.g;
+                acc += o.h;
+            }
+            return acc;
+        }
+
+        // ---- запуск ----
+
+        const ITERS = 400_000_000;
+
+        const obj = makeObj();
+
+        benchDirect(obj, ITERS);
+        benchBracket(obj, ITERS);
+        benchDestructure(obj, ITERS);
+        // benchKeys disabled: dynamic keys are not supported in the strict pipeline
+        return {
+            output: {
+                direct: benchDirect(obj, ITERS),
+                bracket: benchBracket(obj, ITERS),
+                destructure: benchDestructure(obj, ITERS),
+            }
+        }
+    }
+    return go();
+}, /*params*/);
+
+console.log("Additional output:", result.output);

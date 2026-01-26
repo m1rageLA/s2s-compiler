@@ -1,0 +1,32 @@
+import { heavy, prepareArgs } from "./index.js";
+
+// // Готовим параметры на этапе трансформации: большой детерминированный массив.
+// const params = prepareArgs(() => {
+//     const data: number[] = [];
+//     for (let i = 0; i < 100; i++) {
+//         data.push((i * 7) % 100);
+//     }
+//     return { data };
+// });
+const result = await heavy(() => {
+    function go() {
+        let sum = 0;
+        let i = 0;
+        let m = 0;
+
+        while (i < 2000000000) {
+            sum += m * 3;
+            m = (m + 1) % 10;
+            i++;
+        }
+
+        console.log(sum);
+        return sum;
+    }
+    return go();
+
+});
+
+console.log("Additional output:", result.rust);
+
+

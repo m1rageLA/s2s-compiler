@@ -1,0 +1,19 @@
+{
+  // Конфиг для проектов/файлов, использующих трансформер heavy.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "plugins": [
+      {
+        "transform": "./transformer/heavy.cjs"
+      }
+    ]
+  },
+  "include": [
+    "./**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "compiler/target",
+    "compiler/**/target"
+  ]
+}
