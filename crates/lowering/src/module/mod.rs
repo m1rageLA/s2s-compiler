@@ -30,6 +30,7 @@ fn apply_mutations(items: &mut [IrItem]) {
             IrItem::Function(func) => apply_mutation_to_stmts(&mut func.body),
             IrItem::Block(stmts) => apply_mutation_to_stmts(stmts),
             IrItem::Expression(_) => {}
+            IrItem::TypeAlias(_) => {}
         }
     }
 }
@@ -95,6 +96,7 @@ fn apply_mutation_to_stmt(stmt: &mut IrStmt) {
                 apply_mutation_to_stmts(finally);
             }
         }
+        IrStmt::TypeAlias(_) => {}
         _ => {}
     }
 }

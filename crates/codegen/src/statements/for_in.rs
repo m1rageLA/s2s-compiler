@@ -49,7 +49,7 @@ fn keys_tokens(target_ident: &proc_macro2::Ident, ty: Option<IrType>) -> TokenSt
         Some(IrType::Str) => {
             quote! { (#target_ident).chars().enumerate().map(|(idx, _)| idx.to_string()).collect::<::std::vec::Vec<_>>() }
         }
-        Some(IrType::Bool) | Some(IrType::Number) | Some(IrType::Unit) => {
+        Some(IrType::Bool) | Some(IrType::Number) | Some(IrType::Unit) | Some(IrType::Object(_)) => {
             quote! { ::std::vec::Vec::<::std::string::String>::new() }
         }
         _ => quote! {

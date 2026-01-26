@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{IrExpression, IrVariable};
+use crate::{IrExpression, IrTypeAlias, IrVariable};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum IrStmt {
@@ -9,6 +9,7 @@ pub enum IrStmt {
     Return(Option<IrExpression>),
     Block(Vec<IrStmt>),
     Empty,
+    TypeAlias(IrTypeAlias),
     Labeled {
         label: String,
         body: Box<IrStmt>,

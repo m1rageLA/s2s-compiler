@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{IrExpression, IrStmt, IrType};
+use crate::{IrExpression, IrStmt, IrType, IrTypeAlias};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct IrModule {
@@ -13,6 +13,7 @@ pub enum IrItem {
     Function(IrFunction),
     Expression(IrExpression),
     Block(Vec<IrStmt>),
+    TypeAlias(IrTypeAlias),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

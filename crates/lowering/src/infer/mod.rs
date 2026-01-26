@@ -33,6 +33,21 @@ pub(crate) fn infer_expression_type(expr: &IrExpression) -> Option<IrType> {
         IrExpression::Array(elements) => Some(IrType::Array(infer_array_kind(elements))),
         IrExpression::Template(parts) => expression_template::infer_template(parts),
         IrExpression::RuntimeCall(call) => expression_runtime::infer_runtime(call),
+        IrExpression::Member { object, property } => {
+            match infer_expression_type(object.as_ref()) {
+                Some(IrType::Object(id)) => {
+                    if let Some(alias) = context::lookup_type_alias_by_id(id) {
+                        if let ir::IrTypeAliasDef::Object(fields) = alias.def {
+                            if let Some(field) = fields.iter().find(|field| field.name == *property) {
+                                return Some(field.ty);
+                            }
+                        }
+                    }
+                    None
+                }
+                _ => None,
+            }
+        }
         IrExpression::Call { callee, .. } => infer_call(callee),
         IrExpression::Sequence(exprs) => exprs
             .last()
@@ -76,8 +91,17 @@ fn infer_array_kind(elements: &[IrExpression]) -> IrArrayKind {
                     _ => return IrArrayKind::Any,
                 };
             }
+            Some(IrType::Object(id)) => {
+                kind = match kind {
+                    IrArrayKind::Unknown => IrArrayKind::Object(id),
+                    IrArrayKind::Object(existing) if existing == id => IrArrayKind::Object(id),
+                    _ => return IrArrayKind::Any,
+                };
+            }
             Some(IrType::Value | IrType::Any) => return IrArrayKind::Any,
-            Some(IrType::Array(_) | IrType::Unit) | None => return IrArrayKind::Any,
+            Some(IrType::Array(_) | IrType::Unit) | None => {
+                return IrArrayKind::Any
+            }
         }
     }
 

@@ -28,6 +28,7 @@ use function::function_expr_tokens;
 use identifier::identifier_tokens;
 use member::member_tokens;
 use object::object_literal_tokens;
+pub(crate) use object::object_struct_literal_tokens;
 use template::template_literal_tokens;
 use unary::{delete_tokens, postfixunary_tokens, prefixunary_tokens, unary_tokens};
 use unsupported::unsupported_expr;

@@ -1,7 +1,7 @@
-use crate::Codegen;
-use ir::IrObjectProperty;
+use crate::{typing, Codegen};
+use ir::{IrExpression, IrObjectProperty, IrType, IrTypeAliasDef, RuntimeNamespace, ValueCall};
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 
 pub(crate) fn object_literal_tokens(properties: &[IrObjectProperty]) -> TokenStream {
     let inserts: Vec<TokenStream> = properties
@@ -20,6 +20,59 @@ pub(crate) fn object_literal_tokens(properties: &[IrObjectProperty]) -> TokenStr
         #( #inserts )*
         runtime::value::Value::Object(map)
     }}
+}
+
+pub(crate) fn object_struct_literal_tokens(
+    type_id: u32,
+    properties: &[IrObjectProperty],
+) -> TokenStream {
+    let Some(alias) = typing::lookup_type_alias(type_id) else {
+        return object_literal_tokens(properties);
+    };
+
+    let struct_ident = format_ident!("{}", alias.name);
+    let fields = match alias.def {
+        IrTypeAliasDef::Object(fields) => fields,
+        IrTypeAliasDef::Alias(_) => return object_literal_tokens(properties),
+    };
+
+    let field_tokens: Vec<TokenStream> = properties
+        .iter()
+        .map(|property| {
+            let key = &property.key;
+            let field_ident = format_ident!("{}", key);
+            let field_ty = fields
+                .iter()
+                .find(|field| field.name == *key)
+                .map(|field| field.ty)
+                .unwrap_or(IrType::Any);
+
+            let value_expr = match (&field_ty, &property.value) {
+                (IrType::Any | IrType::Value, value) => value,
+                (_, IrExpression::RuntimeCall(RuntimeNamespace::Value(ValueCall::Coerce { expr }))) => {
+                    expr.as_ref()
+                }
+                _ => &property.value,
+            };
+
+            let value_tokens = match field_ty {
+                IrType::Object(id) => match &property.value {
+                    IrExpression::Object(nested) => {
+                        object_struct_literal_tokens(id, nested)
+                    }
+                    _ => value_expr.codegen(),
+                },
+                _ => value_expr.codegen(),
+            };
+
+            let expr_ty = typing::infer_expression_type(value_expr);
+            let coerced = typing::coerce_to_type(value_tokens, &field_ty, expr_ty);
+
+            quote! { #field_ident: #coerced }
+        })
+        .collect();
+
+    quote! { #struct_ident { #( #field_tokens, )* } }
 }
 
 #[cfg(test)]

@@ -3,7 +3,8 @@ use std::collections::HashMap;
 
 use ir::{
     ArrayCall, ConsoleCall, IrArrayKind, IrArrowBody, IrBinOp, IrExpression, IrLiteral, IrParam,
-    IrStmt, IrTemplatePart, IrType, MathCall, RuntimeNamespace, StringCall, ValueCall,
+    IrStmt, IrTemplatePart, IrType, IrTypeAlias, IrTypeAliasDef, MathCall, RuntimeNamespace,
+    StringCall, ValueCall,
 };
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -14,7 +15,12 @@ thread_local! {
     static FN_PARAMS: RefCell<Vec<HashMap<String, Vec<IrType>>>> = RefCell::new(vec![HashMap::new()]);
     static FN_PARAM_PASSES: RefCell<Vec<HashMap<String, Vec<ParamPass>>>> =
         RefCell::new(vec![HashMap::new()]);
+    static BINDING_PASSES: RefCell<Vec<HashMap<String, ParamPass>>> = RefCell::new(vec![HashMap::new()]);
+    static OBJECT_ALIASES: RefCell<Vec<HashMap<String, ObjectAlias>>> = RefCell::new(vec![HashMap::new()]);
+    static ARRAY_INDEX_ALIASES: RefCell<Vec<HashMap<(String, String), String>>> =
+        RefCell::new(vec![HashMap::new()]);
     static RETURN_STACK: RefCell<Vec<IrType>> = RefCell::new(vec![]);
+    static TYPE_ALIASES: RefCell<Vec<HashMap<u32, IrTypeAlias>>> = RefCell::new(vec![HashMap::new()]);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,6 +28,13 @@ pub enum ParamPass {
     Value,
     Ref,
     MutRef,
+}
+
+#[derive(Debug, Clone)]
+pub struct ObjectAlias {
+    pub target: IrExpression,
+    pub index: IrExpression,
+    pub element: Option<IrArrayKind>,
 }
 
 pub fn reset() {
@@ -45,7 +58,27 @@ pub fn reset() {
         stack.clear();
         stack.push(HashMap::new());
     });
+    BINDING_PASSES.with(|stack| {
+        let mut stack = stack.borrow_mut();
+        stack.clear();
+        stack.push(HashMap::new());
+    });
+    OBJECT_ALIASES.with(|stack| {
+        let mut stack = stack.borrow_mut();
+        stack.clear();
+        stack.push(HashMap::new());
+    });
+    ARRAY_INDEX_ALIASES.with(|stack| {
+        let mut stack = stack.borrow_mut();
+        stack.clear();
+        stack.push(HashMap::new());
+    });
     RETURN_STACK.with(|stack| stack.borrow_mut().clear());
+    TYPE_ALIASES.with(|stack| {
+        let mut stack = stack.borrow_mut();
+        stack.clear();
+        stack.push(HashMap::new());
+    });
 }
 
 pub fn push_scope() {
@@ -53,6 +86,10 @@ pub fn push_scope() {
     FN_RETURNS.with(|stack| stack.borrow_mut().push(HashMap::new()));
     FN_PARAMS.with(|stack| stack.borrow_mut().push(HashMap::new()));
     FN_PARAM_PASSES.with(|stack| stack.borrow_mut().push(HashMap::new()));
+    BINDING_PASSES.with(|stack| stack.borrow_mut().push(HashMap::new()));
+    OBJECT_ALIASES.with(|stack| stack.borrow_mut().push(HashMap::new()));
+    ARRAY_INDEX_ALIASES.with(|stack| stack.borrow_mut().push(HashMap::new()));
+    TYPE_ALIASES.with(|stack| stack.borrow_mut().push(HashMap::new()));
 }
 
 pub fn pop_scope() {
@@ -80,6 +117,30 @@ pub fn pop_scope() {
             stack.pop();
         }
     });
+    BINDING_PASSES.with(|stack| {
+        let mut stack = stack.borrow_mut();
+        if stack.len() > 1 {
+            stack.pop();
+        }
+    });
+    OBJECT_ALIASES.with(|stack| {
+        let mut stack = stack.borrow_mut();
+        if stack.len() > 1 {
+            stack.pop();
+        }
+    });
+    ARRAY_INDEX_ALIASES.with(|stack| {
+        let mut stack = stack.borrow_mut();
+        if stack.len() > 1 {
+            stack.pop();
+        }
+    });
+    TYPE_ALIASES.with(|stack| {
+        let mut stack = stack.borrow_mut();
+        if stack.len() > 1 {
+            stack.pop();
+        }
+    });
 }
 
 pub fn define(name: &str, ty: IrType) {
@@ -88,6 +149,65 @@ pub fn define(name: &str, ty: IrType) {
             scope.insert(name.to_string(), ty);
         }
     });
+}
+
+pub fn define_binding_pass(name: &str, pass: ParamPass) {
+    BINDING_PASSES.with(|stack| {
+        if let Some(scope) = stack.borrow_mut().last_mut() {
+            scope.insert(name.to_string(), pass);
+        }
+    });
+}
+
+pub fn define_object_alias(name: &str, alias: ObjectAlias) {
+    OBJECT_ALIASES.with(|stack| {
+        if let Some(scope) = stack.borrow_mut().last_mut() {
+            scope.insert(name.to_string(), alias);
+        }
+    });
+}
+
+pub fn lookup_object_alias(name: &str) -> Option<ObjectAlias> {
+    OBJECT_ALIASES.with(|stack| {
+        for scope in stack.borrow().iter().rev() {
+            if let Some(alias) = scope.get(name) {
+                return Some(alias.clone());
+            }
+        }
+        None
+    })
+}
+
+pub fn define_array_index_alias(array: &str, index: &str, alias: &str) {
+    ARRAY_INDEX_ALIASES.with(|stack| {
+        if let Some(scope) = stack.borrow_mut().last_mut() {
+            scope.insert((array.to_string(), index.to_string()), alias.to_string());
+        }
+    });
+}
+
+pub fn lookup_array_index_alias(array: &str, index: &str) -> Option<String> {
+    ARRAY_INDEX_ALIASES.with(|stack| {
+        for scope in stack.borrow().iter().rev() {
+            if let Some(alias) = scope.get(&(array.to_string(), index.to_string())) {
+                return Some(alias.clone());
+            }
+        }
+        None
+    })
+}
+
+pub fn object_alias_is_copy(id: u32) -> bool {
+    lookup_type_alias(id)
+        .and_then(|alias| match alias.def {
+            IrTypeAliasDef::Object(fields) => Some(
+                fields
+                    .iter()
+                    .all(|field| is_copy_type(&field.ty)),
+            ),
+            _ => None,
+        })
+        .unwrap_or(false)
 }
 
 pub fn define_function_return(name: &str, ty: IrType) {
@@ -112,6 +232,25 @@ pub fn define_function_param_passes(name: &str, passes: &[ParamPass]) {
             scope.insert(name.to_string(), passes.to_vec());
         }
     });
+}
+
+pub fn define_type_alias(alias: &IrTypeAlias) {
+    TYPE_ALIASES.with(|stack| {
+        if let Some(scope) = stack.borrow_mut().last_mut() {
+            scope.insert(alias.id, alias.clone());
+        }
+    });
+}
+
+pub fn lookup_type_alias(id: u32) -> Option<IrTypeAlias> {
+    TYPE_ALIASES.with(|stack| {
+        for scope in stack.borrow().iter().rev() {
+            if let Some(alias) = scope.get(&id) {
+                return Some(alias.clone());
+            }
+        }
+        None
+    })
 }
 
 pub fn lookup(name: &str) -> Option<IrType> {
@@ -152,6 +291,17 @@ pub fn lookup_function_param_passes(name: &str) -> Option<Vec<ParamPass>> {
         for scope in stack.borrow().iter().rev() {
             if let Some(passes) = scope.get(name) {
                 return Some(passes.clone());
+            }
+        }
+        None
+    })
+}
+
+pub fn lookup_binding_pass(name: &str) -> Option<ParamPass> {
+    BINDING_PASSES.with(|stack| {
+        for scope in stack.borrow().iter().rev() {
+            if let Some(pass) = scope.get(name) {
+                return Some(*pass);
             }
         }
         None
@@ -204,7 +354,18 @@ pub fn infer_expression_type(expr: &IrExpression) -> Option<IrType> {
         IrExpression::Function(func) => Some(func.ret),
         IrExpression::Assignment { right, .. } => infer_expression_type(right),
         IrExpression::Call { callee, .. } => infer_call_return(callee),
-        IrExpression::Member { .. } => None,
+        IrExpression::Member { object, property } => {
+            if let Some(IrType::Object(id)) = infer_expression_type(object) {
+                if let Some(alias) = lookup_type_alias(id) {
+                    if let IrTypeAliasDef::Object(fields) = alias.def {
+                        if let Some(field) = fields.iter().find(|field| field.name == *property) {
+                            return Some(field.ty);
+                        }
+                    }
+                }
+            }
+            None
+        }
         IrExpression::SuperCall { .. } => None,
         IrExpression::ArrayExpr(elements) => Some(IrType::Array(infer_array_kind(elements))),
         IrExpression::PostfixUnary { left, .. } => infer_expression_type(left),
@@ -437,8 +598,17 @@ pub(crate) fn infer_array_kind(elements: &[IrExpression]) -> IrArrayKind {
                     _ => return IrArrayKind::Any,
                 };
             }
+            Some(IrType::Object(id)) => {
+                kind = match kind {
+                    IrArrayKind::Unknown => IrArrayKind::Object(id),
+                    IrArrayKind::Object(existing) if existing == id => IrArrayKind::Object(id),
+                    _ => return IrArrayKind::Any,
+                };
+            }
             Some(IrType::Value | IrType::Any) => return IrArrayKind::Any,
-            Some(IrType::Array(_) | IrType::Unit) | None => return IrArrayKind::Any,
+            Some(IrType::Array(_) | IrType::Unit) | None => {
+                return IrArrayKind::Any
+            }
         }
     }
 
@@ -459,13 +629,17 @@ fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
     match call {
         RuntimeNamespace::Console(ConsoleCall::Log(_)) => Some(IrType::Unit),
         RuntimeNamespace::Array(ArrayCall::Push { target, .. }) => match infer_expression_type(target) {
-            Some(IrType::Array(IrArrayKind::Number | IrArrayKind::Str | IrArrayKind::Bool)) => {
+            Some(IrType::Array(
+                IrArrayKind::Number | IrArrayKind::Str | IrArrayKind::Bool | IrArrayKind::Object(_),
+            )) => {
                 Some(IrType::UInt)
             }
             _ => Some(IrType::Value),
         },
         RuntimeNamespace::Array(ArrayCall::Length { target }) => match infer_expression_type(target) {
-            Some(IrType::Array(IrArrayKind::Number | IrArrayKind::Str | IrArrayKind::Bool)) => {
+            Some(IrType::Array(
+                IrArrayKind::Number | IrArrayKind::Str | IrArrayKind::Bool | IrArrayKind::Object(_),
+            )) => {
                 Some(IrType::UInt)
             }
             _ => Some(IrType::Value),
@@ -474,11 +648,13 @@ fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
             Some(IrArrayKind::Number) => Some(IrType::Number),
             Some(IrArrayKind::Str) => Some(IrType::Str),
             Some(IrArrayKind::Bool) => Some(IrType::Bool),
+            Some(IrArrayKind::Object(id)) => Some(IrType::Object(*id)),
             _ => match infer_expression_type(target) {
                 Some(IrType::Array(kind)) => match kind {
                     IrArrayKind::Number => Some(IrType::Number),
                     IrArrayKind::Str => Some(IrType::Str),
                     IrArrayKind::Bool => Some(IrType::Bool),
+                    IrArrayKind::Object(id) => Some(IrType::Object(id)),
                     _ => Some(IrType::Value),
                 },
                 _ => Some(IrType::Value),
@@ -489,6 +665,7 @@ fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
                 IrArrayKind::Number => IrType::Number,
                 IrArrayKind::Str => IrType::Str,
                 IrArrayKind::Bool => IrType::Bool,
+                IrArrayKind::Object(id) => IrType::Object(id),
                 IrArrayKind::Value => IrType::Value,
                 IrArrayKind::Any | IrArrayKind::Unknown => IrType::Any,
             }),
@@ -630,7 +807,7 @@ pub fn coerce_to_type(
             }
         }
         IrType::Unit => quote!({ #expr_tokens; () }),
-        IrType::Array(_) | IrType::Any => expr_tokens,
+        IrType::Array(_) | IrType::Any | IrType::Object(_) => expr_tokens,
         IrType::Value => {
             if matches!(expr_type, Some(IrType::Value)) {
                 expr_tokens
@@ -639,6 +816,17 @@ pub fn coerce_to_type(
             }
         }
     }
+}
+
+pub fn is_copy_type(ty: &IrType) -> bool {
+    matches!(ty, IrType::Number | IrType::UInt | IrType::Bool | IrType::Unit)
+}
+
+pub fn expr_is_copy_type(expr: &IrExpression) -> bool {
+    infer_expression_type(expr)
+        .as_ref()
+        .map(is_copy_type)
+        .unwrap_or(false)
 }
 
 fn numeric_pair(a: IrType, b: IrType) -> bool {

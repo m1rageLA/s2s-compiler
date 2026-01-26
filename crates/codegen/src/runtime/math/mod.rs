@@ -11,7 +11,10 @@ pub(crate) fn math_call_tokens(call: &MathCall) -> TokenStream {
             let arg_tokens = arg.codegen();
             match typing::infer_expression_type(arg) {
                 Some(ir::IrType::Number) => quote! { (#arg_tokens).sqrt() },
-                _ => quote! { runtime::math::sqrt(#arg_tokens) },
+                Some(ir::IrType::UInt) => quote! { ((#arg_tokens) as f64).sqrt() },
+                _ => quote! {
+                    runtime::math::sqrt_number(runtime::value::into_value(#arg_tokens).into_number())
+                },
             }
         }
     }

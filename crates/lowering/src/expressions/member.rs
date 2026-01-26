@@ -182,6 +182,14 @@ pub(crate) fn runtime_value_for_member(member: &IrExpression) -> Option<IrExpres
 
     let inferred = infer::infer_expression_type(object.as_ref());
 
+    if matches!(inferred, Some(IrType::Object(_))) {
+        return None;
+    }
+
+    if matches!(inferred, Some(IrType::Object(_))) {
+        return None;
+    }
+
     if property == "length" {
         if matches!(inferred, Some(IrType::Str)) {
             return Some(IrExpression::RuntimeCall(RuntimeNamespace::String(
@@ -283,6 +291,7 @@ fn array_kind_to_type(kind: IrArrayKind) -> Option<IrType> {
         IrArrayKind::Number => Some(IrType::Number),
         IrArrayKind::Str => Some(IrType::Str),
         IrArrayKind::Bool => Some(IrType::Bool),
+        IrArrayKind::Object(id) => Some(IrType::Object(id)),
         IrArrayKind::Value | IrArrayKind::Any => Some(IrType::Value),
         IrArrayKind::Unknown => None,
     }

@@ -2,14 +2,22 @@ use ir::IrExpression;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::{typing, Codegen};
+use crate::{expression::object_struct_literal_tokens, typing, Codegen};
 
 pub fn return_tokens(expr: Option<&IrExpression>) -> TokenStream {
     let expected = typing::current_return_type();
     match expr {
         Some(expr) => {
             let expr_type = typing::infer_expression_type(expr);
-            let expr_tokens = expr.codegen();
+            let expr_tokens = match expected {
+                Some(ir::IrType::Object(id)) => match expr {
+                    IrExpression::Object(properties) => {
+                        object_struct_literal_tokens(id, properties)
+                    }
+                    _ => expr.codegen(),
+                },
+                _ => expr.codegen(),
+            };
             let expr_tokens = match expected {
                 Some(ir::IrType::Unit) | None => expr_tokens,
                 Some(ret) => typing::coerce_to_type(expr_tokens, &ret, expr_type),

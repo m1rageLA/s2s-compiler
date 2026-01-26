@@ -1,5 +1,6 @@
-use ir::{IrArrayKind, IrType};
+use ir::{IrArrayKind, IrType, IrTypeAliasDef};
 use swc_ecma_ast::{self as ast};
+use crate::context;
 
 mod keyword;
 mod unknown;
@@ -8,7 +9,7 @@ pub(crate) fn ts_type_ann_to_ir(ann: &ast::TsTypeAnn) -> IrType {
     ts_type_to_ir(&ann.type_ann)
 }
 
-fn ts_type_to_ir(ty: &ast::TsType) -> IrType {
+pub(crate) fn ts_type_to_ir(ty: &ast::TsType) -> IrType {
     match ty {
         ast::TsType::TsKeywordType(keyword) => keyword::from_keyword(keyword),
         ast::TsType::TsArrayType(array) => {
@@ -28,6 +29,16 @@ fn ts_type_to_ir(ty: &ast::TsType) -> IrType {
 
                 IrType::Array(array_kind_from_type(element_ty))
             }
+            ast::TsEntityName::Ident(ident) => {
+                if let Some(alias) = context::lookup_type_alias(&ident.sym.to_string()) {
+                    match alias.def {
+                        IrTypeAliasDef::Object(_) => IrType::Object(alias.id),
+                        IrTypeAliasDef::Alias(inner) => inner,
+                    }
+                } else {
+                    unknown::any()
+                }
+            }
             _ => unknown::any(),
         },
         ast::TsType::TsParenthesizedType(inner) => ts_type_to_ir(&inner.type_ann),
@@ -42,6 +53,7 @@ fn array_kind_from_type(element_ty: IrType) -> IrArrayKind {
         IrType::Bool => IrArrayKind::Bool,
         IrType::Value => IrArrayKind::Value,
         IrType::Any => IrArrayKind::Any,
+        IrType::Object(id) => IrArrayKind::Object(id),
         _ => IrArrayKind::Unknown,
     }
 }

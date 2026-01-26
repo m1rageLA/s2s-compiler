@@ -1,13 +1,47 @@
-use ir::IrExpression;
+use ir::{ArrayCall, IrArrayKind, IrExpression, IrType, RuntimeNamespace};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::Codegen;
+use crate::{typing, Codegen};
 
 pub(crate) fn member_tokens(object: &IrExpression, property: &str) -> TokenStream {
-    let object_tokens = object.codegen();
+    let object_tokens = object_tokens_for_member(object);
     let property_ident = format_ident!("{}", property);
     quote! { (#object_tokens).#property_ident }
+}
+
+fn object_tokens_for_member(object: &IrExpression) -> TokenStream {
+    if let IrExpression::Identifier(name) = object {
+        if let Some(alias) = typing::lookup_object_alias(name) {
+            return object_index_tokens(&alias.target, &alias.index);
+        }
+    }
+
+    if let IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Index { target, index, element })) = object {
+        if matches!(element, Some(IrArrayKind::Object(_))) {
+            return object_index_tokens(target.as_ref(), index.as_ref());
+        }
+    }
+
+    object.codegen()
+}
+
+fn object_index_tokens(target: &IrExpression, index: &IrExpression) -> TokenStream {
+    if let (IrExpression::Identifier(array_name), IrExpression::Identifier(index_name)) =
+        (target, index)
+    {
+        if let Some(alias) = typing::lookup_array_index_alias(array_name, index_name) {
+            let alias_ident = format_ident!("{}", alias);
+            return quote! { *#alias_ident };
+        }
+    }
+
+    let target_tokens = target.codegen();
+    let index_tokens = index.codegen();
+    match typing::infer_expression_type(index) {
+        Some(IrType::UInt) => quote! { #target_tokens[#index_tokens] },
+        _ => quote! { #target_tokens[(#index_tokens) as usize] },
+    }
 }
 
 #[cfg(test)]

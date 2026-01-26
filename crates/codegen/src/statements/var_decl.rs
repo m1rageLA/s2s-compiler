@@ -1,4 +1,4 @@
-use ir::{IrArrowBody, IrExpression, IrParam, IrType, IrVariable};
+use ir::{ArrayCall, IrArrowBody, IrArrayKind, IrExpression, IrParam, IrType, IrVariable, RuntimeNamespace};
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -8,6 +8,20 @@ pub fn var_decl_tokens(vars: &[IrVariable]) -> TokenStream {
     for var in vars {
         typing::define(&var.name, var.ty);
         register_function_signature(var);
+        if let (IrType::Object(_), Some(IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Index { target, index, element })))) =
+            (var.ty, var.value.as_ref())
+        {
+            if matches!(element, Some(IrArrayKind::Object(_))) {
+                typing::define_object_alias(
+                    &var.name,
+                    typing::ObjectAlias {
+                        target: (*target.as_ref()).clone(),
+                        index: (*index.as_ref()).clone(),
+                        element: *element,
+                    },
+                );
+            }
+        }
     }
     let decls = vars.iter().map(|var| var.codegen());
     quote! { #(#decls)* }

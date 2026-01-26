@@ -1,7 +1,7 @@
 use ir::IrStmt;
 use proc_macro2::TokenStream;
 
-use crate::Codegen;
+use crate::{typing, Codegen};
 
 mod block;
 mod do_while;
@@ -39,6 +39,7 @@ use try_stmt::try_tokens;
 use throw_stmt::throw_tokens;
 use var_decl::var_decl_tokens;
 use while_loop::while_tokens;
+use crate::type_alias::type_alias_tokens;
 
 impl Codegen for IrStmt {
     type Output = TokenStream;
@@ -50,6 +51,10 @@ impl Codegen for IrStmt {
             IrStmt::Return(expr) => return_tokens(expr.as_ref()),
             IrStmt::Block(stmts) => block_tokens(stmts),
             IrStmt::Empty => empty_tokens(),
+            IrStmt::TypeAlias(alias) => {
+                typing::define_type_alias(alias);
+                type_alias_tokens(alias)
+            }
             IrStmt::Break(label) => break_tokens(label.as_deref()),
             IrStmt::Continue(label) => continue_tokens(label.as_deref()),
             IrStmt::Labeled { label, body } => labeled_tokens(label, body),

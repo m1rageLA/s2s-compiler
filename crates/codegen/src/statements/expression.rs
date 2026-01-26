@@ -35,7 +35,7 @@ fn optimize_assignment_stmt(
     right: &IrExpression,
 ) -> Option<TokenStream> {
     // Only optimize simple identifiers with known static type.
-    let ident = match left {
+    let ident = match strip_paren(left) {
         IrExpression::Identifier(name) => format_ident!("{}", name),
         _ => return None,
     };
@@ -73,7 +73,7 @@ fn optimize_assignment_stmt(
 }
 
 fn optimize_prefix_stmt(arg: &IrExpression, op: IrPrefixOp) -> Option<TokenStream> {
-    let ident = match arg {
+    let ident = match strip_paren(arg) {
         IrExpression::Identifier(name) => format_ident!("{}", name),
         _ => return None,
     };
@@ -99,10 +99,17 @@ fn optimize_prefix_stmt(arg: &IrExpression, op: IrPrefixOp) -> Option<TokenStrea
 
 fn optimize_postfix_stmt(left: &IrExpression, op: IrPostfixOp) -> Option<TokenStream> {
     // In statement position, postfix ++/-- is equivalent to prefix for side effects.
-    optimize_prefix_stmt(left, match op {
+    optimize_prefix_stmt(strip_paren(left), match op {
         IrPostfixOp::Increment => IrPrefixOp::Increment,
         IrPostfixOp::Decrement => IrPrefixOp::Decrement,
     })
+}
+
+fn strip_paren(expr: &IrExpression) -> &IrExpression {
+    match expr {
+        IrExpression::Paren(inner) => strip_paren(inner),
+        _ => expr,
+    }
 }
 
 #[cfg(test)]

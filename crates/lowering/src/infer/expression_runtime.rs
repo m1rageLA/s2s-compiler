@@ -10,24 +10,30 @@ pub(crate) fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
     match call {
         RuntimeNamespace::Console(ConsoleCall::Log(_)) => Some(IrType::Unit),
         RuntimeNamespace::Array(ArrayCall::Push { target, .. }) => match infer_expression_type(target) {
-            Some(IrType::Array(IrArrayKind::Number | IrArrayKind::Str | IrArrayKind::Bool)) => {
+            Some(IrType::Array(
+                IrArrayKind::Number | IrArrayKind::Str | IrArrayKind::Bool | IrArrayKind::Object(_),
+            )) => {
                 Some(IrType::UInt)
             }
             _ => Some(IrType::Value),
         },
         RuntimeNamespace::Array(ArrayCall::Length { target }) => match infer_expression_type(target) {
-            Some(IrType::Array(IrArrayKind::Number | IrArrayKind::Str | IrArrayKind::Bool)) => {
+            Some(IrType::Array(
+                IrArrayKind::Number | IrArrayKind::Str | IrArrayKind::Bool | IrArrayKind::Object(_),
+            )) => {
                 Some(IrType::UInt)
             }
             _ => Some(IrType::Value),
         },
         RuntimeNamespace::Array(ArrayCall::Index { element, target, .. }) => match element {
             Some(IrArrayKind::Number) => Some(IrType::Number),
+            Some(IrArrayKind::Object(id)) => Some(IrType::Object(*id)),
             _ => match infer_expression_type(target) {
                 Some(IrType::Array(kind)) => match kind {
                     IrArrayKind::Number => Some(IrType::Number),
                     IrArrayKind::Str => Some(IrType::Str),
                     IrArrayKind::Bool => Some(IrType::Bool),
+                    IrArrayKind::Object(id) => Some(IrType::Object(id)),
                     _ => Some(IrType::Value),
                 },
                 _ => Some(IrType::Value),
@@ -39,6 +45,7 @@ pub(crate) fn infer_runtime(call: &RuntimeNamespace) -> Option<IrType> {
                     IrArrayKind::Number => IrType::Number,
                     IrArrayKind::Str => IrType::Str,
                     IrArrayKind::Bool => IrType::Bool,
+                    IrArrayKind::Object(id) => IrType::Object(id),
                     IrArrayKind::Value => IrType::Value,
                     IrArrayKind::Any | IrArrayKind::Unknown => IrType::Any,
                 }),
@@ -116,6 +123,7 @@ fn array_kind_from_type(ty: IrType) -> Option<IrArrayKind> {
         IrType::Number | IrType::UInt => Some(IrArrayKind::Number),
         IrType::Str => Some(IrArrayKind::Str),
         IrType::Bool => Some(IrArrayKind::Bool),
+        IrType::Object(id) => Some(IrArrayKind::Object(id)),
         IrType::Value | IrType::Any => Some(IrArrayKind::Value),
         IrType::Unit => None,
     }
@@ -133,6 +141,7 @@ fn infer_callback_return(callback: &IrExpression, element_kind: Option<IrArrayKi
         IrArrayKind::Number => Some(IrType::Number),
         IrArrayKind::Str => Some(IrType::Str),
         IrArrayKind::Bool => Some(IrType::Bool),
+        IrArrayKind::Object(id) => Some(IrType::Object(id)),
         IrArrayKind::Value | IrArrayKind::Any | IrArrayKind::Unknown => Some(IrType::Value),
     });
 

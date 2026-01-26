@@ -2,7 +2,7 @@ use ir::IrExpression;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::{analysis, typing, Codegen};
+use crate::{analysis, expression::object_struct_literal_tokens, typing, Codegen};
 
 pub(crate) fn call_tokens(callee: &IrExpression, args: &[IrExpression]) -> TokenStream {
     let callee_tokens = callee.codegen();
@@ -13,14 +13,42 @@ pub(crate) fn call_tokens(callee: &IrExpression, args: &[IrExpression]) -> Token
             args.iter()
                 .enumerate()
                 .map(|(idx, arg)| {
-                    let tokens = arg.codegen();
+                    let tokens = if let Some(target_ty) = param_types.get(idx) {
+                        match (target_ty, arg) {
+                            (ir::IrType::Object(id), IrExpression::Object(props)) => {
+                                object_struct_literal_tokens(*id, props)
+                            }
+                            _ => arg.codegen(),
+                        }
+                    } else {
+                        arg.codegen()
+                    };
                     let base = match param_passes
                         .as_ref()
                         .and_then(|passes| passes.get(idx).copied())
                     {
-                        Some(typing::ParamPass::MutRef) => quote! { &mut (#tokens) },
+                        Some(typing::ParamPass::MutRef) => {
+                            if let IrExpression::Identifier(name) = arg {
+                                if matches!(
+                                    typing::lookup_binding_pass(name),
+                                    Some(typing::ParamPass::MutRef)
+                                ) {
+                                    quote! { (#tokens) }
+                                } else {
+                                    quote! { &mut (#tokens) }
+                                }
+                            } else {
+                                quote! { &mut (#tokens) }
+                            }
+                        }
                         Some(typing::ParamPass::Ref) => quote! { & (#tokens) },
-                        _ => quote! { (#tokens).clone() },
+                        _ => {
+                            if typing::expr_is_copy_type(arg) {
+                                quote! { (#tokens) }
+                            } else {
+                                quote! { (#tokens).clone() }
+                            }
+                        }
                     };
 
                     if let Some(target_ty) = param_types.get(idx) {
@@ -62,12 +90,37 @@ fn call_args_with_passes(
     args.iter()
         .enumerate()
         .map(|(idx, arg)| {
-            let tokens = arg.codegen();
+            let tokens = match params.get(idx).map(|param| param.ty) {
+                Some(ir::IrType::Object(id)) => match arg {
+                    IrExpression::Object(props) => object_struct_literal_tokens(id, props),
+                    _ => arg.codegen(),
+                },
+                _ => arg.codegen(),
+            };
             let pass = usages.get(idx).map(|usage| usage.pass).unwrap_or(typing::ParamPass::Value);
             let base = match pass {
-                typing::ParamPass::MutRef => quote! { &mut (#tokens) },
+                typing::ParamPass::MutRef => {
+                    if let IrExpression::Identifier(name) = arg {
+                        if matches!(
+                            typing::lookup_binding_pass(name),
+                            Some(typing::ParamPass::MutRef)
+                        ) {
+                            quote! { (#tokens) }
+                        } else {
+                            quote! { &mut (#tokens) }
+                        }
+                    } else {
+                        quote! { &mut (#tokens) }
+                    }
+                }
                 typing::ParamPass::Ref => quote! { & (#tokens) },
-                typing::ParamPass::Value => quote! { (#tokens).clone() },
+                typing::ParamPass::Value => {
+                    if typing::expr_is_copy_type(arg) {
+                        quote! { (#tokens) }
+                    } else {
+                        quote! { (#tokens).clone() }
+                    }
+                }
             };
 
             if let Some(target_ty) = params.get(idx).map(|param| param.ty) {
@@ -89,7 +142,11 @@ fn default_args(args: &[IrExpression], callee_ty: Option<ir::IrType>) -> Vec<Tok
     args.iter()
         .map(|arg| {
             let tokens = arg.codegen();
-            let base = quote! { (#tokens).clone() };
+            let base = if typing::expr_is_copy_type(arg) {
+                quote! { (#tokens) }
+            } else {
+                quote! { (#tokens).clone() }
+            };
             if coerce_value {
                 typing::coerce_to_type(base, &ir::IrType::Value, typing::infer_expression_type(arg))
             } else {

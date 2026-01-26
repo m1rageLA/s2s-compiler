@@ -321,6 +321,7 @@ fn array_element_type(kind: IrArrayKind) -> IrType {
         IrArrayKind::Number => IrType::Number,
         IrArrayKind::Str => IrType::Str,
         IrArrayKind::Bool => IrType::Bool,
+        IrArrayKind::Object(id) => IrType::Object(id),
         IrArrayKind::Value | IrArrayKind::Any | IrArrayKind::Unknown => IrType::Value,
     }
 }

@@ -48,7 +48,9 @@ pub(crate) fn collect_return_types(
                 }
                 ok
             }
-            IrStmt::Empty | IrStmt::Break(_) | IrStmt::Continue(_) => noop::handle(),
+            IrStmt::Empty | IrStmt::Break(_) | IrStmt::Continue(_) | IrStmt::TypeAlias(_) => {
+                noop::handle()
+            }
             _ => noop::handle(),
         } {
             return false;

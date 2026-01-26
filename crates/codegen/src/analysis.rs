@@ -4,6 +4,7 @@ use ir::{
 };
 
 use crate::typing::ParamPass;
+use crate::typing;
 
 #[derive(Debug, Clone, Copy)]
 pub struct ParamUsage {
@@ -57,7 +58,13 @@ fn param_usage_from(param: &IrParam, usage: Usage) -> ParamUsage {
         };
     }
 
-    let pass = if usage.escapes {
+    let pass = if matches!(param.ty, IrType::Array(ir::IrArrayKind::Object(_))) {
+        if usage.escapes {
+            ParamPass::Value
+        } else {
+            ParamPass::MutRef
+        }
+    } else if usage.escapes {
         ParamPass::Value
     } else if usage.mutated {
         ParamPass::MutRef
@@ -134,6 +141,7 @@ fn usage_in_stmt(name: &str, stmt: &IrStmt) -> Usage {
             acc.combine(usage_in_expr_opt(name, var.value.as_ref()))
         }),
         IrStmt::Labeled { body, .. } => usage_in_stmt(name, body.as_ref()),
+        IrStmt::TypeAlias(_) => Usage::default(),
         IrStmt::Break(_) | IrStmt::Continue(_) | IrStmt::Empty | IrStmt::Unsupported(_) => {
             Usage::default()
         }
@@ -200,10 +208,49 @@ fn usage_in_expr(name: &str, expr: &IrExpression) -> Usage {
             }
             usage
         }
-        IrExpression::Call { callee, args } => args.iter().fold(
-            usage_in_expr(name, callee),
-            |acc, arg| acc.combine(usage_in_expr(name, arg)),
-        ),
+        IrExpression::Call { callee, args } => {
+            let mut usage = usage_in_expr(name, callee);
+
+            let callee = strip_paren(callee);
+            let param_passes = match callee {
+                IrExpression::Identifier(callee_name) => {
+                    typing::lookup_function_param_passes(callee_name)
+                }
+                IrExpression::Arrow { params, body } => {
+                    Some(
+                        infer_param_usages_for_arrow(params, body)
+                            .iter()
+                            .map(|usage| usage.pass)
+                            .collect(),
+                    )
+                }
+                IrExpression::Function(func) => Some(
+                    infer_param_usages(&func.params, &func.body)
+                        .iter()
+                        .map(|usage| usage.pass)
+                        .collect(),
+                ),
+                _ => None,
+            };
+
+            for (idx, arg) in args.iter().enumerate() {
+                let arg = strip_paren(arg);
+                let mut arg_usage = usage_in_expr(name, arg);
+
+                if let Some(passes) = param_passes.as_ref() {
+                    if matches!(passes.get(idx), Some(ParamPass::MutRef))
+                        && (target_is_name(name, arg) || array_index_target_matches(name, arg))
+                    {
+                        arg_usage.mutated = true;
+                        arg_usage.escapes = false;
+                    }
+                }
+
+                usage = usage.combine(arg_usage);
+            }
+
+            usage
+        }
         IrExpression::Array(items) | IrExpression::ArrayExpr(items) | IrExpression::Sequence(items) => items
             .iter()
             .fold(Usage::default(), |acc, expr| acc.combine(usage_in_expr(name, expr))),
@@ -277,6 +324,13 @@ fn usage_in_expr(name: &str, expr: &IrExpression) -> Usage {
     }
 }
 
+fn strip_paren(expr: &IrExpression) -> &IrExpression {
+    match expr {
+        IrExpression::Paren(inner) => strip_paren(inner),
+        _ => expr,
+    }
+}
+
 fn usage_in_runtime_call(name: &str, call: &RuntimeNamespace) -> Usage {
     match call {
         RuntimeNamespace::Array(array_call) => match array_call {
@@ -328,6 +382,7 @@ fn array_index_target_matches(name: &str, expr: &IrExpression) -> bool {
         IrExpression::RuntimeCall(RuntimeNamespace::Array(ArrayCall::Index { target, .. })) => {
             target_is_name(name, target.as_ref())
         }
+        IrExpression::Member { object, .. } => array_index_target_matches(name, object),
         IrExpression::Paren(inner) => array_index_target_matches(name, inner),
         _ => false,
     }

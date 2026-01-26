@@ -43,3 +43,13 @@ mod binary;
 #[allow(unused)]
 #[path = "e2e/new_nodes.rs"]
 mod new_nodes;
+
+#[cfg(test)]
+#[allow(unused)]
+#[path = "e2e/heavy_bench.rs"]
+mod heavy_bench;
+
+#[cfg(test)]
+#[allow(unused)]
+#[path = "e2e/tests_from_inputs.rs"]
+mod tests_from_inputs;

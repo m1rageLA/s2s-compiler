@@ -18,6 +18,7 @@ mod throw_stmt;
 mod switch_stmt;
 mod unsupported;
 mod try_stmt;
+pub(crate) mod type_alias_stmt;
 mod var_decl_stmt;
 mod while_stmt;
 
@@ -30,6 +31,9 @@ pub(crate) fn stmt_to_ir(stmt: &ast::Stmt) -> IrStmt {
         ast::Stmt::Return(ret_stmt) => return_stmt::lower(ret_stmt),
         ast::Stmt::Decl(ast::Decl::Var(var_decl)) => var_decl_stmt::lower(var_decl),
         ast::Stmt::Decl(ast::Decl::Fn(fn_decl)) => function_stmt::lower(fn_decl),
+        ast::Stmt::Decl(ast::Decl::TsTypeAlias(type_alias)) => {
+            type_alias_stmt::lower(type_alias)
+        }
         ast::Stmt::Block(block) => block::from_block(block),
         ast::Stmt::If(if_stmt) => if_stmt::lower(if_stmt),
         ast::Stmt::While(while_stmt) => while_stmt::lower(while_stmt),

@@ -10,6 +10,7 @@ pub enum IrType {
     Any,
     Value,
     Array(IrArrayKind),
+    Object(u32),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -20,6 +21,7 @@ pub enum IrArrayKind {
     Number,
     Str,
     Bool,
+    Object(u32),
 }
 
 #[derive(Debug, Clone)]
@@ -55,4 +57,23 @@ impl IrType {
     pub fn is_numeric(self) -> bool {
         matches!(self, IrType::Number | IrType::UInt)
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IrObjectField {
+    pub name: String,
+    pub ty: IrType,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IrTypeAliasDef {
+    Object(Vec<IrObjectField>),
+    Alias(IrType),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IrTypeAlias {
+    pub id: u32,
+    pub name: String,
+    pub def: IrTypeAliasDef,
 }

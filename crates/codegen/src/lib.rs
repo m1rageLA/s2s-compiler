@@ -5,6 +5,7 @@ pub use statements as stmt;
 pub mod runtime;
 mod analysis;
 mod typing;
+mod type_alias;
 
 use std::fmt;
 
@@ -87,6 +88,13 @@ impl Codegen for IrModule {
     fn codegen(&self) -> TokenStream {
         typing::reset();
         let mut generator = ModuleGenerator::new();
+
+        for item in &self.items {
+            if let IrItem::TypeAlias(alias) = item {
+                typing::define_type_alias(alias);
+            }
+        }
+
         for item in &self.items {
             // Register top-level bindings so later expressions can be type-checked during codegen.
             match item {
@@ -110,6 +118,9 @@ impl Codegen for IrModule {
                         param_usages.iter().map(|usage| usage.pass).collect();
                     typing::define_function_param_passes(&func.name, &passes);
                     typing::define(&func.name, IrType::Value);
+                }
+                IrItem::TypeAlias(alias) => {
+                    typing::define_type_alias(alias);
                 }
                 _ => {}
             }
@@ -313,6 +324,7 @@ impl Codegen for IrItem {
                 ModuleElement::statement(quote! { { #(#stmt_tokens)* } })
             }
             IrItem::Variable(var) => ModuleElement::statement(var.codegen()),
+            IrItem::TypeAlias(alias) => ModuleElement::item(type_alias::type_alias_tokens(alias)),
         }
     }
 }

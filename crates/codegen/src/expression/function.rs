@@ -7,8 +7,9 @@ use crate::{analysis, Codegen, function::render_type, typing};
 pub(crate) fn function_expr_tokens(function: &IrFunctionExpr) -> TokenStream {
     typing::push_scope();
     let param_usages = analysis::infer_param_usages(&function.params, &function.body);
-    for param in &function.params {
+    for (param, usage) in function.params.iter().zip(param_usages.iter()) {
         typing::define(&param.name, param.ty);
+        typing::define_binding_pass(&param.name, usage.pass);
     }
     typing::push_return_type(function.ret);
 

@@ -12,6 +12,7 @@ pub(crate) fn push_tokens(target: &IrExpression, args: &[IrExpression]) -> Token
             IrArrayKind::Number | IrArrayKind::Str | IrArrayKind::Bool => {
                 typed_push(&target_tokens, args, kind)
             }
+            IrArrayKind::Object(id) => typed_push_object(&target_tokens, args, id),
             _ => runtime_push(&target_tokens, args),
         },
         _ => runtime_push(&target_tokens, args),
@@ -48,4 +49,19 @@ fn runtime_push(target_tokens: &TokenStream, args: &[IrExpression]) -> TokenStre
         })
         .collect();
     quote! { runtime::array::push(&mut #target_tokens, vec![ #( #value_tokens ),* ]) }
+}
+
+fn typed_push_object(target_tokens: &TokenStream, args: &[IrExpression], type_id: u32) -> TokenStream {
+    let value_tokens: Vec<TokenStream> = args
+        .iter()
+        .map(|arg| match arg {
+            IrExpression::Object(props) => crate::expression::object_struct_literal_tokens(type_id, props),
+            _ => arg.codegen(),
+        })
+        .collect();
+    quote! {{
+        let ts_2_rs_target = &mut #target_tokens;
+        #( ts_2_rs_target.push(#value_tokens); )*
+        ts_2_rs_target.len()
+    }}
 }

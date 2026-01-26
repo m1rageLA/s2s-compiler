@@ -9,7 +9,8 @@ pub(crate) fn pop_tokens(target: &Box<IrExpression>, args: &Vec<IrExpression>) -
 
     match target_ty {
         Some(IrType::Array(IrArrayKind::Number))
-        | Some(IrType::Array(IrArrayKind::Bool)) => quote! {{
+        | Some(IrType::Array(IrArrayKind::Bool))
+        | Some(IrType::Array(IrArrayKind::Object(_))) => quote! {{
             let ts_2_rs_target = &mut #target_tokens;
             ts_2_rs_target.pop().unwrap_or_default()
         }},

@@ -2,7 +2,7 @@ use ir::{IrArrayKind, IrExpression, IrFunction, IrType, IrVariable};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::{analysis, Codegen, typing};
+use crate::{analysis, expression::object_struct_literal_tokens, Codegen, typing};
 
 impl Codegen for IrFunction {
     type Output = TokenStream;
@@ -10,9 +10,15 @@ impl Codegen for IrFunction {
     fn codegen(&self) -> TokenStream {
         let name = format_ident!("{}", self.name);
         typing::push_scope();
+        for stmt in &self.body {
+            if let ir::IrStmt::TypeAlias(alias) = stmt {
+                typing::define_type_alias(alias);
+            }
+        }
         let param_usages = analysis::infer_param_usages(&self.params, &self.body);
-        for param in &self.params {
+        for (param, usage) in self.params.iter().zip(param_usages.iter()) {
             typing::define(&param.name, param.ty);
+            typing::define_binding_pass(&param.name, usage.pass);
         }
         typing::push_return_type(self.ret);
 
@@ -47,17 +53,21 @@ impl Codegen for IrVariable {
             .value
             .as_ref()
             .map(|expr| {
-                let mut tokens = expr.codegen();
-                if matches!((&self.ty, expr), (IrType::Number | IrType::Str, IrExpression::Identifier(_)))
-                    || matches!(self.ty, IrType::Array(_))
-                {
+                let mut tokens = match (&self.ty, expr) {
+                    (IrType::Object(id), IrExpression::Object(properties)) => {
+                        object_struct_literal_tokens(*id, properties)
+                    }
+                    _ => expr.codegen(),
+                };
+
+                if matches!(expr, IrExpression::Identifier(_)) && !typing::is_copy_type(&self.ty) {
                     tokens = quote! { (#tokens).clone() };
                 }
                 typing::coerce_to_type(tokens, &self.ty, expr_ty)
             })
             .unwrap_or_else(|| default_value(&self.ty));
 
-        let mutability = self.mutable.then(|| quote! { mut });
+        let mutability = (self.mutable || needs_mutable_binding(&self.ty)).then(|| quote! { mut });
         match &self.ty {
             IrType::Any => quote! {
                 let #mutability #ident = #value;
@@ -81,10 +91,26 @@ pub(crate) fn render_type(ty: &IrType) -> TokenStream {
         IrType::Unit => quote! { () },
         IrType::Any => quote! { runtime::value::Value },
         IrType::Value => quote! { runtime::value::Value },
+        IrType::Object(id) => {
+            if let Some(alias) = typing::lookup_type_alias(*id) {
+                let ident = format_ident!("{}", alias.name);
+                quote! { #ident }
+            } else {
+                quote! { runtime::value::Value }
+            }
+        }
         IrType::Array(kind) => match kind {
             IrArrayKind::Number => quote! { ::std::vec::Vec<f64> },
             IrArrayKind::Str => quote! { ::std::vec::Vec<::std::string::String> },
             IrArrayKind::Bool => quote! { ::std::vec::Vec<bool> },
+            IrArrayKind::Object(id) => {
+                if let Some(alias) = typing::lookup_type_alias(*id) {
+                    let ident = format_ident!("{}", alias.name);
+                    quote! { ::std::vec::Vec<#ident> }
+                } else {
+                    quote! { ::std::vec::Vec<runtime::value::Value> }
+                }
+            }
             IrArrayKind::Value | IrArrayKind::Any | IrArrayKind::Unknown => {
                 quote! { ::std::vec::Vec<runtime::value::Value> }
             }
@@ -118,10 +144,23 @@ fn default_value(ty: &IrType) -> TokenStream {
             quote! { ::std::vec::Vec::<::std::string::String>::new() }
         }
         IrType::Array(IrArrayKind::Bool) => quote! { ::std::vec::Vec::<bool>::new() },
+        IrType::Array(IrArrayKind::Object(id)) => {
+            if let Some(alias) = typing::lookup_type_alias(*id) {
+                let ident = format_ident!("{}", alias.name);
+                quote! { ::std::vec::Vec::<#ident>::new() }
+            } else {
+                quote! { ::std::vec::Vec::<runtime::value::Value>::new() }
+            }
+        }
         IrType::Array(IrArrayKind::Value | IrArrayKind::Any | IrArrayKind::Unknown) => {
             quote! { ::std::vec::Vec::<runtime::value::Value>::new() }
         }
+        IrType::Object(_) => quote! { ::std::default::Default::default() },
     }
+}
+
+fn needs_mutable_binding(ty: &IrType) -> bool {
+    matches!(ty, IrType::Array(_) | IrType::Object(_) | IrType::Value | IrType::Any)
 }
 
 #[cfg(test)]

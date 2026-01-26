@@ -8,7 +8,8 @@ pub(crate) fn length_tokens(target: &IrExpression) -> TokenStream {
     match typing::infer_expression_type(target) {
         Some(IrType::Array(IrArrayKind::Number))
         | Some(IrType::Array(IrArrayKind::Str))
-        | Some(IrType::Array(IrArrayKind::Bool)) => {
+        | Some(IrType::Array(IrArrayKind::Bool))
+        | Some(IrType::Array(IrArrayKind::Object(_))) => {
             quote! { #target_tokens.len() }
         }
         _ => quote! { runtime::array::length(&#target_tokens) },

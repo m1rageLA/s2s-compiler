@@ -7,6 +7,11 @@ use crate::typing;
 
 pub fn block_tokens(stmts: &[IrStmt]) -> TokenStream {
     typing::push_scope();
+    for stmt in stmts {
+        if let IrStmt::TypeAlias(alias) = stmt {
+            typing::define_type_alias(alias);
+        }
+    }
     let stmt_tokens = collect_stmt_tokens(stmts);
     typing::pop_scope();
     quote! { { #(#stmt_tokens)* } }
