@@ -1,6 +1,0 @@
-use ir::IrExpression;
-use proc_macro2::TokenStream;
-
-pub(crate) fn not_equal_tokens(left: &IrExpression, right: &IrExpression) -> TokenStream {
-    super::equality_op("loose_not_equal_refs", left, right)
-}

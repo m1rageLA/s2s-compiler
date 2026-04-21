@@ -111,9 +111,6 @@ fn indent_multiline(message: &str) -> String {
         .join("\n")
 }
 
-pub fn build_node() {
-    napi_build::setup();
-}
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};

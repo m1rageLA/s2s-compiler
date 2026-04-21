@@ -1,0 +1,377 @@
+use serde::{Deserialize, Serialize};
+
+use crate::{IrArrayKind, IrParam, IrStmt, IrType};
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum IrExpression {
+    Identifier(String),
+    Literal(IrLiteral),
+    Binary {
+        op: IrBinOp,
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    Assignment {
+        op: IrAssignOp,
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    Call {
+        callee: Box<IrExpression>,
+        args: Vec<IrExpression>,
+    },
+    Array(Vec<IrExpression>),
+    Arrow {
+        params: Vec<IrParam>,
+        body: IrArrowBody,
+    },
+    RuntimeCall(RuntimeNamespace),
+    Member {
+        object: Box<IrExpression>,
+        property: String,
+    },
+    Delete(IrDeleteTarget),
+    Template(Vec<IrTemplatePart>),
+    SuperCall {
+        args: Vec<IrExpression>,
+    },
+    Conditional {
+        test: Box<IrExpression>,
+        consequent: Box<IrExpression>,
+        alternate: Box<IrExpression>,
+    },
+    ArrayExpr(Vec<IrExpression>),
+    Function(Box<IrFunctionExpr>),
+    PostfixUnary {
+        left: Box<IrExpression>,
+        op: IrPostfixOp,
+    },
+    PrefixUnary {
+        arg: Box<IrExpression>,
+        op: IrPrefixOp,
+    },
+    Unary {
+        op: IrUnaryOp,
+        expr: Box<IrExpression>,
+    },
+    Object(Vec<IrObjectProperty>),
+    Paren(Box<IrExpression>),
+    Sequence(Vec<IrExpression>),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum IrArrowBody {
+    Expr(Box<IrExpression>),
+    Block(Vec<IrStmt>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IrPostfixOp {
+    Increment,
+    Decrement,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IrPrefixOp {
+    Increment,
+    Decrement,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IrUnaryOp {
+    TypeOf,
+    Void,
+    BitwiseNot,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum IrDeleteTarget {
+    Property {
+        object: Box<IrExpression>,
+        property: IrDeleteProperty,
+    },
+    Expr(Box<IrExpression>),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum IrDeleteProperty {
+    Static(String),
+    Dynamic(Box<IrExpression>),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct IrFunctionExpr {
+    pub name: Option<String>,
+    pub params: Vec<IrParam>,
+    pub ret: IrType,
+    pub body: Vec<IrStmt>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct IrObjectProperty {
+    pub key: String,
+    pub value: IrExpression,
+}
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum IrLiteral {
+    Number(f64),
+    Str(String),
+    Bool(bool),
+    Null,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum RuntimeNamespace {
+    Console(ConsoleCall),
+    Array(ArrayCall),
+    Value(ValueCall),
+    String(StringCall),
+    Math(MathCall),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ConsoleCall {
+    Log(Vec<IrExpression>),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ArrayCall {
+    Length {
+        target: Box<IrExpression>,
+    },
+    Index {
+        target: Box<IrExpression>,
+        index: Box<IrExpression>,
+        element: Option<IrArrayKind>,
+    },
+    Push {
+        target: Box<IrExpression>,
+        args: Vec<IrExpression>,
+    },
+    Map {
+        target: Box<IrExpression>,
+        callback: Box<IrExpression>,
+    },
+    Filter {
+        target: Box<IrExpression>,
+        callback: Box<IrExpression>,
+    },
+    Pop {
+        target: Box<IrExpression>,
+        args: Vec<IrExpression>,
+    },
+    Join {
+        target: Box<IrExpression>,
+        separator: Option<Box<IrExpression>>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum StringCall {
+    Length {
+        target: Box<IrExpression>,
+    },
+    ToUpperCase {
+        target: Box<IrExpression>,
+    },
+    ToLowerCase {
+        target: Box<IrExpression>,
+    },
+    Split {
+        target: Box<IrExpression>,
+        separator: Option<Box<IrExpression>>,
+        limit: Option<Box<IrExpression>>,
+    },
+    Replace {
+        target: Box<IrExpression>,
+        pattern: Box<IrExpression>,
+        replacement: Box<IrExpression>,
+    },
+    Includes {
+        target: Box<IrExpression>,
+        search: Box<IrExpression>,
+        position: Option<Box<IrExpression>>,
+    },
+    Concat {
+        target: Box<IrExpression>,
+        args: Vec<IrExpression>,
+    },
+    Slice {
+        target: Box<IrExpression>,
+        start: Option<Box<IrExpression>>,
+        end: Option<Box<IrExpression>>,
+    },
+    Substr {
+        target: Box<IrExpression>,
+        start: Option<Box<IrExpression>>,
+        length: Option<Box<IrExpression>>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum MathCall {
+    Random,
+    Sqrt {
+        arg: Box<IrExpression>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ValueCall {
+    Coerce {
+        expr: Box<IrExpression>,
+    },
+    Add {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    Sub {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    Mul {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    Div {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    Mod {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    Equal {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    StrictEqual {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    NotEqual {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    StrictNotEqual {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    LessThan {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    LessThanOrEqual {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    GreaterThan {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    GreaterThanOrEqual {
+        left: Box<IrExpression>,
+        right: Box<IrExpression>,
+    },
+    LogicalNot {
+        expr: Box<IrExpression>,
+    },
+    GetProperty {
+        target: Box<IrExpression>,
+        property: String,
+    },
+    GetPropertyDynamic {
+        target: Box<IrExpression>,
+        property: Box<IrExpression>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum IrTemplatePart {
+    String(String),
+    Expr(Box<IrExpression>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IrBinOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Exp,
+
+    Equal,
+    StrictEqual,
+    NotEqual,
+    StrictNotEqual,
+
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
+
+    LeftShift,
+    RightShift,
+    UnsignedRightShift,
+
+    BitwiseOr,
+    BitwiseXor,
+    BitwiseAnd,
+
+    LogicalOr,
+    LogicalAnd,
+
+    In,
+    InstanceOf,
+
+    Unsupported,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BinaryOp {
+    EqEq,
+    NotEq,
+    EqEqEq,
+    NotEqEq,
+    Lt,
+    LtEq,
+    Gt,
+    GtEq,
+    LShift,
+    RShift,
+    ZeroFillRShift,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    BitOr,
+    BitXor,
+    BitAnd,
+    LogicalOr,
+    LogicalAnd,
+    In,
+    InstanceOf,
+    Exp,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum IrAssignOp {
+    Assign,
+    AddAssign,
+    SubAssign,
+    MulAssign,
+    DivAssign,
+    ModAssign,
+    ExpAssign,
+    LeftShiftAssign,
+    RightShiftAssign,
+    UnsignedRightShiftAssign,
+    BitwiseOrAssign,
+    BitwiseXorAssign,
+    BitwiseAndAssign,
+    LogicalOrAssign,
+    LogicalAndAssign,
+    NullishCoalesceAssign,
+}

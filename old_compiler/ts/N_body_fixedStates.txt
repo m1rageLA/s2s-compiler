@@ -1,0 +1,121 @@
+function go(): void {
+    const deterministicCount: number = 5;
+    const deterministicX: number[] = [10, 35, 60, 80, 55];
+    const deterministicY: number[] = [15, 45, 75, 20, 90];
+    const deterministicVx: number[] = [0.05, -0.02, 0.01, -0.04, 0.03];
+    const deterministicVy: number[] = [0.04, 0.0, -0.03, 0.02, -0.05];
+    const deterministicMass: number[] = [5, 4, 3, 6, 2];
+
+    const useDeterministicState: boolean = true;
+    let count: number = 300;
+
+    let x: number[] = [];
+    let y: number[] = [];
+    let vx: number[] = [];
+    let vy: number[] = [];
+    let mass: number[] = [];
+
+    // инициализация через push — безопасно для Rust
+    if (useDeterministicState) {
+        count = deterministicCount;
+
+        let i: number = 0;
+        while (i < count) {
+            x.push(deterministicX[i]);
+            y.push(deterministicY[i]);
+            vx.push(deterministicVx[i]);
+            vy.push(deterministicVy[i]);
+            mass.push(deterministicMass[i]);
+
+            i = i + 1;
+        }
+    } else {
+        let i: number = 0;
+        while (i < count) {
+            x.push(Math.random() * 100);
+            y.push(Math.random() * 100);
+            vx.push(0);
+            vy.push(0);
+            mass.push(Math.random() * 10 + 1);
+
+            i = i + 1;
+        }
+    }
+
+    // шаг симуляции БЕЗ arr[i] = ...
+    let step = function (dt: number): void {
+
+        // новые массивы скоростей
+        let newVx: number[] = [];
+        let newVy: number[] = [];
+
+        let i: number = 0;
+        while (i < count) {
+
+            let fx: number = 0;
+            let fy: number = 0;
+
+            let j: number = 0;
+            while (j < count) {
+
+                if (i !== j) {
+                    let dx: number = x[j] - x[i];
+                    let dy: number = y[j] - y[i];
+                    let dist: number = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist > 0) {
+                        let f: number = (mass[i] * mass[j]) / (dist * dist);
+
+                        fx = fx + f * (dx / dist);
+                        fy = fy + f * (dy / dist);
+                    }
+                }
+
+                j = j + 1;
+            }
+
+            // вместо vx[i] = ... → пушим в новый массив
+            newVx.push(vx[i] + fx * dt);
+            newVy.push(vy[i] + fy * dt);
+
+            i = i + 1;
+        }
+
+        // новые массивы позиций
+        let newX: number[] = [];
+        let newY: number[] = [];
+
+        let k: number = 0;
+        while (k < count) {
+            newX.push(x[k] + newVx[k] * dt);
+            newY.push(y[k] + newVy[k] * dt);
+
+            k = k + 1;
+        }
+
+        // теперь просто заменяем старые массивы новыми
+        x = newX;
+        y = newY;
+        vx = newVx;
+        vy = newVy;
+    };
+
+    // 100000 шагов
+    let t: number = 0;
+    while (t < 100000) {
+        step(0.01);
+        t = t + 1;
+    }
+
+    let ii: number = 0;
+    while (ii < count) {
+        console.log(
+            "Particle " + ii +
+            ": position=(" + x[ii] + ", " + y[ii] + ")," +
+            " velocity=(" + vx[ii] + ", " + vy[ii] + ")"
+        );
+        ii = ii + 1;
+    }
+}
+
+go();

@@ -4,14 +4,14 @@ use std::process::Command;
 mod input;
 mod pipeline;
 
-pub(crate) const DEFAULT_TS_PATH: &str = "ts/program.ts";
+pub(crate) const DEFAULT_TS_PATH: &str = "old_compiler/ts/program.ts";
 pub(crate) const GENERATED_CARGO_MANIFEST: &str = r#"[package]
 name = "generated"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-runtime = { path = "../crates/runtime" }
+runtime = { path = "../old_compiler/crates/runtime" }
 
 [workspace]
 "#;
@@ -28,10 +28,6 @@ fn main() {
             }
             "ir" => {
                 pipeline::run_ir();
-                return;
-            }
-            "build-node" => {
-                pipeline::build_node();
                 return;
             }
             _ => {

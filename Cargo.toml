@@ -2,13 +2,13 @@
 resolver = "2"
 members = [
     "cli",
-    "crates/core_api",
-    "crates/parser",
-    "crates/ir_types",
-    "crates/codegen",
-    "crates/lowering",
-    "crates/runtime",
-    "crates/node"
+    "old_compiler/crates/core_api",
+    "old_compiler/crates/parser",
+    "old_compiler/crates/ir_types",
+    "old_compiler/crates/codegen",
+    "old_compiler/crates/lowering",
+    "old_compiler/crates/runtime",
+    "old_compiler/crates/node"
 ]
 exclude = ["out"]
 

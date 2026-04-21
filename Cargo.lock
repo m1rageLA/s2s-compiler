@@ -1898,7 +1898,6 @@ dependencies = [
 name = "ts2rust-cli"
 version = "0.1.0"
 dependencies = [
- "napi-build",
  "once_cell",
  "serde_json",
  "ts2rust-core",
