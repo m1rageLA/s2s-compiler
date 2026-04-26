@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-runtime = { path = "../old_compiler/crates/runtime" }
+runtime = { path = "../core/crates/runtime" }
 
 [workspace]

@@ -1,0 +1,10 @@
+[package]
+name = "api"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { workspace = true }
+builder = { path = "../builder" }
+
+ts2rust-core = { path = "../compiler" }

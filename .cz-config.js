@@ -1,13 +1,13 @@
 module.exports = {
   types: [
-    { value: '[feat]', name: '[feat]:     Добавление новой фичи' },
-    { value: '[fix]', name: '[fix]:      Исправление бага' },
-    { value: '[docs]', name: '[docs]:     Документация' },
-    { value: '[style]', name: '[style]:    Форматирование кода' },
-    { value: '[wip],', name: '[wip]:      Работа в процессе' },
-    { value: '[refactor]', name: '[refactor]: Рефакторинг' },
-    { value: '[test]', name: '[test]:     Тесты' },
-    { value: '[chore]', name: '[chore]:    Прочее' }
+    { value: 'feat', name: 'feat:     Добавление новой фичи' },
+    { value: 'fix', name: 'fix:      Исправление бага' },
+    { value: 'docs', name: 'docs:     Документация' },
+    { value: 'style', name: 'style:    Форматирование кода' },
+    { value: 'refactor', name: 'refactor: Рефакторинг' },
+    { value: 'test', name: 'test:     Тесты' },
+    { value: 'chore', name: 'chore:    Прочее' },
+    { value: 'wip', name: 'wip:      Работа в процессе' }
   ],
 
   scopes: [
@@ -16,15 +16,14 @@ module.exports = {
     { name: 'ir' },
     { name: 'codegen' },
     { name: 'compiler' },
-    { name: "integration"},
-    { name: "normalizer"},
-    { name: "e2e" },
+    { name: 'integration' },
+    { name: 'normalizer' },
+    { name: 'e2e' },
     { name: 'parser' },
     { name: 'tokenizer' },
     { name: 'grammar' },
     { name: 'error-handling' },
     { name: 'optimizer' },
-    { name: 'runtime' },
     { name: 'cli' },
     { name: 'gui' },
     { name: 'docs' },
@@ -33,7 +32,8 @@ module.exports = {
   ],
 
   allowCustomScopes: true,
-  allowBreakingChanges: ['[feat]', '[fix]'],
+  allowBreakingChanges: ['feat', 'fix', 'refactor'],
+  skipQuestions: [],
   subjectLimit: 100,
 
   buildCommitMessage: (answers) => {

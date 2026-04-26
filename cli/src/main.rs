@@ -4,14 +4,14 @@ use std::process::Command;
 mod input;
 mod pipeline;
 
-pub(crate) const DEFAULT_TS_PATH: &str = "old_compiler/ts/program.ts";
+pub(crate) const DEFAULT_TS_PATH: &str = "fixtures/ts/program.ts";
 pub(crate) const GENERATED_CARGO_MANIFEST: &str = r#"[package]
 name = "generated"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-runtime = { path = "../old_compiler/crates/runtime" }
+runtime = { path = "../core/crates/runtime" }
 
 [workspace]
 "#;

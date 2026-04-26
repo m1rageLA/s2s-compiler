@@ -83,7 +83,7 @@ pub(crate) struct TsFixture {
 impl TsFixture {
     pub(crate) fn new(source: &str) -> std::io::Result<Self> {
         let root = workspace_root();
-        let program_path = root.join("old_compiler/ts/program.ts");
+        let program_path = root.join("fixtures/ts/program.ts");
         let original = fs::read(&program_path).ok();
         fs::write(&program_path, source)?;
         Ok(Self {

@@ -1,0 +1,15 @@
+[package]
+name = "ts2rust-native"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+napi = { workspace = true, features = ["napi4"] }
+napi-derive = { workspace = true }
+api = { path = "../core/crates/api" }
+
+[build-dependencies]
+napi-build = { workspace = true }
+
+[lib]
+crate-type = ["cdylib"]

@@ -2,13 +2,15 @@
 resolver = "2"
 members = [
     "cli",
-    "old_compiler/crates/core_api",
-    "old_compiler/crates/parser",
-    "old_compiler/crates/ir_types",
-    "old_compiler/crates/codegen",
-    "old_compiler/crates/lowering",
-    "old_compiler/crates/runtime",
-    "old_compiler/crates/node"
+    "native",
+    "core/crates/api",
+    "core/crates/builder",
+    "core/crates/compiler",
+    "core/crates/parser",
+    "core/crates/ir_types",
+    "core/crates/codegen",
+    "core/crates/lowering",
+    "core/crates/runtime",
 ]
 exclude = ["out"]
 
@@ -19,3 +21,4 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "1.19.0", features = ["v4", "fast-rng"] }
 napi-build = "2"
+anyhow = "1"

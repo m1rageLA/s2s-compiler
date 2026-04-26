@@ -2,15 +2,44 @@
     "name": "transpiller",
     "version": "1.0.0",
     "private": true,
+    "type": "module",
+    "main": "index.js",
+    "types": "index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./index.d.ts",
+            "default": "./index.js"
+        },
+        "./compile": {
+            "types": "./compile.d.ts",
+            "default": "./compile.js"
+        }
+    },
     "scripts": {
-        "test": "vitest run --passWithNoTests",
+        "build": "npm run build:native",
+        "build:native": "node scripts/build-native.js",
+        "commit": "cz",
+        "test": "npm run build:native && vitest run --passWithNoTests",
         "test:watch": "vitest"
     },
     "keywords": [],
     "author": "",
     "license": "ISC",
     "description": "",
+    "dependencies": {
+        "typescript": "^6.0.3"
+    },
     "devDependencies": {
+        "commitizen": "^4.3.1",
+        "cz-customizable": "^7.5.4",
         "vitest": "^3.1.2"
+    },
+    "config": {
+        "commitizen": {
+            "path": "node_modules/cz-customizable"
+        },
+        "cz-customizable": {
+            "config": ".cz-config.js"
+        }
     }
 }
