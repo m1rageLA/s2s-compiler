@@ -1,7 +1,0 @@
-"use strict";
-function fibHeavy(n) {
-    if (n <= 1)
-        return n;
-    return fibHeavy(n - 1) + fibHeavy(n - 2);
-}
-console.log(fibHeavy(25));

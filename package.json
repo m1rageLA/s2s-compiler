@@ -3,23 +3,24 @@
     "version": "1.0.0",
     "private": true,
     "type": "module",
-    "main": "index.js",
-    "types": "index.d.ts",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
     "exports": {
         ".": {
-            "types": "./index.d.ts",
-            "default": "./index.js"
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
         },
         "./compile": {
-            "types": "./compile.d.ts",
-            "default": "./compile.js"
+            "types": "./dist/compile.d.ts",
+            "default": "./dist/compile.js"
         }
     },
     "scripts": {
-        "build": "npm run build:native",
+        "build": "npm run build:native && npm run build:public",
         "build:native": "node scripts/build-native.js",
+        "build:public": "tsc -p tsconfig.json",
         "commit": "cz",
-        "test": "npm run build:native && vitest run --passWithNoTests",
+        "test": "npm run build && vitest run --passWithNoTests",
         "test:watch": "vitest"
     },
     "keywords": [],
@@ -30,6 +31,7 @@
         "typescript": "^6.0.3"
     },
     "devDependencies": {
+        "@types/node": "^20.19.39",
         "commitizen": "^4.3.1",
         "cz-customizable": "^7.5.4",
         "vitest": "^3.1.2"
@@ -39,7 +41,7 @@
             "path": "node_modules/cz-customizable"
         },
         "cz-customizable": {
-            "config": ".cz-config.js"
+                "config": ".cz-config.cjs"
         }
     }
 }

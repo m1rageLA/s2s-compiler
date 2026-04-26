@@ -8,6 +8,16 @@ use ir::IrModule;
 use proc_macro2::TokenStream;
 use swc_ecma_ast::Module;
 
+// =============================
+// ENTRY POINT from /api/src/lib
+// =============================
+pub fn compile_typescript(source: &str) -> Compilation {
+    let ast = parse_typescript(source);
+    let ir = lower_ast(&ast);
+    let tokens = generate_rust_module(&ir);
+    Compilation { ast, ir, tokens }
+}
+
 fn format_rust_tokens(tokens: &TokenStream) -> String {
     match syn::parse2::<syn::File>(tokens.clone()) {
         Ok(file) => prettyplease::unparse(&file),
@@ -59,14 +69,6 @@ pub fn lower_ast(module: &Module) -> IrModule {
 /// Turn an IR module into Rust tokens (without writing them anywhere).
 pub fn generate_rust_module(ir_module: &IrModule) -> TokenStream {
     ir_module.codegen()
-}
-
-/// Convenience function that performs the full pipeline and returns all stages.
-pub fn compile_typescript(source: &str) -> Compilation {
-    let ast = parse_typescript(source);
-    let ir = lower_ast(&ast);
-    let tokens = generate_rust_module(&ir);
-    Compilation { ast, ir, tokens }
 }
 
 /// Format a token stream into a Rust source string.
