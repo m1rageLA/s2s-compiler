@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 
 pub fn compile_to_rust(source: &str) -> Result<String> {
     let compilation = ts2rust_core::compile_typescript(source);
@@ -18,4 +18,9 @@ pub fn compile_function_artifact(source: &str, signature_json: &str) -> Result<S
 
 pub fn call_artifact(artifact_path: &str, args_json: &str) -> Result<String> {
     builder::run_artifact(artifact_path, args_json)
+}
+
+pub fn compile_to_llvm(source: &str) -> Result<String> {
+    let rust = compile_to_rust(source)?;
+    builder::build_llvm(&rust)
 }

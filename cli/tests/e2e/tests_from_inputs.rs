@@ -272,7 +272,11 @@ console.log(result);
     let last = get_last_line(&stdout);
     let value: f64 = last.parse().expect("spectral norm should be a number");
     assert!(value.is_finite(), "expected finite result, got {}", last);
-    assert!(value > 1.1 && value < 1.5, "unexpected spectral norm: {}", last);
+    assert!(
+        value > 1.1 && value < 1.5,
+        "unexpected spectral norm: {}",
+        last
+    );
 }
 
 #[test]

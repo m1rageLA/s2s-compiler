@@ -2,12 +2,14 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 
 mod build_function_artifact;
+mod build_llvm;
 mod helpers;
 mod run_artifact;
 mod run_generated;
 mod write_generated_project;
 
 pub use build_function_artifact::build_function_artifact;
+pub use build_llvm::build_llvm;
 pub use run_artifact::run_artifact;
 pub use run_generated::run_generated;
 
