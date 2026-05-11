@@ -41,13 +41,13 @@ serde_json = "1"
 pub fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .ancestors()
-        .nth(3)
-        .expect("builder crate should live under core/crates/builder")
+        .nth(2)
+        .expect("builder crate should live under compiler/crates/builder")
         .to_path_buf()
 }
 
 pub fn runtime_path() -> PathBuf {
-    workspace_root().join("core").join("crates").join("runtime")
+    workspace_root().join("crates").join("runtime")
 }
 
 pub fn artifact_id() -> String {

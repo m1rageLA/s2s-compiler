@@ -3,14 +3,14 @@ resolver = "2"
 members = [
     "cli",
     "native",
-    "core/crates/api",
-    "core/crates/builder",
-    "core/crates/compiler",
-    "core/crates/parser",
-    "core/crates/ir_types",
-    "core/crates/codegen",
-    "core/crates/lowering",
-    "core/crates/runtime",
+    "crates/api",
+    "crates/builder",
+    "crates/compiler",
+    "crates/parser",
+    "crates/ir_types",
+    "crates/codegen",
+    "crates/lowering",
+    "crates/runtime",
 ]
 exclude = ["out"]
 

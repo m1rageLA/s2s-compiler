@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 napi = { workspace = true, features = ["napi4"] }
 napi-derive = { workspace = true }
-api = { path = "../core/crates/api" }
+api = { path = "../crates/api" }
 
 [build-dependencies]
 napi-build = { workspace = true }

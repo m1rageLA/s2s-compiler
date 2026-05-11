@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-ts2rust-core = { path = "../core/crates/compiler" }
+ts2rust-core = { path = "../crates/compiler" }
 uuid = { workspace = true }
 
 [dev-dependencies]
