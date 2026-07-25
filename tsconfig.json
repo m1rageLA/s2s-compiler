@@ -8,7 +8,6 @@
     "skipLibCheck": true,
     "rootDir": "src",
     "outDir": "dist",
-    "moduleResolution": "node",
     "resolveJsonModule": true,
     "sourceMap": true,
     "noImplicitAny": true
