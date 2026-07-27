@@ -1,16 +1,15 @@
 use std::{path::Path, println};
 use swc_common::GLOBALS;
 use swc_common::{Mark, SourceMap, comments::SingleThreadedComments, sync::Lrc};
-use swc_ecma_ast::{EsVersion, Module, Pass, Program};
+use swc_ecma_ast::{EsVersion, Pass, Program};
 use swc_ecma_parser::{self, Parser};
 use swc_ecma_preset_env::transform_from_es_version;
 use swc_ecma_transforms_base::assumptions::Assumptions;
-
+use logger::Logger;
 mod lexer;
 
 fn parse() -> () {
     let comments: SingleThreadedComments = SingleThreadedComments::default();
-
     // SourceMap manages source files and resolves byte positions to source locations
     // It can inform us about exact position of Error, element, code etc.
     // In the next generation we can add linter using this SourceMap, because we will be able to locate exact 'heavy' function or part of code
@@ -41,7 +40,12 @@ fn parse() -> () {
         };
 
         let js = swc_ecma_codegen::to_code(&module);
-        println!("Normalized module: {}", js);
+
+        Logger::success("source code to ast-module", "parser");
+        Logger::info("source code to ast-module", "parser");
+        Logger::warn("source code to ast-module", "parser");
+        Logger::error("source code to ast-module", "parser");
+        js
     });
 }
 
