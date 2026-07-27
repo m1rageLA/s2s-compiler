@@ -23,7 +23,7 @@ fn parse() -> Module {
 
     let normalized_ast = normalizer::normalizer(ast);
 
-    Logger::success("source code to ast-module", "parser");
+    Logger::step("convert source to ast-module", "parser");
 
     normalized_ast
 }
