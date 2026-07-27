@@ -3,8 +3,8 @@ use swc_ecma_parser::{Lexer, StringInput, Syntax, TsSyntax};
 
 pub fn lexer<'a>(source: &'a SourceFile, comments: &'a SingleThreadedComments) -> Lexer<'a> {
     let lexer: Lexer<'_> = Lexer::new(
-        Syntax::Typescript(TsSyntax::default()),
-        swc_ecma_ast::EsVersion::Es5,
+        Syntax::Es(Default::default()),
+        swc_ecma_ast::EsVersion::Es3,
         StringInput::from(source),
         Some(comments),
     );
@@ -17,8 +17,8 @@ mod tests {
     use super::*;
     use std::assert_eq;
     use swc_common::FileName;
-    use swc_common::sync::Lrc;
     use swc_common::SourceMap;
+    use swc_common::sync::Lrc;
 
     #[test]
     fn it_converts_sourcefile_to_tokens() {
