@@ -1,14 +1,26 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+use logger::Logger;
+use parser::parse;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub fn compileToRust() {
+    let source_code = r#"
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+        function add(a, b) {
+            return a + b;
+        }
+
+    "#;
+
+    // Parse the source code into an AST module
+    // string -> Module
+    let normalized_ast = parse(source_code);
+    Logger::success("ast-module to rust-code", "compiler");
+
+    // let ir = lower(normalized_ast);
+    // Logger::success("ast-module to ir", "compiler");
+
+    // let hir = hir::lower(normalized_ast);
+    // Logger::success("ast-module to hir", "compiler");
+
+    // let rust_code = codegen(normalized_ast);
+    // Logger::success("ir to rust-code", "compiler");
 }

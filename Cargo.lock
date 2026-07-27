@@ -15,6 +15,9 @@ dependencies = [
 [[package]]
 name = "_compiler"
 version = "0.1.0"
+dependencies = [
+ "logger",
+]
 
 [[package]]
 name = "ahash"

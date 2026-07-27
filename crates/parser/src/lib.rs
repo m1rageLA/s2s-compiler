@@ -7,7 +7,7 @@ use swc_ecma_parser::{self, Parser};
 mod lexer;
 mod normalizer;
 
-fn parse() -> Module {
+fn parse(source_code: &str) -> Module {
     let comments: SingleThreadedComments = SingleThreadedComments::default();
     // SourceMap manages source files and resolves byte positions to source locations
     // It can inform us about exact position of Error, element, code etc.
