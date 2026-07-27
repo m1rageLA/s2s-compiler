@@ -1,5 +1,5 @@
 use swc_common::{SourceFile, comments::SingleThreadedComments};
-use swc_ecma_parser::{Lexer, StringInput, Syntax, TsSyntax};
+use swc_ecma_parser::{Lexer, StringInput, Syntax};
 
 pub fn lexer<'a>(source: &'a SourceFile, comments: &'a SingleThreadedComments) -> Lexer<'a> {
     let lexer: Lexer<'_> = Lexer::new(

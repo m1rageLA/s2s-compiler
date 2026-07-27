@@ -1,14 +1,13 @@
-use std::{path::Path, println};
-use swc_common::GLOBALS;
-use swc_common::{Mark, SourceMap, comments::SingleThreadedComments, sync::Lrc};
-use swc_ecma_ast::{EsVersion, Pass, Program};
-use swc_ecma_parser::{self, Parser};
-use swc_ecma_preset_env::transform_from_es_version;
-use swc_ecma_transforms_base::assumptions::Assumptions;
 use logger::Logger;
-mod lexer;
+use std::path::Path;
+use swc_common::{SourceMap, comments::SingleThreadedComments, sync::Lrc};
+use swc_ecma_ast::Module;
+use swc_ecma_parser::{self, Parser};
 
-fn parse() -> () {
+mod lexer;
+mod normalizer;
+
+fn parse() -> Module {
     let comments: SingleThreadedComments = SingleThreadedComments::default();
     // SourceMap manages source files and resolves byte positions to source locations
     // It can inform us about exact position of Error, element, code etc.
@@ -20,33 +19,13 @@ fn parse() -> () {
     // Lexer is a just list of tokens (parts of code like 'function', '(', ')', '{'...})
     let lexer = lexer::lexer(program.as_ref(), &comments);
     let mut parser = Parser::new_from(lexer);
-    let module = parser.parse_module().unwrap(); // TODO: handle error
+    let ast = parser.parse_module().unwrap(); // TODO: handle error
 
-    let mut program: Program = Program::Module(module);
+    let normalized_ast = normalizer::normalizer(ast);
 
-    GLOBALS.set(&Default::default(), || {
-        let unresolved_mark = Mark::new();
-        let mut pass = transform_from_es_version(
-            unresolved_mark,
-            None::<SingleThreadedComments>,
-            EsVersion::Es3,
-            Assumptions::default(),
-            false,
-        );
-        pass.process(&mut program);
-        let module = match program {
-            Program::Module(module) => module,
-            Program::Script(_) => unreachable!(),
-        };
+    Logger::success("source code to ast-module", "parser");
 
-        let js = swc_ecma_codegen::to_code(&module);
-
-        Logger::success("source code to ast-module", "parser");
-        Logger::info("source code to ast-module", "parser");
-        Logger::warn("source code to ast-module", "parser");
-        Logger::error("source code to ast-module", "parser");
-        js
-    });
+    normalized_ast
 }
 
 #[cfg(test)]
