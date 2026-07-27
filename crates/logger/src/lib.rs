@@ -28,8 +28,8 @@ impl Logger {
         Self::print("✓", Self::SUCCESS, "SUCCESS", target, message);
     }
 
-    pub fn info(message: &str, target: &str) {
-        Self::print("ℹ", Self::INFO, "INFO", target, message);
+    pub fn step(message: &str, target: &str) {
+        Self::print("ℹ", Self::INFO, "STEP", target, message);
     }
 
     pub fn warn(message: &str, target: &str) {
