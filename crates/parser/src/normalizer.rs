@@ -1,3 +1,4 @@
+use logger::Logger;
 use swc_common::GLOBALS;
 use swc_common::{Mark, comments::SingleThreadedComments};
 use swc_ecma_ast::{EsVersion, Module, Pass, Program};
@@ -12,7 +13,7 @@ pub fn normalizer(ast: Module) -> Module {
         let mut pass = transform_from_es_version(
             unresolved_mark,
             None::<SingleThreadedComments>,
-            EsVersion::Es3,
+            EsVersion::Es5,
             Assumptions::default(),
             false,
         );
@@ -23,5 +24,7 @@ pub fn normalizer(ast: Module) -> Module {
         };
         module
     });
+    
+    Logger::step("normalize ast", "parser");
     normalized
 }

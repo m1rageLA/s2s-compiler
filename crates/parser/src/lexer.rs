@@ -1,14 +1,16 @@
+use logger::Logger;
 use swc_common::{SourceFile, comments::SingleThreadedComments};
 use swc_ecma_parser::{Lexer, StringInput, Syntax};
 
 pub fn lexer<'a>(source: &'a SourceFile, comments: &'a SingleThreadedComments) -> Lexer<'a> {
     let lexer: Lexer<'_> = Lexer::new(
         Syntax::Es(Default::default()),
-        swc_ecma_ast::EsVersion::Es3,
+        swc_ecma_ast::EsVersion::Es5,
         StringInput::from(source),
         Some(comments),
     );
 
+    Logger::step("tokenize source code", "parser");
     lexer
 }
 
