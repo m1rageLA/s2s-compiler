@@ -25,7 +25,8 @@ pub fn parse(source_code: &str) -> Module {
 
     let normalized_ast = normalizer::normalizer(ast);
 
-    Logger::step("return normalized ast", "parser");
+    Logger::step("convert source to ast-module", "parser");
+
     normalized_ast
 }
 
