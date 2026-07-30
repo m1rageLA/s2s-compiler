@@ -8,7 +8,7 @@ name = "compiler-entrypoint"
 path = "main.rs"
 
 [workspace]
-members = ["crates/_compiler", "crates/logger", "crates/parser", "crates/schema"]
+members = ["crates/_compiler", "crates/codegen", "crates/logger", "crates/parser", "crates/schema", "crates/lowering"]
 resolver = "3"
 
 [dependencies]
