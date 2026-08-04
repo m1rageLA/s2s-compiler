@@ -1,0 +1,9 @@
+HIGH: 
+we can create out own parser that will be able to keep types and works with EXACTLY TS 
+
+индексное представление графа 
+
+можно Rc + move 
+НО можно даже вместо Rc просто индексы давать NodeId с прямой точкой в нужный узел
+
+Можно первый HIR сделать как AST а потом ебнуть как массив для индексации и векторизации 

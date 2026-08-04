@@ -7,6 +7,7 @@ impl Logger {
     const INFO: &'static str = "\x1b[30;104m"; // черный на ярко-синем
     const WARN: &'static str = "\x1b[30;103m"; // черный на ярко-желтом
     const ERROR: &'static str = "\x1b[97;101m"; // белый на ярко-красном
+    const NOT_SUPPORTED: &'static str = "\x1b[97;101m"; // белый на ярко-красном
 
     const TARGET: &'static str = "\x1b[90m"; // серый
 
@@ -26,6 +27,9 @@ impl Logger {
 
     pub fn success(message: &str, target: &str) {
         Self::print("✓", Self::SUCCESS, "SUCCESS", target, message);
+    }
+    pub fn not_supported(message: &str, target: &str) {
+        Self::print("✗", Self::NOT_SUPPORTED, "NOT SUPPORTED", target, message);
     }
 
     pub fn step(message: &str, target: &str) {
