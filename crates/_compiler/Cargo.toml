@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 logger = { path = "../logger" }
 parser = { path = "../parser" }
-lowering = { path = "../codegen" }
+lowering = { path = "../lowering" }
