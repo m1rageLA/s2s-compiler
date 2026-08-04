@@ -1,4 +1,5 @@
 use logger::Logger;
+use lowering::lowering;
 use parser::parse;
 
 pub fn compileToRust() {
@@ -11,7 +12,7 @@ pub fn compileToRust() {
     // Parse the source code into an AST module
     // string -> Module
     let normalized_ast = parse(source_code);
-    Logger::success("ast-module to rust-code", "compiler");
+    Logger::success("finished parsing", "_compiler");
 
     // let ir = lower(normalized_ast);
     // Logger::success("ast-module to ir", "compiler");
@@ -20,5 +21,5 @@ pub fn compileToRust() {
     // Logger::success("ast-module to hir", "compiler");
 
     let ir = lowering(normalized_ast);
-    Logger::success("ir to rust-code", "compiler");
+    Logger::success("finished lowering", "_compiler");
 }
