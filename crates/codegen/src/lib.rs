@@ -1,6 +1,5 @@
 use crate::transform::module;
 
-mod helpers;
 mod transform;
 
 pub fn codegen(ast: swc_ecma_ast::Module) -> String {

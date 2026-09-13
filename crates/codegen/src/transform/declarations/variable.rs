@@ -2,12 +2,12 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use swc_ecma_ast::{Pat, VarDecl};
 
-use crate::{helpers, transform::expressions};
+use crate::transform::{expressions, identifier};
 
 pub fn emit(var_decl: VarDecl) -> TokenStream {
     let declarations = var_decl.decls.iter().map(|decl| {
         let id = match &decl.name {
-            Pat::Ident(ident) => helpers::rewerite_ident(ident.id.clone()),
+            Pat::Ident(ident) => identifier::identifier(ident.id.clone()),
             _ => panic!("Unsupported pattern in variable declaration"),
         };
 
