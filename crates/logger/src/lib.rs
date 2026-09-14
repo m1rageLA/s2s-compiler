@@ -1,3 +1,6 @@
+use std::any::type_name;
+use std::fmt::Debug;
+
 pub struct Logger;
 
 impl Logger {
@@ -10,6 +13,8 @@ impl Logger {
     const NOT_SUPPORTED: &'static str = "\x1b[97;101m"; // белый на ярко-красном
 
     const TARGET: &'static str = "\x1b[90m"; // серый
+    const LABEL: &'static str = "\x1b[93m"; // ярко-желтый
+    const VALUE: &'static str = "\x1b[96m"; // ярко-голубой
 
     fn print(icon: &str, bg: &str, level: &str, target: &str, message: &str) {
         println!(
@@ -42,5 +47,92 @@ impl Logger {
 
     pub fn error(message: &str, target: &str) {
         Self::print("✖", Self::ERROR, "ERROR", target, message);
+    }
+
+    /// Reports an AST node for which a match arm has not been implemented yet.
+    ///
+    /// Prefer the [`unsupported!`] macro at call sites: besides the node details,
+    /// it automatically supplies the module, file, and line of the match arm.
+    #[track_caller]
+    pub fn unsupported_node<T: Debug>(node: &T, module: &str, file: &str, line: u32) {
+        let (node_type, node_variant, node_value) = node_details(node);
+
+        eprintln!(
+            "{error} ✗ NOT SUPPORTED {reset}  {target}[{module}]{reset}\n\
+             {label}Node:{reset}     {value}{node_type}::{node_variant}{reset}\n\
+             {label}Location:{reset} {file}:{line}\n\
+             {label}Value:{reset}\n{value}{node_value}{reset}",
+            error = Self::NOT_SUPPORTED,
+            reset = Self::RESET,
+            target = Self::TARGET,
+            label = Self::LABEL,
+            value = Self::VALUE,
+        );
+    }
+}
+
+fn node_details<T: Debug>(node: &T) -> (&'static str, String, String) {
+    let node_type = type_name::<T>()
+        .trim_start_matches('&')
+        .rsplit("::")
+        .next()
+        .unwrap_or("Unknown");
+    let compact = format!("{node:?}");
+    let node_variant = compact
+        .split(['(', '{', ' ', '\n'])
+        .next()
+        .unwrap_or("Unknown")
+        .rsplit("::")
+        .next()
+        .unwrap_or("Unknown")
+        .to_owned();
+
+    (node_type, node_variant, format!("{node:#?}"))
+}
+
+/// Log an unsupported match value and return that match's default result.
+///
+/// # Example
+///
+/// ```ignore
+/// match node {
+///     Node::Supported(value) => compile(value),
+///     _ => logger::unsupported!(node),
+/// }
+/// ```
+#[macro_export]
+macro_rules! unsupported {
+    ($node:expr $(,)?) => {{
+        $crate::Logger::unsupported_node(&$node, module_path!(), file!(), line!());
+        ::core::default::Default::default()
+    }};
+}
+
+#[cfg(test)]
+mod tests {
+    use super::node_details;
+
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    enum TestNode {
+        Missing { value: u8 },
+    }
+
+    #[test]
+    fn extracts_the_node_type_variant_and_value() {
+        let node = TestNode::Missing { value: 7 };
+        let (node_type, variant, value) = node_details(&node);
+
+        assert_eq!(node_type, "TestNode");
+        assert_eq!(variant, "Missing");
+        assert!(value.contains("value: 7"));
+    }
+
+    #[test]
+    fn unsupported_macro_returns_the_expected_default() {
+        let node = TestNode::Missing { value: 7 };
+        let result: Vec<u8> = crate::unsupported!(node);
+
+        assert!(result.is_empty());
     }
 }

@@ -1,4 +1,4 @@
-use logger::Logger;
+use logger::unsupported;
 use swc_ecma_ast::{Decl, Module, ModuleItem, Stmt};
 
 use derive_more::From;
@@ -24,12 +24,7 @@ fn handle_module_item(node: &ModuleItem) {
     match node {
         ModuleItem::Stmt(stmt) => handle_stmt(&stmt),
 
-        _ => {
-            Logger::not_supported(
-                &format!("Module item: {:?} is not supported", node),
-                "lowering",
-            );
-        }
+        _ => unsupported!(node),
     }
 }
 
@@ -40,10 +35,7 @@ fn handle_stmt(node: &Stmt) {
     match node {
         Stmt::Decl(decl) => handle_decl(decl),
 
-        _ => Logger::not_supported(
-            &format!("Statement: {:?} is not part of the ES5 standard", node),
-            "lowering",
-        ),
+        _ => unsupported!(node),
     }
 }
 // -------------------------------
@@ -55,9 +47,6 @@ fn handle_decl(decl: &Decl) {
             transformers::var_decl::transform_var_decl(var);
         }
 
-        _ => Logger::not_supported(
-            &format!("Declaration: {:?} is not part of the ES5 standard", decl),
-            "lowering",
-        ),
+        _ => unsupported!(decl),
     }
 }

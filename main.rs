@@ -6,7 +6,9 @@ use compiler::compile_and_execute::compile_and_execute;
 
 fn main() {
     let source = r#"
-        function x(a) { let a = 1; let b = 2 }
+        for (let i = 0; 2; 1) {
+            const a = i;
+        }
     "#;
 
     let norm = normalize_to_es5(source);

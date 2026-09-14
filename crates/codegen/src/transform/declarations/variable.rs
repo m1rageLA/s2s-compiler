@@ -1,3 +1,4 @@
+use logger::unsupported;
 use proc_macro2::TokenStream;
 use quote::quote;
 use swc_ecma_ast::{Pat, VarDecl};
@@ -8,7 +9,7 @@ pub fn emit(var_decl: VarDecl) -> TokenStream {
     let declarations = var_decl.decls.iter().map(|decl| {
         let id = match &decl.name {
             Pat::Ident(ident) => identifier::identifier(ident.id.clone()),
-            _ => panic!("Unsupported pattern in variable declaration"),
+            _ => unsupported!(decl.name),
         };
 
         let init_expr = match &decl.init {

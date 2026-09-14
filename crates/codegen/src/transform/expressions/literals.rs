@@ -1,3 +1,4 @@
+use logger::unsupported;
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 use swc_ecma_ast::{Lit, Number, Str};
@@ -6,7 +7,7 @@ pub fn emit(lit: Lit) -> TokenStream {
     match lit {
         Lit::Str(str_lit) => string(str_lit),
         Lit::Num(num_lit) => number(num_lit),
-        _ => todo!("Handle other literal types as needed"),
+        _ => unsupported!(lit),
     }
 }
 
