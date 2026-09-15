@@ -54,11 +54,11 @@ impl Logger {
     /// Prefer the [`unsupported!`] macro at call sites: besides the node details,
     /// it automatically supplies the module, file, and line of the match arm.
     #[track_caller]
-    pub fn unsupported_node<T: Debug>(node: &T, module: &str, file: &str, line: u32) {
+    pub fn unsupported_node<T: Debug>(node: &T, module: &str, file: &str, line: u32) -> ! {
         let (node_type, node_variant, node_value) = node_details(node);
 
-        eprintln!(
-            "{error} ✗ NOT SUPPORTED {reset}  {target}[{module}]{reset}\n\
+        panic!(
+            "\n{error} ✗ NOT SUPPORTED {reset}  {target}[{module}]{reset}\n\
              {label}Node:{reset}     {value}{node_type}::{node_variant}{reset}\n\
              {label}Location:{reset} {file}:{line}\n\
              {label}Value:{reset}\n{value}{node_value}{reset}",
@@ -90,7 +90,7 @@ fn node_details<T: Debug>(node: &T) -> (&'static str, String, String) {
     (node_type, node_variant, format!("{node:#?}"))
 }
 
-/// Log an unsupported match value and return that match's default result.
+/// Panic with diagnostics for an unsupported AST match value.
 ///
 /// # Example
 ///
@@ -102,10 +102,9 @@ fn node_details<T: Debug>(node: &T) -> (&'static str, String, String) {
 /// ```
 #[macro_export]
 macro_rules! unsupported {
-    ($node:expr $(,)?) => {{
-        $crate::Logger::unsupported_node(&$node, module_path!(), file!(), line!());
-        ::core::default::Default::default()
-    }};
+    ($node:expr $(,)?) => {
+        $crate::Logger::unsupported_node(&$node, module_path!(), file!(), line!())
+    };
 }
 
 #[cfg(test)]
@@ -129,10 +128,9 @@ mod tests {
     }
 
     #[test]
-    fn unsupported_macro_returns_the_expected_default() {
+    #[should_panic(expected = "NOT SUPPORTED")]
+    fn unsupported_macro_panics() {
         let node = TestNode::Missing { value: 7 };
-        let result: Vec<u8> = crate::unsupported!(node);
-
-        assert!(result.is_empty());
+        crate::unsupported!(node);
     }
 }
