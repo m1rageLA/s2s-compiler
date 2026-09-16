@@ -26,7 +26,7 @@ fn emit_assign_left(left: AssignTarget) -> TokenStream {
 
 fn emit_simple_assign(simple: swc_ecma_ast::SimpleAssignTarget) -> TokenStream {
     match simple {
-        swc_ecma_ast::SimpleAssignTarget::Ident(ident) => identifier::identifier(ident.id),
+        swc_ecma_ast::SimpleAssignTarget::Ident(ident) => identifier::emit(ident.id),
         swc_ecma_ast::SimpleAssignTarget::Member(member) => member::emit(member),
         _ => unsupported!(simple) // not es5 syntax
     }

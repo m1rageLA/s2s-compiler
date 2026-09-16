@@ -6,7 +6,7 @@ pub mod ident;
 
 pub fn emit(pat: Pat) -> TokenStream {
     match pat {
-        Pat::Ident(binding_ident) => identifier::identifier(binding_ident.id),
+        Pat::Ident(binding_ident) => identifier::emit(binding_ident.id),
         _ => unsupported!(pat),
     }
 }

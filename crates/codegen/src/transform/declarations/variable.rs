@@ -8,7 +8,7 @@ use crate::transform::{expressions, identifier};
 pub fn emit(var_decl: VarDecl) -> TokenStream {
     let declarations = var_decl.decls.iter().map(|decl| {
         let id = match &decl.name {
-            Pat::Ident(ident) => identifier::identifier(ident.id.clone()),
+            Pat::Ident(ident) => identifier::emit(ident.id.clone()),
             _ => unsupported!(decl.name),
         };
 
