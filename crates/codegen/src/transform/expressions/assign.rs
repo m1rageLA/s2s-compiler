@@ -3,7 +3,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use swc_ecma_ast::AssignTarget;
 
-use crate::transform::{expressions::member, identifier};
+use crate::transform::{expressions::member, common};
 
 pub fn emit(assign_expr: swc_ecma_ast::AssignExpr) -> TokenStream {
     // Implement assign feature here!!!
@@ -26,7 +26,7 @@ fn emit_assign_left(left: AssignTarget) -> TokenStream {
 
 fn emit_simple_assign(simple: swc_ecma_ast::SimpleAssignTarget) -> TokenStream {
     match simple {
-        swc_ecma_ast::SimpleAssignTarget::Ident(ident) => identifier::emit(ident.id),
+        swc_ecma_ast::SimpleAssignTarget::Ident(ident) => common::emit(ident.id),
         swc_ecma_ast::SimpleAssignTarget::Member(member) => member::emit(member),
         _ => unsupported!(simple) // not es5 syntax
     }

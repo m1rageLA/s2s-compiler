@@ -1,12 +1,10 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::transform::{identifier, patterns, statements};
-
-
+use crate::transform::{common, patterns, statements};
 
 pub fn emit(fn_decl: swc_ecma_ast::FnDecl) -> TokenStream {
-    let ident = identifier::emit(fn_decl.ident.clone());
+    let ident = common::emit(fn_decl.ident.clone());
     let params = fn_decl.function.params.iter().map(|f| patterns::emit(f.pat.clone()));
     let body = match fn_decl.function.body.clone() {
         Some(block) => statements::block::emit(block),
