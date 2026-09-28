@@ -7,6 +7,7 @@ pub fn emit(lit: Lit) -> TokenStream {
     match lit {
         Lit::Str(str_lit) => string(str_lit),
         Lit::Num(num_lit) => number(num_lit),
+        Lit::Bool(bool_lit) => boolean(bool_lit),
         _ => unsupported!(lit),
     }
 }
@@ -27,5 +28,13 @@ fn number(num_lit: Number) -> TokenStream {
 
     quote! {
         #literal
+    }
+}
+
+fn boolean(bool_lit: swc_ecma_ast::Bool) -> TokenStream {
+    let val = bool_lit.value;
+
+    quote! {
+        #val
     }
 }
