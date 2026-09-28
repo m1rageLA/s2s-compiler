@@ -6,6 +6,7 @@ use swc_ecma_ast::Stmt;
 pub mod block;
 pub mod forstmt;
 pub mod empty;
+pub mod whl;
 
 use crate::transform::expressions;
 
@@ -18,6 +19,7 @@ pub fn emit(stmt: Stmt) -> TokenStream {
         Stmt::Block(block) => block::emit(block),
 
         Stmt::For(for_stmt) => forstmt::emit(for_stmt),
+        Stmt::While(whl_stmt) => whl::emit(whl_stmt),
 
         Stmt::Empty(_) => empty::emit(),
 

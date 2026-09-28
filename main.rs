@@ -5,7 +5,9 @@ use compiler::normalize_to_es5::normalize_to_es5;
 use compiler::compile_and_execute::compile_and_execute;
 fn main() {
     let source = r#"
-    [1, 2]
+    while (true) {
+    [1,2]
+    }
     "#;
 
     let norm = normalize_to_es5(source);
