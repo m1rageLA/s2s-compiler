@@ -1,9 +1,8 @@
 // use schema::declarations::{VariableDeclaration};
 use swc_ecma_ast::VarDecl;
 
-use crate::transform;
 
-pub(crate) fn transform_var_decl(node: &VarDecl) -> () {
+pub(crate) fn transform_var_decl(_: &VarDecl) -> () {
 
     // for decl in &node.decls {
     //     transform(decl);

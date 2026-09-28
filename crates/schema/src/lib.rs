@@ -7,10 +7,10 @@ mod declarations;
 mod expressions;
 mod identifiers;
 
-pub struct Position {
-    line: usize,
-    column: usize,
-}
+// pub struct Position {
+//     line: usize,
+//     column: usize,
+// }
 
 // struct Program {
 //     statements: Vec<Statement>,

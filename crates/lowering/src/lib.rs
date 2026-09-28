@@ -1,12 +1,12 @@
 use logger::unsupported;
-use swc_ecma_ast::{Decl, Module, ModuleItem, Stmt};
+use swc_ecma_ast::{Decl, ModuleItem, Stmt};
 
 use derive_more::From;
 
 mod transformers;
 
 #[derive(From)]
-enum AllNodes {
+pub enum AllNodes {
     ModuleItem(ModuleItem),
     Stmt(Stmt),
     Decl(Decl),
